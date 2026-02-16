@@ -685,6 +685,7 @@ export interface TodayMeal {
   time: string;
   calories: number;
   image: string;
+  recipeId?: string;
 }
 
 export const todaysMeals: TodayMeal[] = [
@@ -695,6 +696,7 @@ export const todaysMeals: TodayMeal[] = [
     time: '8:00 AM',
     calories: 420,
     image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=200&h=200&fit=crop',
+    recipeId: 'fluffy-banana-pancakes',
   },
   {
     id: 'meal-2',
@@ -703,6 +705,7 @@ export const todaysMeals: TodayMeal[] = [
     time: '12:30 PM',
     calories: 520,
     image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&h=200&fit=crop',
+    recipeId: 'mediterranean-bowl',
   },
   {
     id: 'meal-3',
@@ -711,6 +714,7 @@ export const todaysMeals: TodayMeal[] = [
     time: '7:00 PM',
     calories: 680,
     image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=200&h=200&fit=crop',
+    recipeId: 'grilled-salmon',
   },
   {
     id: 'meal-4',

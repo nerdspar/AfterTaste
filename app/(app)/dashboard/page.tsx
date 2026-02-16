@@ -1,9 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { SectionHeader } from '@/components/aftertaste/SectionHeader';
 import { CategoryTiles } from '@/components/aftertaste/dashboard/CategoryTiles';
 import { RecipeCard } from '@/components/aftertaste/dashboard/RecipeCard';
-import { FindRecipesCard } from '@/components/aftertaste/dashboard/FindRecipesCard';
 import { TodaysMeals } from '@/components/aftertaste/dashboard/TodaysMeals';
 import { GroceryListWidget } from '@/components/aftertaste/dashboard/GroceryListWidget';
 import {
@@ -12,7 +12,27 @@ import {
   recentlyAddedRecipes,
 } from '@/data/sample/recipes';
 
+const DEFAULT_COUNT = 2;
+const MAX_COUNT = 8;
+
 export default function DashboardPage() {
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+  function toggleSection(key: string) {
+    setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function getVisibleRecipes(recipes: typeof recommendedRecipes, sectionKey: string) {
+    const expanded = expandedSections[sectionKey];
+    const limit = expanded ? MAX_COUNT : DEFAULT_COUNT;
+    return recipes.slice(0, limit);
+  }
+
+  function getSeeMoreLabel(recipes: typeof recommendedRecipes, sectionKey: string) {
+    if (recipes.length <= DEFAULT_COUNT) return undefined;
+    return expandedSections[sectionKey] ? 'See less' : 'See more';
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
       {/* Page title */}
@@ -26,27 +46,15 @@ export default function DashboardPage() {
           {/* Category Tiles */}
           <CategoryTiles />
 
-          {/* Recommended Recipes */}
-          <section>
-            <SectionHeader
-              title="Recommended Recipes"
-              actionLabel="See more"
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {recommendedRecipes.map((recipe) => (
-                <RecipeCard key={recipe.id} recipe={recipe} />
-              ))}
-            </div>
-          </section>
-
           {/* Recently Viewed */}
           <section>
             <SectionHeader
               title="Recently Viewed"
-              actionLabel="See more"
+              actionLabel={getSeeMoreLabel(recentlyViewedRecipes, 'recentlyViewed')}
+              onAction={() => toggleSection('recentlyViewed')}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {recentlyViewedRecipes.map((recipe) => (
+              {getVisibleRecipes(recentlyViewedRecipes, 'recentlyViewed').map((recipe) => (
                 <RecipeCard key={recipe.id} recipe={recipe} />
               ))}
             </div>
@@ -56,17 +64,29 @@ export default function DashboardPage() {
           <section>
             <SectionHeader
               title="Recently Added"
-              actionLabel="See more"
+              actionLabel={getSeeMoreLabel(recentlyAddedRecipes, 'recentlyAdded')}
+              onAction={() => toggleSection('recentlyAdded')}
             />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {recentlyAddedRecipes.map((recipe) => (
+              {getVisibleRecipes(recentlyAddedRecipes, 'recentlyAdded').map((recipe) => (
                 <RecipeCard key={recipe.id} recipe={recipe} />
               ))}
             </div>
           </section>
 
-          {/* Find Recipes in Seconds */}
-          <FindRecipesCard />
+          {/* Suggested Recipes */}
+          <section>
+            <SectionHeader
+              title="Suggested Recipes"
+              actionLabel={getSeeMoreLabel(recommendedRecipes, 'suggested')}
+              onAction={() => toggleSection('suggested')}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {getVisibleRecipes(recommendedRecipes, 'suggested').map((recipe) => (
+                <RecipeCard key={recipe.id} recipe={recipe} />
+              ))}
+            </div>
+          </section>
         </div>
 
         {/* Right Rail */}
