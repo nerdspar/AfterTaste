@@ -1,14 +1,16 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 import { categories } from '@/data/sample/recipes';
 
 export function CategoryTiles() {
   return (
     <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
       {categories.map((cat) => (
-        <button
+        <Link
           key={cat.slug}
+          href={cat.slug === 'favorites' ? '/recipes?tab=Favorites' : `/recipes?tab=${cat.label}`}
           className={cn(
             'flex flex-col items-center justify-center flex-shrink-0',
             'w-[120px] h-16 rounded-2xl',
@@ -24,7 +26,7 @@ export function CategoryTiles() {
           <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
             {cat.label}
           </span>
-        </button>
+        </Link>
       ))}
     </div>
   );

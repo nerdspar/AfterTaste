@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { RecipeCard } from '@/components/aftertaste/dashboard/RecipeCard';
 import { Chip } from '@/components/aftertaste/Chip';
 import { FilterBar } from '@/components/aftertaste/recipes/FilterBar';
@@ -19,11 +20,17 @@ import {
 const dishTabs = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Favorites'] as const;
 
 export default function MyRecipesPage() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const initialTab = dishTabs.includes(tabParam as (typeof dishTabs)[number])
+    ? (tabParam as string)
+    : 'All';
+
   // Recipe state (local copy so favorites can be toggled)
   const [recipes, setRecipes] = useState<Recipe[]>(recommendedRecipes);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<string>('All');
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
 
   // Advanced filter state
   const [filters, setFilters] = useState<ActiveFilters>({});

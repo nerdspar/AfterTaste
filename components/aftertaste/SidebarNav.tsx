@@ -58,14 +58,14 @@ export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
   return (
     <div className={cn('flex flex-col h-full', className)}>
       {/* Brand */}
-      <div className="flex items-center gap-2.5 px-4 pt-5 pb-6">
+      <Link href="/dashboard" onClick={onNavigate} className="flex items-center gap-2.5 px-4 pt-5 pb-6">
         <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
           <UtensilsCrossedIcon className="w-4.5 h-4.5 text-white" />
         </div>
         <span className="text-lg font-bold text-gray-900 dark:text-gray-50">
           <span className="text-primary-500">After</span>Taste
         </span>
-      </div>
+      </Link>
 
       {/* Create Recipe CTA */}
       <div className="px-4 mb-5">
