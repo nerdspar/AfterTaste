@@ -93,13 +93,13 @@ export default function DashboardPage() {
         <div className="space-y-5">
           {/* Today's Meals */}
           <section>
-            <SectionHeader title="Today's Meals" actionLabel="See more" />
+            <SectionHeader title="Today's Meals" />
             <TodaysMeals />
           </section>
 
           {/* Grocery List */}
           <section>
-            <SectionHeader title="Grocery List" actionLabel="See more" />
+            <SectionHeader title="Grocery List" />
             <GroceryListWidget />
           </section>
         </div>

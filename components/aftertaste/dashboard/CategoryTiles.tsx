@@ -6,7 +6,7 @@ import { categories } from '@/data/sample/recipes';
 
 export function CategoryTiles() {
   return (
-    <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+    <div className="flex gap-3 overflow-x-auto pt-1 pb-1 scrollbar-hide">
       {categories.map((cat) => (
         <Link
           key={cat.slug}
