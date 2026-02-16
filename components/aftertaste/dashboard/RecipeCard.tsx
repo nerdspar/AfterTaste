@@ -11,9 +11,10 @@ import type { Recipe } from '@/data/sample/recipes';
 interface RecipeCardProps {
   recipe: Recipe;
   className?: string;
+  onToggleFavorite?: (id: string) => void;
 }
 
-export function RecipeCard({ recipe, className }: RecipeCardProps) {
+export function RecipeCard({ recipe, className, onToggleFavorite }: RecipeCardProps) {
   return (
     <div
       className={cn(
@@ -36,6 +37,10 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
 
         {/* Favorite button */}
         <button
+          onClick={(e) => {
+            e.preventDefault();
+            onToggleFavorite?.(recipe.id);
+          }}
           className={cn(
             'absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center',
             'bg-white/90 dark:bg-gray-900/80',
