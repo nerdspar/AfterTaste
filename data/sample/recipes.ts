@@ -73,6 +73,7 @@ export const categories: Category[] = [
   { label: 'Lunch', icon: '🥗', slug: 'lunch' },
   { label: 'Dinner', icon: '🍝', slug: 'dinner' },
   { label: 'Dessert', icon: '🍰', slug: 'dessert' },
+  { label: 'Favorites', icon: '❤️', slug: 'favorites' },
 ];
 
 export const storyUsers: StoryUser[] = [
@@ -304,6 +305,165 @@ export const events: EventItem[] = [
       { alt: 'User 8' },
     ],
   },
+];
+
+export const recentlyViewedRecipes: Recipe[] = [
+  {
+    id: 'grilled-salmon',
+    title: 'Honey Glazed Grilled Salmon with Roasted Vegetables',
+    category: 'Dinner',
+    image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=600&h=400&fit=crop',
+    rating: 4.9,
+    ratingCount: 312,
+    cookTime: '45 mins',
+    calories: 680,
+    difficulty: 'Medium',
+    sweetness: 1,
+    isFavorite: true,
+    description:
+      'Perfectly grilled salmon with a sweet honey glaze, served alongside colorful roasted seasonal vegetables.',
+    ingredients: [],
+    instructions: [],
+    chef: {
+      name: 'Chef James Oliver',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=face',
+      recipeCount: 215,
+      rating: 4.8,
+    },
+  },
+  {
+    id: 'fluffy-banana-pancakes',
+    title: 'Fluffy Banana Oat Pancakes with Cinnamon & Fresh Berries',
+    category: 'Breakfast',
+    image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=600&h=400&fit=crop',
+    rating: 4.8,
+    ratingCount: 234,
+    cookTime: '30 mins',
+    calories: 1253,
+    difficulty: 'Medium',
+    sweetness: 2,
+    isFavorite: true,
+    description:
+      'Start your morning with these light, fluffy banana oat pancakes topped with warm cinnamon and a burst of fresh berries.',
+    ingredients: [],
+    instructions: [],
+    chef: {
+      name: 'Chef Maria Santos',
+      avatar: 'https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=80&h=80&fit=crop&crop=face',
+      recipeCount: 142,
+      rating: 4.9,
+    },
+  },
+];
+
+export const recentlyAddedRecipes: Recipe[] = [
+  {
+    id: 'avocado-toast',
+    title: 'Smashed Avocado Toast with Poached Eggs & Chili Flakes',
+    category: 'Breakfast',
+    image: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=600&h=400&fit=crop',
+    rating: 4.5,
+    ratingCount: 78,
+    cookTime: '15 mins',
+    calories: 380,
+    difficulty: 'Easy',
+    sweetness: 0,
+    isFavorite: false,
+    description:
+      'Crispy sourdough topped with creamy avocado, perfectly poached eggs, and a kick of chili flakes.',
+    ingredients: [],
+    instructions: [],
+    chef: {
+      name: 'Chef Alex Kim',
+      avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&h=80&fit=crop&crop=face',
+      recipeCount: 98,
+      rating: 4.7,
+    },
+  },
+  {
+    id: 'thai-green-curry',
+    title: 'Thai Green Curry with Jasmine Rice & Fresh Basil',
+    category: 'Dinner',
+    image: 'https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=600&h=400&fit=crop',
+    rating: 4.7,
+    ratingCount: 145,
+    cookTime: '35 mins',
+    calories: 590,
+    difficulty: 'Medium',
+    sweetness: 0,
+    isFavorite: false,
+    description:
+      'Aromatic Thai green curry loaded with vegetables and tender chicken, served over fluffy jasmine rice.',
+    ingredients: [],
+    instructions: [],
+    chef: {
+      name: 'Chef Sophie Laurent',
+      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop&crop=face',
+      recipeCount: 167,
+      rating: 4.9,
+    },
+  },
+];
+
+export interface TodayMeal {
+  id: string;
+  mealType: string;
+  title: string;
+  time: string;
+  calories: number;
+  image: string;
+}
+
+export const todaysMeals: TodayMeal[] = [
+  {
+    id: 'meal-1',
+    mealType: 'Breakfast',
+    title: 'Fluffy Banana Oat Pancakes',
+    time: '8:00 AM',
+    calories: 420,
+    image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=200&h=200&fit=crop',
+  },
+  {
+    id: 'meal-2',
+    mealType: 'Lunch',
+    title: 'Mediterranean Quinoa Bowl',
+    time: '12:30 PM',
+    calories: 520,
+    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&h=200&fit=crop',
+  },
+  {
+    id: 'meal-3',
+    mealType: 'Dinner',
+    title: 'Honey Glazed Grilled Salmon',
+    time: '7:00 PM',
+    calories: 680,
+    image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=200&h=200&fit=crop',
+  },
+  {
+    id: 'meal-4',
+    mealType: 'Snack',
+    title: 'Greek Yogurt with Granola',
+    time: '3:30 PM',
+    calories: 180,
+    image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=200&h=200&fit=crop',
+  },
+];
+
+export interface GroceryItem {
+  id: string;
+  name: string;
+  quantity: string;
+  checked: boolean;
+  category: string;
+}
+
+export const groceryItems: GroceryItem[] = [
+  { id: 'g-1', name: 'Bananas', quantity: '2 lbs', checked: true, category: 'Fruits & Vegetables' },
+  { id: 'g-2', name: 'Rolled Oats', quantity: '1 bag', checked: false, category: 'Grains & Cereals' },
+  { id: 'g-3', name: 'Fresh Salmon', quantity: '2 fillets', checked: false, category: 'Protein' },
+  { id: 'g-4', name: 'Quinoa', quantity: '1 bag', checked: true, category: 'Grains & Cereals' },
+  { id: 'g-5', name: 'Greek Yogurt', quantity: '32 oz', checked: false, category: 'Dairy & Eggs' },
+  { id: 'g-6', name: 'Fresh Berries', quantity: '2 pints', checked: false, category: 'Fruits & Vegetables' },
 ];
 
 export const aiSuggestedPrompts = [
