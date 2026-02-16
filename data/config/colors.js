@@ -1,18 +1,18 @@
 /* Configure colors at https://shipixen.com/color-theme-explorer-shadcn */
 const colors = {
   primary: {
-    lighter: '#fde047',
-    light: '#facc15',
-    main: '#eab308',
-    dark: '#ca8a04',
-    darker: '#a16207',
+    lighter: '#FFE8DC',
+    light: '#FF8A50',
+    main: '#F97316',
+    dark: '#EA580C',
+    darker: '#C2410C',
   },
   secondary: {
-    lighter: '#6ee7b7',
-    light: '#34d399',
-    main: '#10b981',
-    dark: '#059669',
-    darker: '#047857',
+    lighter: '#E6F1FF',
+    light: '#4DA3FF',
+    main: '#2B7FFF',
+    dark: '#1D6AE5',
+    darker: '#1554B8',
   },
 };
 
