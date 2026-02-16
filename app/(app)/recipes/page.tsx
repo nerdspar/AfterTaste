@@ -6,8 +6,8 @@ import { RecipeCard } from '@/components/aftertaste/dashboard/RecipeCard';
 import { Chip } from '@/components/aftertaste/Chip';
 import { FilterBar } from '@/components/aftertaste/recipes/FilterBar';
 import { SortDropdown } from '@/components/aftertaste/recipes/SortDropdown';
+import { useFavorites } from '@/components/aftertaste/FavoritesProvider';
 import { recommendedRecipes } from '@/data/sample/recipes';
-import type { Recipe } from '@/data/sample/recipes';
 import {
   defaultFilterConfigs,
   sortOptions,
@@ -26,8 +26,7 @@ export default function MyRecipesPage() {
     ? (tabParam as string)
     : 'All';
 
-  // Recipe state (local copy so favorites can be toggled)
-  const [recipes, setRecipes] = useState<Recipe[]>(recommendedRecipes);
+  const { isFavorite } = useFavorites();
 
   // Tab state
   const [activeTab, setActiveTab] = useState<string>(initialTab);
@@ -38,21 +37,12 @@ export default function MyRecipesPage() {
   // Sort state
   const [sort, setSort] = useState<SortOption | null>(null);
 
-  // Toggle favorite
-  function toggleFavorite(id: string) {
-    setRecipes((prev) =>
-      prev.map((r) =>
-        r.id === id ? { ...r, isFavorite: !r.isFavorite } : r,
-      ),
-    );
-  }
-
   // Compute filtered + sorted recipes
   const displayRecipes = useMemo(() => {
     // 1. Tab filter (dish type or favorites)
-    let result = recipes;
+    let result = [...recommendedRecipes];
     if (activeTab === 'Favorites') {
-      result = result.filter((r) => r.isFavorite);
+      result = result.filter((r) => isFavorite(r.id));
     } else if (activeTab !== 'All') {
       result = result.filter((r) => r.category === activeTab);
     }
@@ -64,7 +54,7 @@ export default function MyRecipesPage() {
     result = applySort(result, sort);
 
     return result;
-  }, [recipes, activeTab, filters, sort]);
+  }, [activeTab, filters, sort, isFavorite]);
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -105,7 +95,6 @@ export default function MyRecipesPage() {
             <RecipeCard
               key={recipe.id}
               recipe={recipe}
-              onToggleFavorite={toggleFavorite}
             />
           ))}
         </div>

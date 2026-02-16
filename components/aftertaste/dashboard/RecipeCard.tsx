@@ -6,15 +6,18 @@ import Link from 'next/link';
 import { HeartIcon, ClockIcon, FlameIcon } from 'lucide-react';
 import { RatingStars } from '../RatingStars';
 import { Button } from '../Button';
+import { useFavorites } from '../FavoritesProvider';
 import type { Recipe } from '@/data/sample/recipes';
 
 interface RecipeCardProps {
   recipe: Recipe;
   className?: string;
-  onToggleFavorite?: (id: string) => void;
 }
 
-export function RecipeCard({ recipe, className, onToggleFavorite }: RecipeCardProps) {
+export function RecipeCard({ recipe, className }: RecipeCardProps) {
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const favorited = isFavorite(recipe.id);
+
   return (
     <div
       className={cn(
@@ -39,7 +42,7 @@ export function RecipeCard({ recipe, className, onToggleFavorite }: RecipeCardPr
         <button
           onClick={(e) => {
             e.preventDefault();
-            onToggleFavorite?.(recipe.id);
+            toggleFavorite(recipe.id);
           }}
           className={cn(
             'absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center',
@@ -47,12 +50,12 @@ export function RecipeCard({ recipe, className, onToggleFavorite }: RecipeCardPr
             'hover:scale-110 transition-transform',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-500/30',
           )}
-          aria-label={recipe.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+          aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
         >
           <HeartIcon
             className={cn(
               'w-4 h-4',
-              recipe.isFavorite
+              favorited
                 ? 'fill-red-500 text-red-500'
                 : 'text-gray-500 dark:text-gray-400',
             )}
