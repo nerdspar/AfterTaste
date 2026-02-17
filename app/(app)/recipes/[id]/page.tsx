@@ -1,6 +1,6 @@
 'use client';
 
-import { use } from 'react';
+import { use, useState } from 'react';
 import { Breadcrumbs } from '@/components/aftertaste/Breadcrumbs';
 import { RecipeHero } from '@/components/aftertaste/recipe-detail/RecipeHero';
 import { StatsRow } from '@/components/aftertaste/recipe-detail/StatsRow';
@@ -16,6 +16,14 @@ interface RecipeDetailPageProps {
 export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const { id } = use(params);
   const recipe = recommendedRecipes.find((r) => r.id === id) ?? recommendedRecipes[0];
+
+  const [scaleMode, setScaleMode] = useState<'amount' | 'serving'>('amount');
+  const [scaleValue, setScaleValue] = useState(1);
+
+  const currentServings =
+    scaleMode === 'amount'
+      ? Math.round(recipe.servings * scaleValue)
+      : Math.round(scaleValue);
 
   const breadcrumbs = [
     { label: 'Home', href: '/dashboard' },
@@ -37,7 +45,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
         {/* Main content */}
         <div className="lg:col-span-2 space-y-5">
           <RecipeHero recipe={recipe} />
-          <StatsRow recipe={recipe} />
+          <StatsRow recipe={recipe} servings={currentServings} />
           {recipe.instructions.length > 0 && (
             <CookingInstructions instructions={recipe.instructions} />
           )}
@@ -46,7 +54,14 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
         {/* Right rail */}
         <div className="space-y-5">
           {recipe.ingredients.length > 0 && (
-            <IngredientsPanel ingredients={recipe.ingredients} />
+            <IngredientsPanel
+              ingredients={recipe.ingredients}
+              baseServings={recipe.servings}
+              scaleMode={scaleMode}
+              scaleValue={scaleValue}
+              onScaleModeChange={setScaleMode}
+              onScaleValueChange={setScaleValue}
+            />
           )}
           <AIAssistantPanel />
         </div>
