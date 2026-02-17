@@ -29,16 +29,9 @@ export function StatsRow({ recipe, servings }: StatsRowProps) {
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">
             {formatMinutes(recipe.totalTimeMinutes)}
           </p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">Total Time</p>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums">
-              Prep {formatMinutes(recipe.prepTimeMinutes)}
-            </span>
-            <span className="text-gray-300 dark:text-gray-600 text-[10px]">|</span>
-            <span className="text-[10px] text-gray-400 dark:text-gray-500 tabular-nums">
-              Cook {formatMinutes(recipe.cookTimeMinutes)}
-            </span>
-          </div>
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 tabular-nums leading-tight">
+            {formatMinutes(recipe.prepTimeMinutes)} prep · {formatMinutes(recipe.cookTimeMinutes)} cook
+          </p>
         </div>
       </div>
 
