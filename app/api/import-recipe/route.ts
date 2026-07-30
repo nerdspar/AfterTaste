@@ -21,17 +21,64 @@ async function fetchHtml(targetUrl: string): Promise<string | null> {
   return null;
 }
 
-async function fetchWithWaybackFallback(
+// A parseable recipe page carries JSON-LD or at least Open Graph metadata; a
+// bot/consent interstitial served with a 200 status has neither, so we should
+// fall through to an archived copy rather than trust it.
+function looksParseable(html: string): boolean {
+  return (
+    /application\/ld\+json/i.test(html) ||
+    /<meta[^>]+(?:property|name)\s*=\s*["']og:title["']/i.test(html)
+  );
+}
+
+async function fetchLatestWaybackSnapshot(
   url: string,
 ): Promise<string | null> {
+  // Ask the Wayback Machine for the most recent snapshot. (Pinning to a fixed
+  // year served stale, sometimes differently structured versions of a recipe.)
+  try {
+    const availRes = await fetch(
+      `https://archive.org/wayback/available?url=${encodeURIComponent(url)}`,
+      { headers: FETCH_HEADERS, signal: AbortSignal.timeout(10000) },
+    );
+    if (availRes.ok) {
+      const data = (await availRes.json()) as {
+        archived_snapshots?: {
+          closest?: { available?: boolean; url?: string };
+        };
+      };
+      const closest = data.archived_snapshots?.closest;
+      if (closest?.available && closest.url) {
+        // `id_` returns the original page without the Wayback toolbar/rewriting.
+        const rawUrl = closest.url
+          .replace(/^http:/, 'https:')
+          .replace(/\/web\/(\d+)\//, '/web/$1id_/');
+        const html = await fetchHtml(rawUrl);
+        if (html) return html;
+      }
+    }
+  } catch {}
+
+  // Fallback: a date-addressed snapshot resolves to the most recent capture on
+  // or before today, without depending on the availability API.
+  const now = new Date();
+  const stamp =
+    `${now.getUTCFullYear()}` +
+    `${String(now.getUTCMonth() + 1).padStart(2, '0')}` +
+    `${String(now.getUTCDate()).padStart(2, '0')}`;
+  return fetchHtml(`https://web.archive.org/web/${stamp}/${url}`);
+}
+
+async function fetchRecipeHtml(url: string): Promise<string | null> {
   const direct = await fetchHtml(url);
-  if (direct) return direct;
+  if (direct && looksParseable(direct)) return direct;
 
-  const waybackUrl = `https://web.archive.org/web/2024/${url}`;
-  const cached = await fetchHtml(waybackUrl);
-  if (cached) return cached;
+  const archived = await fetchLatestWaybackSnapshot(url);
+  if (archived) return archived;
 
-  return null;
+  // Last resort: return whatever the direct fetch produced so meta parsing can
+  // still take a shot.
+  return direct;
 }
 
 export async function POST(request: NextRequest) {
@@ -56,7 +103,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const html = await fetchWithWaybackFallback(url);
+    const html = await fetchRecipeHtml(url);
 
     if (!html) {
       return NextResponse.json(

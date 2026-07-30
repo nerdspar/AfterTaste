@@ -14,6 +14,15 @@ export interface ParsedRecipe {
   instructions?: Instruction[];
 }
 
+function stripWaybackPrefix(url: string): string {
+  // Archived pages rewrite asset URLs through web.archive.org; recover the
+  // original so imported images don't depend on the Wayback Machine.
+  return url.replace(
+    /^https?:\/\/web\.archive\.org\/web\/\d+(?:\w{2}_)?\/(https?:\/\/)/i,
+    '$1',
+  );
+}
+
 function parseISO8601Duration(duration: string): number {
   const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return 0;
@@ -70,8 +79,13 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
         };
       });
 
-      const rawInstructions =
-        data.recipeInstructions ?? [];
+      // recipeInstructions may be an array, a single object, or a single
+      // string; normalize to an array so we never iterate a string's characters.
+      const rawInstructions = Array.isArray(data.recipeInstructions)
+        ? data.recipeInstructions
+        : data.recipeInstructions
+          ? [data.recipeInstructions]
+          : [];
       const instructions: Instruction[] = [];
 
       function pushStep(text: string, name?: string) {
@@ -103,32 +117,49 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
         }
       }
 
-      function addStep(item: Record<string, unknown>) {
+      function typeIncludes(
+        item: Record<string, unknown>,
+        type: string,
+      ): boolean {
+        const t = item['@type'];
+        return t === type || (Array.isArray(t) && t.includes(type));
+      }
+
+      function addStep(item: unknown) {
         if (typeof item === 'string') {
-          pushStep(item as string);
-        } else if (item['@type'] === 'HowToStep') {
-          pushStep(
-            (item.text as string) || '',
-            item.name as string | undefined,
-          );
-        } else if (item['@type'] === 'HowToSection') {
-          const subs = (item.itemListElement ?? []) as Record<string, unknown>[];
-          if (subs.length > 0) {
+          pushStep(item);
+          return;
+        }
+        if (!item || typeof item !== 'object') return;
+        const obj = item as Record<string, unknown>;
+
+        // A section groups sub-steps; recurse into them.
+        if (typeIncludes(obj, 'HowToSection')) {
+          const subs = obj.itemListElement;
+          if (Array.isArray(subs) && subs.length > 0) {
             for (const sub of subs) addStep(sub);
-          } else if (item.text) {
-            pushStep(item.text as string, item.name as string | undefined);
+          } else if (typeof obj.text === 'string') {
+            pushStep(obj.text, obj.name as string | undefined);
           }
+          return;
+        }
+
+        // Otherwise treat any object carrying step text as a step. Some sites
+        // omit @type entirely or provide it as an array (e.g. ["HowToStep"]).
+        if (typeof obj.text === 'string' && obj.text.trim()) {
+          pushStep(obj.text, obj.name as string | undefined);
         }
       }
 
       for (const item of rawInstructions) {
-        addStep(item as Record<string, unknown>);
+        addStep(item);
       }
 
       let imageUrl = '';
       if (typeof data.image === 'string') imageUrl = data.image;
       else if (Array.isArray(data.image)) imageUrl = data.image[0];
       else if (data.image?.url) imageUrl = data.image.url;
+      if (imageUrl) imageUrl = stripWaybackPrefix(imageUrl);
 
       let calories: number | undefined;
       if (data.nutrition?.calories) {
