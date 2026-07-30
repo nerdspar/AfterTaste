@@ -7,7 +7,7 @@ import { Chip } from '@/components/aftertaste/Chip';
 import { FilterBar } from '@/components/aftertaste/recipes/FilterBar';
 import { SortDropdown } from '@/components/aftertaste/recipes/SortDropdown';
 import { useFavorites } from '@/components/aftertaste/FavoritesProvider';
-import { recommendedRecipes } from '@/data/sample/recipes';
+import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import {
   defaultFilterConfigs,
   sortOptions,
@@ -36,13 +36,14 @@ function MyRecipesContent() {
     : 'All';
 
   const { isFavorite } = useFavorites();
+  const { recipes: allRecipes } = useRecipeStore();
 
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [filters, setFilters] = useState<ActiveFilters>({});
   const [sort, setSort] = useState<SortOption | null>(null);
 
   const displayRecipes = useMemo(() => {
-    let result = [...recommendedRecipes];
+    let result = [...allRecipes];
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -65,7 +66,7 @@ function MyRecipesContent() {
     result = applySort(result, sort);
 
     return result;
-  }, [activeTab, filters, sort, isFavorite, searchQuery]);
+  }, [activeTab, filters, sort, isFavorite, searchQuery, allRecipes]);
 
   return (
     <div className="max-w-7xl mx-auto">

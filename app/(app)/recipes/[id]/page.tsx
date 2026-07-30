@@ -8,7 +8,7 @@ import { StatsRow } from '@/components/aftertaste/recipe-detail/StatsRow';
 import { IngredientsPanel } from '@/components/aftertaste/recipe-detail/IngredientsPanel';
 import { CookingInstructions } from '@/components/aftertaste/recipe-detail/CookingInstructions';
 import { AIAssistantPanel } from '@/components/aftertaste/recipe-detail/AIAssistantPanel';
-import { recommendedRecipes } from '@/data/sample/recipes';
+import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 
 interface RecipeDetailPageProps {
   params: Promise<{ id: string }>;
@@ -16,7 +16,8 @@ interface RecipeDetailPageProps {
 
 export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const { id } = use(params);
-  const recipe = recommendedRecipes.find((r) => r.id === id);
+  const { getRecipe } = useRecipeStore();
+  const recipe = getRecipe(id);
 
   if (!recipe) {
     notFound();
@@ -42,7 +43,6 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Page title */}
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
         Details
       </h1>

@@ -69,10 +69,12 @@ export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
 
       {/* Create Recipe CTA */}
       <div className="px-4 mb-5">
-        <Button variant="primary" size="lg" fullWidth className="gap-2">
-          <PlusIcon className="w-4 h-4" />
-          Create Recipe
-        </Button>
+        <Link href="/recipes/new" onClick={onNavigate}>
+          <Button variant="primary" size="lg" fullWidth className="gap-2" type="button">
+            <PlusIcon className="w-4 h-4" />
+            Create Recipe
+          </Button>
+        </Link>
       </div>
 
       {/* Navigation Groups */}

@@ -1,0 +1,247 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { XIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '../Button';
+import { useRecipeStore } from '../RecipeStoreProvider';
+import type { Recipe } from '@/data/sample/recipes';
+
+interface TagsRatingsModalProps {
+  recipe: Recipe;
+  open: boolean;
+  onClose: () => void;
+}
+
+function ScoreSelector({
+  label,
+  value,
+  onChange,
+  max = 5,
+}: {
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  max?: number;
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+        {label}
+      </label>
+      <div className="flex gap-1.5">
+        {Array.from({ length: max }, (_, i) => {
+          const score = i + 1;
+          return (
+            <button
+              key={score}
+              type="button"
+              onClick={() => onChange(score)}
+              className={cn(
+                'w-9 h-9 rounded-lg text-sm font-bold transition-colors',
+                score <= value
+                  ? 'bg-primary-500 text-white'
+                  : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700',
+              )}
+            >
+              {score}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+export function TagsRatingsModal({
+  recipe,
+  open,
+  onClose,
+}: TagsRatingsModalProps) {
+  const { updateRecipe } = useRecipeStore();
+  const [ease, setEase] = useState(recipe.ease);
+  const [taste, setTaste] = useState(recipe.taste);
+  const [cleanup, setCleanup] = useState(recipe.cleanup);
+  const [sweetness, setSweetness] = useState(recipe.sweetness);
+  const [makeAgain, setMakeAgain] = useState(recipe.makeAgain);
+  const [remade, setRemade] = useState(recipe.remade);
+  const [rating, setRating] = useState(recipe.rating);
+
+  useEffect(() => {
+    setEase(recipe.ease);
+    setTaste(recipe.taste);
+    setCleanup(recipe.cleanup);
+    setSweetness(recipe.sweetness);
+    setMakeAgain(recipe.makeAgain);
+    setRemade(recipe.remade);
+    setRating(recipe.rating);
+  }, [recipe]);
+
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [open]);
+
+  if (!open) return null;
+
+  function handleSave() {
+    updateRecipe(recipe.id, {
+      ease,
+      taste,
+      cleanup,
+      sweetness,
+      makeAgain,
+      remade,
+      rating,
+    });
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/40"
+        onClick={onClose}
+      />
+      <div
+        className={cn(
+          'relative w-full max-w-md max-h-[85vh] overflow-y-auto',
+          'rounded-2xl border border-gray-200 bg-white shadow-xl p-5',
+          'dark:border-gray-700 dark:bg-slate-900',
+          'animate-in fade-in zoom-in-95 duration-200',
+        )}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
+            Edit Tags & Ratings
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <XIcon className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="space-y-5">
+          {/* Rating */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+              Rating
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={0}
+                max={5}
+                step={0.1}
+                value={rating}
+                onChange={(e) => setRating(Number(e.target.value))}
+                className="flex-1 accent-amber-400"
+              />
+              <span className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums w-8 text-right">
+                {rating.toFixed(1)}
+              </span>
+            </div>
+          </div>
+
+          {/* Personal scores */}
+          <ScoreSelector label="Ease of Cooking" value={ease} onChange={setEase} />
+          <ScoreSelector label="Taste" value={taste} onChange={setTaste} />
+          <ScoreSelector label="Cleanup" value={cleanup} onChange={setCleanup} />
+          <ScoreSelector
+            label="Sweetness"
+            value={sweetness}
+            onChange={setSweetness}
+            max={3}
+          />
+
+          {/* Make again toggle */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+              Would Make Again?
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setMakeAgain(true)}
+                className={cn(
+                  'flex-1 h-10 rounded-lg text-sm font-medium transition-colors',
+                  makeAgain
+                    ? 'bg-emerald-500 text-white'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700',
+                )}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                onClick={() => setMakeAgain(false)}
+                className={cn(
+                  'flex-1 h-10 rounded-lg text-sm font-medium transition-colors',
+                  !makeAgain
+                    ? 'bg-red-400 text-white'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700',
+                )}
+              >
+                No
+              </button>
+            </div>
+          </div>
+
+          {/* Times remade */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+              Times Remade
+            </label>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setRemade(Math.max(0, remade - 1))}
+                className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-bold text-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              >
+                -
+              </button>
+              <span className="text-xl font-bold text-gray-900 dark:text-gray-100 tabular-nums w-8 text-center">
+                {remade}
+              </span>
+              <button
+                type="button"
+                onClick={() => setRemade(remade + 1)}
+                className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 font-bold text-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              >
+                +
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            className="flex-1"
+            onClick={handleSave}
+          >
+            Save
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="md"
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
