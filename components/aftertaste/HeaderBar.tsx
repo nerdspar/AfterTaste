@@ -8,7 +8,7 @@ import {
   ChevronDownIcon,
   MenuIcon,
 } from 'lucide-react';
-import { ThemeSwitch } from '@/components/shared/ThemeSwitch';
+import { ThemeSwitch } from './ThemeSwitch';
 import { IconButton } from './IconButton';
 import { Avatar } from './Avatar';
 
