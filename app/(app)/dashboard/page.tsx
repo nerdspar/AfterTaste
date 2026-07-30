@@ -35,10 +35,15 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Page title */}
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-5">
-        Dashboard
-      </h1>
+      {/* Greeting */}
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'}, John
+        </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+          What would you like to cook today?
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left / Main Column */}
