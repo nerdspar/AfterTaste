@@ -5,7 +5,6 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { HeartIcon, ClockIcon, FlameIcon } from 'lucide-react';
 import { RatingStars } from '../RatingStars';
-import { Button } from '../Button';
 import { useFavorites } from '../FavoritesProvider';
 import type { Recipe } from '@/data/sample/recipes';
 
@@ -19,12 +18,13 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
   const favorited = isFavorite(recipe.id);
 
   return (
-    <div
+    <Link
+      href={`/recipes/${recipe.id}`}
       className={cn(
-        'rounded-2xl border border-gray-200 bg-white overflow-hidden',
+        'block rounded-2xl border border-gray-200 bg-white overflow-hidden',
         'dark:border-gray-700/40 dark:bg-slate-900',
         'hover:-translate-y-0.5 transition-all duration-150',
-        'group',
+        'group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-500/40',
         className,
       )}
     >
@@ -42,6 +42,7 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
         <button
           onClick={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             toggleFavorite(recipe.id);
           }}
           className={cn(
@@ -76,7 +77,7 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
         </h3>
 
         {/* Meta row */}
-        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-3">
+        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
           <span className="flex items-center gap-1 tabular-nums">
             <ClockIcon className="w-3.5 h-3.5" />
             {recipe.cookTime}
@@ -86,13 +87,7 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
             {recipe.calories} kcal
           </span>
         </div>
-
-        <Link href={`/recipes/${recipe.id}`}>
-          <Button variant="outline" size="sm" fullWidth>
-            View Details
-          </Button>
-        </Link>
       </div>
-    </div>
+    </Link>
   );
 }

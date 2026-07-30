@@ -30,44 +30,47 @@ export default function MyRecipesPage() {
 function MyRecipesContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
+  const searchQuery = searchParams.get('q') ?? '';
   const initialTab = dishTabs.includes(tabParam as (typeof dishTabs)[number])
     ? (tabParam as string)
     : 'All';
 
   const { isFavorite } = useFavorites();
 
-  // Tab state
   const [activeTab, setActiveTab] = useState<string>(initialTab);
-
-  // Advanced filter state
   const [filters, setFilters] = useState<ActiveFilters>({});
-
-  // Sort state
   const [sort, setSort] = useState<SortOption | null>(null);
 
-  // Compute filtered + sorted recipes
   const displayRecipes = useMemo(() => {
-    // 1. Tab filter (dish type or favorites)
     let result = [...recommendedRecipes];
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(
+        (r) =>
+          r.title.toLowerCase().includes(q) ||
+          r.category.toLowerCase().includes(q) ||
+          r.cuisine.toLowerCase().includes(q) ||
+          r.description.toLowerCase().includes(q),
+      );
+    }
+
     if (activeTab === 'Favorites') {
       result = result.filter((r) => isFavorite(r.id));
     } else if (activeTab !== 'All') {
       result = result.filter((r) => r.category === activeTab);
     }
 
-    // 2. Advanced filters
     result = applyFilters(result, filters, defaultFilterConfigs);
-
-    // 3. Sort
     result = applySort(result, sort);
 
     return result;
-  }, [activeTab, filters, sort, isFavorite]);
+  }, [activeTab, filters, sort, isFavorite, searchQuery]);
 
   return (
     <div className="max-w-7xl mx-auto">
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-5">
-        My Recipes
+        {searchQuery ? `Search: "${searchQuery}"` : 'My Recipes'}
       </h1>
 
       {/* Dish type tabs */}

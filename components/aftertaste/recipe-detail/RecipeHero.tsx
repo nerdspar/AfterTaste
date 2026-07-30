@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   EllipsisVerticalIcon,
   PencilIcon,
@@ -9,27 +10,25 @@ import {
   CopyIcon,
   CalendarPlusIcon,
   ShareIcon,
+  HeartIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RatingStars } from '../RatingStars';
 import { IconButton } from '../IconButton';
+import { useFavorites } from '../FavoritesProvider';
 import type { Recipe } from '@/data/sample/recipes';
 
 interface RecipeHeroProps {
   recipe: Recipe;
 }
 
-const menuItems = [
-  { label: 'Edit Recipe', icon: PencilIcon },
-  { label: 'Edit Tags & Ratings', icon: TagsIcon },
-  { label: 'Duplicate', icon: CopyIcon },
-  { label: 'Add to Meal Plan', icon: CalendarPlusIcon },
-  { label: 'Share', icon: ShareIcon },
-];
-
 export function RecipeHero({ recipe }: RecipeHeroProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const { isFavorite, toggleFavorite } = useFavorites();
+  const favorited = isFavorite(recipe.id);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -43,80 +42,165 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setMenuOpen(false);
+  }
+
+  const menuItems = [
+    {
+      label: favorited ? 'Remove from Favorites' : 'Add to Favorites',
+      icon: HeartIcon,
+      action: () => {
+        toggleFavorite(recipe.id);
+        showToast(favorited ? 'Removed from favorites' : 'Added to favorites');
+      },
+    },
+    {
+      label: 'Add to Meal Plan',
+      icon: CalendarPlusIcon,
+      action: () => {
+        router.push('/meal-planner');
+      },
+    },
+    {
+      label: 'Share',
+      icon: ShareIcon,
+      action: async () => {
+        const url = window.location.href;
+        try {
+          await navigator.clipboard.writeText(url);
+          showToast('Link copied to clipboard');
+        } catch {
+          showToast('Could not copy link');
+        }
+      },
+    },
+    {
+      label: 'Edit Recipe',
+      icon: PencilIcon,
+      action: () => showToast('Editing coming soon'),
+    },
+    {
+      label: 'Edit Tags & Ratings',
+      icon: TagsIcon,
+      action: () => showToast('Tag editing coming soon'),
+    },
+    {
+      label: 'Duplicate',
+      icon: CopyIcon,
+      action: () => showToast('Recipe duplicated (coming soon)'),
+    },
+  ];
+
   return (
-    <div className="flex flex-col md:flex-row gap-4">
-      {/* Image */}
-      <div className="relative w-full md:w-72 h-48 md:h-52 rounded-2xl overflow-hidden flex-shrink-0">
-        <Image
-          src={recipe.image}
-          alt={recipe.title}
-          fill
-          className="object-cover dark:brightness-90"
-          sizes="(max-width: 768px) 100vw, 288px"
-          priority
-        />
-      </div>
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2 mb-1.5">
-          <span className="inline-block text-xs font-semibold text-primary-600 dark:text-primary-400">
-            {recipe.category}
-          </span>
-
-          {/* Actions menu */}
-          <div className="relative flex-shrink-0" ref={menuRef}>
-            <IconButton
-              aria-label="Recipe actions"
-              size="sm"
-              onClick={() => setMenuOpen((prev) => !prev)}
-            >
-              <EllipsisVerticalIcon className="w-[18px] h-[18px]" />
-            </IconButton>
-
-            {menuOpen && (
-              <div
-                className={cn(
-                  'absolute right-0 top-full mt-1 z-30 w-52',
-                  'rounded-xl border border-gray-200 bg-white py-1 shadow-lg',
-                  'dark:border-gray-700 dark:bg-slate-900',
-                )}
-              >
-                {menuItems.map((item) => (
-                  <button
-                    key={item.label}
-                    type="button"
-                    onClick={() => setMenuOpen(false)}
-                    className={cn(
-                      'flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700',
-                      'hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800',
-                      'transition-colors',
-                    )}
-                  >
-                    <item.icon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+    <div className="relative">
+      <div className="flex flex-col md:flex-row gap-4">
+        {/* Image */}
+        <div className="relative w-full md:w-72 h-48 md:h-52 rounded-2xl overflow-hidden flex-shrink-0">
+          <Image
+            src={recipe.image}
+            alt={recipe.title}
+            fill
+            className="object-cover dark:brightness-90"
+            sizes="(max-width: 768px) 100vw, 288px"
+            priority
+          />
         </div>
 
-        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2 mb-2">
-          {recipe.title}
-        </h2>
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-1.5">
+            <span className="inline-block text-xs font-semibold text-primary-600 dark:text-primary-400">
+              {recipe.category}
+            </span>
 
-        <RatingStars
-          rating={recipe.rating}
-          count={recipe.ratingCount}
-          size="md"
-          className="mb-3"
-        />
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Favorite button */}
+              <IconButton
+                aria-label={favorited ? 'Remove from favorites' : 'Add to favorites'}
+                size="sm"
+                onClick={() => {
+                  toggleFavorite(recipe.id);
+                  setToast(favorited ? 'Removed from favorites' : 'Added to favorites');
+                }}
+              >
+                <HeartIcon
+                  className={cn(
+                    'w-[18px] h-[18px]',
+                    favorited ? 'fill-red-500 text-red-500' : '',
+                  )}
+                />
+              </IconButton>
 
-        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-3">
-          {recipe.description}
-        </p>
+              {/* Actions menu */}
+              <div className="relative" ref={menuRef}>
+                <IconButton
+                  aria-label="Recipe actions"
+                  size="sm"
+                  onClick={() => setMenuOpen((prev) => !prev)}
+                >
+                  <EllipsisVerticalIcon className="w-[18px] h-[18px]" />
+                </IconButton>
+
+                {menuOpen && (
+                  <div
+                    className={cn(
+                      'absolute right-0 top-full mt-1 z-30 w-52',
+                      'rounded-xl border border-gray-200 bg-white py-1 shadow-lg',
+                      'dark:border-gray-700 dark:bg-slate-900',
+                    )}
+                  >
+                    {menuItems.map((item) => (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={item.action}
+                        className={cn(
+                          'flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700',
+                          'hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800',
+                          'transition-colors',
+                        )}
+                      >
+                        <item.icon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 leading-tight line-clamp-2 mb-2">
+            {recipe.title}
+          </h2>
+
+          <RatingStars
+            rating={recipe.rating}
+            count={recipe.ratingCount}
+            size="md"
+            className="mb-3"
+          />
+
+          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-3">
+            {recipe.description}
+          </p>
+        </div>
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-[calc(100%+8px)] z-40 px-4 py-2 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

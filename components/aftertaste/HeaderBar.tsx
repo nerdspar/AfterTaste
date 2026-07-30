@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   SearchIcon,
@@ -18,6 +20,17 @@ interface HeaderBarProps {
 }
 
 export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
+  const router = useRouter();
+  const [query, setQuery] = useState('');
+
+  function handleSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const q = query.trim();
+    if (q) {
+      router.push(`/recipes?q=${encodeURIComponent(q)}`);
+    }
+  }
+
   return (
     <header
       className={cn(
@@ -35,11 +48,13 @@ export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
       </button>
 
       {/* Search */}
-      <div className="relative flex-1 max-w-md">
+      <form onSubmit={handleSearch} className="relative flex-1 max-w-md">
         <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
           type="text"
-          placeholder="Search.."
+          placeholder="Search recipes..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
           className={cn(
             'w-full h-10 pl-9 pr-4 rounded-full text-sm',
             'bg-gray-100 dark:bg-gray-800/60',
@@ -50,7 +65,7 @@ export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
             'transition-colors',
           )}
         />
-      </div>
+      </form>
 
       {/* Right actions */}
       <div className="flex items-center gap-1">
