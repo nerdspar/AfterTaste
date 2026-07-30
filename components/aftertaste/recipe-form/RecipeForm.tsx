@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { Card } from '@/components/aftertaste/Card';
 import { Button } from '@/components/aftertaste/Button';
 import { cn } from '@/lib/utils';
@@ -318,13 +317,11 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
             />
             {image ? (
               <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src={image}
                   alt="Recipe preview"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 600px"
-                  unoptimized={image.startsWith('data:')}
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center gap-2 opacity-0 hover:opacity-100">
                   <button

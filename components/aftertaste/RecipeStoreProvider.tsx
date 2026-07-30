@@ -66,6 +66,11 @@ function getSnapshot(): Recipe[] {
   return recipeList;
 }
 
+const serverSnapshot = dedupeById(getDefaultRecipes());
+function getServerSnapshot(): Recipe[] {
+  return serverSnapshot;
+}
+
 function addRecipe(recipe: Recipe) {
   recipeList = [recipe, ...recipeList];
   saveRecipes(recipeList);
@@ -104,7 +109,7 @@ export function RecipeStoreProvider({
   const recipes = useSyncExternalStore(
     subscribe,
     getSnapshot,
-    () => dedupeById(getDefaultRecipes()),
+    getServerSnapshot,
   );
 
   const getRecipeById = useCallback(

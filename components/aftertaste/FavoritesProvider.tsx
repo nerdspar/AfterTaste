@@ -49,6 +49,11 @@ function getSnapshot(): Set<string> {
   return favoritesSet;
 }
 
+const serverSnapshot = getDefaultFavorites();
+function getServerSnapshot(): Set<string> {
+  return serverSnapshot;
+}
+
 function toggleFavorite(id: string) {
   const next = new Set(favoritesSet);
   if (next.has(id)) {
@@ -70,7 +75,7 @@ interface FavoritesContextValue {
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
-  const favorites = useSyncExternalStore(subscribe, getSnapshot, () => getDefaultFavorites());
+  const favorites = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const isFavorite = useCallback(
     (id: string) => favorites.has(id),
