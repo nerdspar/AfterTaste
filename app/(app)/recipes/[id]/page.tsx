@@ -1,7 +1,7 @@
 'use client';
 
-import { use, useState } from 'react';
-import { notFound } from 'next/navigation';
+import { use, useEffect, useRef, useState } from 'react';
+import { notFound, useRouter } from 'next/navigation';
 import { Breadcrumbs } from '@/components/aftertaste/Breadcrumbs';
 import { RecipeHero } from '@/components/aftertaste/recipe-detail/RecipeHero';
 import { StatsRow } from '@/components/aftertaste/recipe-detail/StatsRow';
@@ -17,14 +17,28 @@ interface RecipeDetailPageProps {
 export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const { id } = use(params);
   const { getRecipe } = useRecipeStore();
-  const recipe = getRecipe(id);
-
-  if (!recipe) {
-    notFound();
-  }
-
+  const router = useRouter();
   const [scaleMode, setScaleMode] = useState<'amount' | 'serving'>('amount');
   const [scaleValue, setScaleValue] = useState(1);
+  // Tracks whether this recipe was ever present, so we can tell a freshly
+  // deleted recipe (redirect to the list) apart from an unknown id (404).
+  const existedRef = useRef(false);
+
+  const recipe = getRecipe(id);
+  if (recipe) existedRef.current = true;
+
+  useEffect(() => {
+    if (!recipe && existedRef.current) {
+      router.replace('/recipes');
+    }
+  }, [recipe, router]);
+
+  if (!recipe) {
+    // Recipe was deleted while we were viewing it — leaving for the list.
+    if (existedRef.current) return null;
+    // Genuinely unknown id.
+    notFound();
+  }
 
   const multiplier =
     scaleMode === 'amount' ? scaleValue : scaleValue / recipe.servings;

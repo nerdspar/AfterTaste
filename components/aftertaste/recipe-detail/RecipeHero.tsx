@@ -11,12 +11,16 @@ import {
   CalendarPlusIcon,
   ShareIcon,
   HeartIcon,
+  Trash2Icon,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RatingStars } from '../RatingStars';
 import { IconButton } from '../IconButton';
 import { useFavorites } from '../FavoritesProvider';
+import { useRecipeStore } from '../RecipeStoreProvider';
 import { TagsRatingsModal } from './TagsRatingsModal';
+import { DeleteRecipeDialog } from './DeleteRecipeDialog';
 import type { Recipe } from '@/data/sample/recipes';
 
 interface RecipeHeroProps {
@@ -27,9 +31,11 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [tagsModalOpen, setTagsModalOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { deleteRecipe } = useRecipeStore();
   const favorited = isFavorite(recipe.id);
 
   useEffect(() => {
@@ -55,7 +61,19 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
     setMenuOpen(false);
   }
 
-  const menuItems = [
+  function handleConfirmDelete() {
+    setDeleteDialogOpen(false);
+    // Removing the recipe unmounts this page; the detail route redirects to
+    // the recipe list once the recipe is gone.
+    deleteRecipe(recipe.id);
+  }
+
+  const menuItems: Array<{
+    label: string;
+    icon: LucideIcon;
+    destructive?: boolean;
+    action: () => void | Promise<void>;
+  }> = [
     {
       label: favorited ? 'Remove from Favorites' : 'Add to Favorites',
       icon: HeartIcon,
@@ -103,6 +121,15 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
         } catch {
           showToast('Could not copy link');
         }
+      },
+    },
+    {
+      label: 'Delete Recipe',
+      icon: Trash2Icon,
+      destructive: true,
+      action: () => {
+        setMenuOpen(false);
+        setDeleteDialogOpen(true);
       },
     },
   ];
@@ -180,12 +207,27 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
                           type="button"
                           onClick={item.action}
                           className={cn(
-                            'flex w-full items-center gap-2.5 px-3 py-2 text-sm text-gray-700',
-                            'hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800',
+                            'flex w-full items-center gap-2.5 px-3 py-2 text-sm',
                             'transition-colors',
+                            item.destructive
+                              ? cn(
+                                  'mt-1 border-t border-gray-100 pt-2.5 dark:border-gray-800',
+                                  'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10',
+                                )
+                              : cn(
+                                  'text-gray-700 hover:bg-gray-50',
+                                  'dark:text-gray-300 dark:hover:bg-gray-800',
+                                ),
                           )}
                         >
-                          <item.icon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                          <item.icon
+                            className={cn(
+                              'w-4 h-4',
+                              item.destructive
+                                ? 'text-red-500 dark:text-red-400'
+                                : 'text-gray-400 dark:text-gray-500',
+                            )}
+                          />
                           {item.label}
                         </button>
                       ))}
@@ -225,6 +267,14 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
         recipe={recipe}
         open={tagsModalOpen}
         onClose={() => setTagsModalOpen(false)}
+      />
+
+      {/* Delete confirmation dialog */}
+      <DeleteRecipeDialog
+        recipeTitle={recipe.title}
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
       />
     </>
   );
