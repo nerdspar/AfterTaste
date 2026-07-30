@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './Button';
-import { parseRecipeFromText } from '@/lib/recipe-parser';
+import { parseRecipeFromText, parseRecipeFromHtml } from '@/lib/recipe-parser';
 import type { ParsedRecipe } from '@/lib/recipe-parser';
 
 interface ImportRecipeModalProps {
@@ -90,7 +90,9 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
   function handleTextImport() {
     if (!text.trim()) return;
     setError('');
-    const parsed = parseRecipeFromText(text.trim());
+    const trimmed = text.trim();
+    const htmlParsed = trimmed.includes('<') ? parseRecipeFromHtml(trimmed) : null;
+    const parsed = htmlParsed ?? parseRecipeFromText(trimmed);
     navigateWithData(parsed);
   }
 
@@ -240,8 +242,9 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
         {activeTab === 'text' && (
           <div className="space-y-4">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Paste a recipe as plain text. Put the title on the first line,
-              then list ingredients and instructions.
+              Paste a recipe as plain text, or paste the page source from a
+              recipe website (right-click &rarr; View Page Source &rarr;
+              Select All &rarr; Copy).
             </p>
             <textarea
               value={text}

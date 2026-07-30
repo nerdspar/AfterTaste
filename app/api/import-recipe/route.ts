@@ -38,8 +38,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (!response.ok) {
+      const hint =
+        response.status === 403 || response.status === 402
+          ? ' This site may be blocking automated requests. Try "Import from Text" instead — visit the recipe page, copy the content, and paste it.'
+          : '';
       return NextResponse.json(
-        { error: `Failed to fetch URL (${response.status})` },
+        { error: `Could not access this URL (${response.status}).${hint}` },
         { status: 422 },
       );
     }
