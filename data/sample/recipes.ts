@@ -208,8 +208,43 @@ export const recommendedRecipes: Recipe[] = [
     isFavorite: false,
     description:
       'A vibrant, nutrient-packed bowl featuring fluffy quinoa, roasted vegetables, and a creamy lemon tahini dressing.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Quinoa', quantity: '1 cup', image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=60&h=60&fit=crop' },
+      { name: 'Cherry tomatoes', quantity: '1 cup halved', image: 'https://images.unsplash.com/photo-1546470427-0d4db154ceb8?w=60&h=60&fit=crop' },
+      { name: 'Cucumber', quantity: '1 medium diced', image: 'https://images.unsplash.com/photo-1449300079323-02e209d9d3a6?w=60&h=60&fit=crop' },
+      { name: 'Kalamata olives', quantity: '1/3 cup', image: 'https://images.unsplash.com/photo-1593030103066-0093718e7177?w=60&h=60&fit=crop' },
+      { name: 'Feta cheese', quantity: '1/2 cup crumbled', image: 'https://images.unsplash.com/photo-1626957341926-98752fc2ba90?w=60&h=60&fit=crop' },
+      { name: 'Red onion', quantity: '1/4 diced', image: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=60&h=60&fit=crop' },
+      { name: 'Chickpeas', quantity: '1 can drained', image: 'https://images.unsplash.com/photo-1515543904413-63117c31f191?w=60&h=60&fit=crop' },
+      { name: 'Tahini', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=60&h=60&fit=crop' },
+      { name: 'Lemon', quantity: '1 juiced', image: 'https://images.unsplash.com/photo-1590502593747-42a996133562?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Cook the Quinoa',
+        body: 'Rinse quinoa under cold water, then combine with 2 cups of water in a saucepan. Bring to a boil, reduce heat, cover, and simmer for 15 minutes until fluffy.',
+        videoThumb: 'https://images.unsplash.com/photo-1505576399279-0d754687a2d8?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Prepare the Vegetables',
+        body: 'While quinoa cooks, dice the cucumber, halve the cherry tomatoes, slice the red onion, and drain and rinse the chickpeas.',
+        videoThumb: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Make the Lemon Tahini Dressing',
+        body: 'Whisk together tahini, lemon juice, a splash of water, salt, and pepper until smooth and pourable. Adjust consistency with more water if needed.',
+        videoThumb: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&h=130&fit=crop',
+      },
+      {
+        step: '04',
+        title: 'Assemble the Bowl',
+        body: 'Divide quinoa among bowls and arrange tomatoes, cucumber, olives, chickpeas, and red onion on top. Crumble feta over each bowl and drizzle generously with the tahini dressing.',
+        videoThumb: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef Alex Kim',
       avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&h=80&fit=crop&crop=face',
@@ -243,8 +278,42 @@ export const recommendedRecipes: Recipe[] = [
     isFavorite: true,
     description:
       'Perfectly grilled salmon with a sweet honey glaze, served alongside colorful roasted seasonal vegetables.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Salmon fillets', quantity: '4 (6 oz each)', image: 'https://images.unsplash.com/photo-1574781330855-d0db8cc6a79c?w=60&h=60&fit=crop' },
+      { name: 'Honey', quantity: '3 tbsp', image: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=60&h=60&fit=crop' },
+      { name: 'Soy sauce', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=60&h=60&fit=crop' },
+      { name: 'Garlic', quantity: '3 cloves minced', image: 'https://images.unsplash.com/photo-1615477550927-6ec8445b45ed?w=60&h=60&fit=crop' },
+      { name: 'Lemon', quantity: '1 juiced', image: 'https://images.unsplash.com/photo-1590502593747-42a996133562?w=60&h=60&fit=crop' },
+      { name: 'Asparagus', quantity: '1 bunch trimmed', image: 'https://images.unsplash.com/photo-1515471209610-dae1c92d8777?w=60&h=60&fit=crop' },
+      { name: 'Bell peppers', quantity: '2 sliced', image: 'https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=60&h=60&fit=crop' },
+      { name: 'Olive oil', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1474979266404-7eadf1758724?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Prepare the Honey Glaze',
+        body: 'Whisk together honey, soy sauce, minced garlic, and lemon juice in a small bowl. Set aside half for basting and half for serving.',
+        videoThumb: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Roast the Vegetables',
+        body: 'Toss asparagus and bell peppers with olive oil, salt, and pepper. Spread on a baking sheet and roast at 425F for 18-20 minutes until tender and caramelized.',
+        videoThumb: 'https://images.unsplash.com/photo-1506084868230-bb9d95c24759?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Grill the Salmon',
+        body: 'Preheat grill to medium-high heat. Brush salmon fillets with olive oil and season with salt and pepper. Grill skin-side down for 4 minutes, flip, and baste with the honey glaze. Cook for another 3-4 minutes until the salmon flakes easily.',
+        videoThumb: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=200&h=130&fit=crop',
+      },
+      {
+        step: '04',
+        title: 'Plate and Serve',
+        body: 'Arrange roasted vegetables on plates, place the glazed salmon on top, and drizzle with the reserved honey glaze. Garnish with lemon wedges.',
+        videoThumb: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef James Oliver',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=face',
@@ -278,8 +347,42 @@ export const recommendedRecipes: Recipe[] = [
     isFavorite: false,
     description:
       'Rich, indulgent chocolate lava cake with a molten center, paired with creamy vanilla ice cream.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Dark chocolate', quantity: '6 oz chopped', image: 'https://images.unsplash.com/photo-1606312619070-d48b4c652a52?w=60&h=60&fit=crop' },
+      { name: 'Unsalted butter', quantity: '1/2 cup', image: 'https://images.unsplash.com/photo-1589985270826-4b7bb135bc9d?w=60&h=60&fit=crop' },
+      { name: 'Eggs', quantity: '2 large + 2 yolks', image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=60&h=60&fit=crop' },
+      { name: 'Granulated sugar', quantity: '1/4 cup', image: 'https://images.unsplash.com/photo-1581268371637-f904b596b8a8?w=60&h=60&fit=crop' },
+      { name: 'All-purpose flour', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?w=60&h=60&fit=crop' },
+      { name: 'Vanilla extract', quantity: '1 tsp', image: 'https://images.unsplash.com/photo-1611003228941-98852ba62227?w=60&h=60&fit=crop' },
+      { name: 'Cocoa powder', quantity: '1 tbsp for dusting', image: 'https://images.unsplash.com/photo-1610611424854-5e07b2cbe8b8?w=60&h=60&fit=crop' },
+      { name: 'Vanilla ice cream', quantity: '2 scoops', image: 'https://images.unsplash.com/photo-1570197571499-166b36435e9f?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Melt Chocolate & Butter',
+        body: 'Melt dark chocolate and butter together in a double boiler or microwave in 30-second intervals, stirring until smooth. Let cool slightly for 5 minutes.',
+        videoThumb: 'https://images.unsplash.com/photo-1606312619070-d48b4c652a52?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Whisk the Batter',
+        body: 'Whisk eggs, egg yolks, and sugar until thick and pale. Fold in the melted chocolate mixture, then gently fold in the flour and vanilla extract.',
+        videoThumb: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Prepare Ramekins & Bake',
+        body: 'Butter two ramekins and dust with cocoa powder. Divide batter evenly. Bake at 425F for exactly 12-14 minutes until edges are set but the center jiggles slightly.',
+        videoThumb: 'https://images.unsplash.com/photo-1624353365286-3f8d62daad51?w=200&h=130&fit=crop',
+      },
+      {
+        step: '04',
+        title: 'Unmold and Serve',
+        body: 'Let rest for 1 minute, then run a knife around the edges and invert onto plates. Serve immediately with a scoop of vanilla ice cream and a dusting of cocoa powder.',
+        videoThumb: 'https://images.unsplash.com/photo-1551024506-0bccd828d307?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef Sophie Laurent',
       avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop&crop=face',
@@ -313,8 +416,43 @@ export const recommendedRecipes: Recipe[] = [
     isFavorite: true,
     description:
       'Authentic tacos al pastor with marinated pork, grilled pineapple salsa, and zesty cilantro lime rice.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Pork shoulder', quantity: '2 lbs thinly sliced', image: 'https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=60&h=60&fit=crop' },
+      { name: 'Pineapple', quantity: '1/2 cored & sliced', image: 'https://images.unsplash.com/photo-1550258987-190a2d41a8ba?w=60&h=60&fit=crop' },
+      { name: 'Chipotle peppers in adobo', quantity: '2 peppers + 1 tbsp sauce', image: 'https://images.unsplash.com/photo-1583119022894-919a68a3d0e3?w=60&h=60&fit=crop' },
+      { name: 'Achiote paste', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=60&h=60&fit=crop' },
+      { name: 'Corn tortillas', quantity: '12 small', image: 'https://images.unsplash.com/photo-1612966809830-7d0bdb48a59d?w=60&h=60&fit=crop' },
+      { name: 'Fresh cilantro', quantity: '1/2 cup chopped', image: 'https://images.unsplash.com/photo-1592054597111-afa57d4e4a8e?w=60&h=60&fit=crop' },
+      { name: 'Limes', quantity: '3 juiced', image: 'https://images.unsplash.com/photo-1590502593747-42a996133562?w=60&h=60&fit=crop' },
+      { name: 'White onion', quantity: '1 diced', image: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=60&h=60&fit=crop' },
+      { name: 'White rice', quantity: '2 cups', image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Marinate the Pork',
+        body: 'Blend achiote paste, chipotle peppers, lime juice, and a splash of pineapple juice into a smooth marinade. Coat the pork slices and refrigerate for at least 1 hour or overnight.',
+        videoThumb: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Grill the Pork & Pineapple',
+        body: 'Grill marinated pork over high heat for 3-4 minutes per side until charred and cooked through. Grill pineapple slices for 2 minutes per side until caramelized, then dice.',
+        videoThumb: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Prepare Cilantro Lime Rice',
+        body: 'Cook rice according to package directions. Fluff with a fork and stir in fresh lime juice, chopped cilantro, and a pinch of salt.',
+        videoThumb: 'https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=200&h=130&fit=crop',
+      },
+      {
+        step: '04',
+        title: 'Assemble the Tacos',
+        body: 'Warm tortillas on the grill for 30 seconds per side. Top with sliced pork, grilled pineapple, diced onion, cilantro, and a squeeze of fresh lime juice. Serve with cilantro lime rice on the side.',
+        videoThumb: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef Carlos Mendez',
       avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face',
@@ -348,8 +486,43 @@ export const recommendedRecipes: Recipe[] = [
     isFavorite: false,
     description:
       'A classic Thai stir-fried noodle dish with succulent shrimp, crunchy bean sprouts, and crushed peanuts.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Rice noodles', quantity: '8 oz dried', image: 'https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?w=60&h=60&fit=crop' },
+      { name: 'Shrimp', quantity: '1 lb peeled & deveined', image: 'https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?w=60&h=60&fit=crop' },
+      { name: 'Eggs', quantity: '2 large', image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=60&h=60&fit=crop' },
+      { name: 'Bean sprouts', quantity: '1 cup', image: 'https://images.unsplash.com/photo-1574226516831-e1dff420e562?w=60&h=60&fit=crop' },
+      { name: 'Crushed peanuts', quantity: '1/4 cup', image: 'https://images.unsplash.com/photo-1567892320421-1c657571ea4a?w=60&h=60&fit=crop' },
+      { name: 'Fish sauce', quantity: '3 tbsp', image: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=60&h=60&fit=crop' },
+      { name: 'Tamarind paste', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=60&h=60&fit=crop' },
+      { name: 'Lime', quantity: '2 wedges', image: 'https://images.unsplash.com/photo-1590502593747-42a996133562?w=60&h=60&fit=crop' },
+      { name: 'Green onions', quantity: '3 sliced', image: 'https://images.unsplash.com/photo-1592054597111-afa57d4e4a8e?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Soak the Noodles',
+        body: 'Place rice noodles in a large bowl of warm water and soak for 20-25 minutes until pliable but still firm. Drain and set aside.',
+        videoThumb: 'https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Make the Pad Thai Sauce',
+        body: 'Whisk together tamarind paste, fish sauce, sugar, and a splash of water in a small bowl until the sugar dissolves. Set aside.',
+        videoThumb: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Stir-Fry the Shrimp & Noodles',
+        body: 'Heat oil in a wok over high heat. Cook shrimp for 2 minutes per side, push to the side, scramble eggs in the center. Add noodles and sauce, tossing constantly for 2-3 minutes until noodles are tender.',
+        videoThumb: 'https://images.unsplash.com/photo-1559314809-0d155014e29e?w=200&h=130&fit=crop',
+      },
+      {
+        step: '04',
+        title: 'Garnish and Serve',
+        body: 'Toss in bean sprouts and green onions, then plate immediately. Top with crushed peanuts and serve with fresh lime wedges on the side.',
+        videoThumb: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef Niran Suthep',
       avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face',
@@ -383,8 +556,37 @@ export const recommendedRecipes: Recipe[] = [
     isFavorite: false,
     description:
       'Crispy romaine lettuce tossed in creamy Caesar dressing with parmesan and golden homemade croutons.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Romaine lettuce', quantity: '2 heads chopped', image: 'https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?w=60&h=60&fit=crop' },
+      { name: 'Parmesan cheese', quantity: '1/2 cup shaved', image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=60&h=60&fit=crop' },
+      { name: 'Crusty bread', quantity: '2 cups cubed', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=60&h=60&fit=crop' },
+      { name: 'Garlic', quantity: '2 cloves minced', image: 'https://images.unsplash.com/photo-1615477550927-6ec8445b45ed?w=60&h=60&fit=crop' },
+      { name: 'Anchovy fillets', quantity: '3 fillets', image: 'https://images.unsplash.com/photo-1534604973900-c43ab4c2e0ab?w=60&h=60&fit=crop' },
+      { name: 'Egg yolk', quantity: '1 large', image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=60&h=60&fit=crop' },
+      { name: 'Dijon mustard', quantity: '1 tsp', image: 'https://images.unsplash.com/photo-1528750997573-59b89d56f4f7?w=60&h=60&fit=crop' },
+      { name: 'Lemon', quantity: '1 juiced', image: 'https://images.unsplash.com/photo-1590502593747-42a996133562?w=60&h=60&fit=crop' },
+      { name: 'Olive oil', quantity: '1/3 cup', image: 'https://images.unsplash.com/photo-1474979266404-7eadf1758724?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Make Homemade Croutons',
+        body: 'Toss cubed bread with olive oil, minced garlic, salt, and pepper. Spread on a baking sheet and bake at 375F for 10-12 minutes, tossing halfway, until golden and crispy.',
+        videoThumb: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Prepare the Caesar Dressing',
+        body: 'In a food processor, blend anchovy fillets, garlic, egg yolk, Dijon mustard, and lemon juice. Slowly drizzle in olive oil while blending until thick and emulsified. Season with salt and pepper.',
+        videoThumb: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Toss and Serve',
+        body: 'Place chopped romaine in a large bowl, add the dressing, and toss until every leaf is coated. Top with shaved parmesan and golden croutons. Serve immediately with extra parmesan on the side.',
+        videoThumb: 'https://images.unsplash.com/photo-1546793665-c74683f339c1?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef Alex Kim',
       avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&h=80&fit=crop&crop=face',

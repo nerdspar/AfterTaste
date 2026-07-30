@@ -11,7 +11,7 @@ interface CookingInstructionsProps {
 export function CookingInstructions({ instructions }: CookingInstructionsProps) {
   return (
     <section>
-      <SectionHeader title="Cooking Instruction" />
+      <SectionHeader title="Cooking Instructions" />
 
       <div className="space-y-3">
         {instructions.map((inst) => (

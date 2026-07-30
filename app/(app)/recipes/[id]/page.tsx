@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useState } from 'react';
+import { notFound } from 'next/navigation';
 import { Breadcrumbs } from '@/components/aftertaste/Breadcrumbs';
 import { RecipeHero } from '@/components/aftertaste/recipe-detail/RecipeHero';
 import { StatsRow } from '@/components/aftertaste/recipe-detail/StatsRow';
@@ -15,10 +16,17 @@ interface RecipeDetailPageProps {
 
 export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const { id } = use(params);
-  const recipe = recommendedRecipes.find((r) => r.id === id) ?? recommendedRecipes[0];
+  const recipe = recommendedRecipes.find((r) => r.id === id);
+
+  if (!recipe) {
+    notFound();
+  }
 
   const [scaleMode, setScaleMode] = useState<'amount' | 'serving'>('amount');
   const [scaleValue, setScaleValue] = useState(1);
+
+  const multiplier =
+    scaleMode === 'amount' ? scaleValue : scaleValue / recipe.servings;
 
   const currentServings =
     scaleMode === 'amount'
@@ -28,7 +36,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const breadcrumbs = [
     { label: 'Home', href: '/dashboard' },
     { label: 'Recipes', href: '/recipes' },
-    { label: recipe.category, href: '/recipes' },
+    { label: recipe.category, href: `/recipes?tab=${recipe.category}` },
     { label: recipe.title },
   ];
 
@@ -45,7 +53,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
         {/* Main content */}
         <div className="lg:col-span-2 space-y-5">
           <RecipeHero recipe={recipe} />
-          <StatsRow recipe={recipe} servings={currentServings} />
+          <StatsRow recipe={recipe} servings={currentServings} multiplier={multiplier} />
           {recipe.instructions.length > 0 && (
             <CookingInstructions instructions={recipe.instructions} />
           )}

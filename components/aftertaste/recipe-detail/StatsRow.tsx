@@ -5,6 +5,7 @@ import type { Recipe } from '@/data/sample/recipes';
 interface StatsRowProps {
   recipe: Recipe;
   servings: number;
+  multiplier: number;
 }
 
 function formatMinutes(mins: number) {
@@ -14,7 +15,8 @@ function formatMinutes(mins: number) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-export function StatsRow({ recipe, servings }: StatsRowProps) {
+export function StatsRow({ recipe, servings, multiplier }: StatsRowProps) {
+  const scaledCalories = Math.round(recipe.calories * multiplier);
   return (
     <div className="flex items-stretch gap-2 flex-wrap">
       {/* Total Time – with Prep / Cook sub-entries */}
@@ -61,7 +63,7 @@ export function StatsRow({ recipe, servings }: StatsRowProps) {
         <FlameIcon className="w-4 h-4 text-secondary-500 dark:text-secondary-400 flex-shrink-0" />
         <div>
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">
-            {recipe.calories} kcal
+            {scaledCalories} kcal
           </p>
           <p className="text-[11px] text-gray-400 dark:text-gray-500">Calories</p>
         </div>
