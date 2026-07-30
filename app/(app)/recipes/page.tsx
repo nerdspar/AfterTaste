@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { RecipeCard } from '@/components/aftertaste/dashboard/RecipeCard';
 import { Chip } from '@/components/aftertaste/Chip';
@@ -20,6 +20,14 @@ import {
 const dishTabs = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Favorites'] as const;
 
 export default function MyRecipesPage() {
+  return (
+    <Suspense>
+      <MyRecipesContent />
+    </Suspense>
+  );
+}
+
+function MyRecipesContent() {
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab');
   const initialTab = dishTabs.includes(tabParam as (typeof dishTabs)[number])
