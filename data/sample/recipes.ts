@@ -54,76 +54,12 @@ export interface Category {
   slug: string;
 }
 
-export interface StoryUser {
-  name: string;
-  avatar: string;
-  isYou?: boolean;
-  hasNew?: boolean;
-}
-
-export interface LiveCook {
-  id: string;
-  title: string;
-  channelName: string;
-  image: string;
-  isLive: boolean;
-  viewerCount: number;
-}
-
-export interface EventItem {
-  id: string;
-  title: string;
-  location: string;
-  date: string;
-  time: string;
-  image: string;
-  attendees: Array<{ src?: string; alt: string }>;
-}
-
 export const categories: Category[] = [
   { label: 'Breakfast', icon: '🥞', slug: 'breakfast' },
   { label: 'Lunch', icon: '🥗', slug: 'lunch' },
   { label: 'Dinner', icon: '🍝', slug: 'dinner' },
   { label: 'Dessert', icon: '🍰', slug: 'dessert' },
   { label: 'Favorites', icon: '❤️', slug: 'favorites' },
-];
-
-export const storyUsers: StoryUser[] = [
-  {
-    name: 'Your Story',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&crop=face',
-    isYou: true,
-  },
-  {
-    name: 'Emma',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80&h=80&fit=crop&crop=face',
-    hasNew: true,
-  },
-  {
-    name: 'James',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=80&h=80&fit=crop&crop=face',
-    hasNew: true,
-  },
-  {
-    name: 'Sofia',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&crop=face',
-    hasNew: false,
-  },
-  {
-    name: 'Liam',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=80&h=80&fit=crop&crop=face',
-    hasNew: true,
-  },
-  {
-    name: 'Mia',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop&crop=face',
-    hasNew: false,
-  },
-  {
-    name: 'Noah',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=face',
-    hasNew: true,
-  },
 ];
 
 export const recommendedRecipes: Recipe[] = [
@@ -620,8 +556,43 @@ export const recommendedRecipes: Recipe[] = [
     isFavorite: true,
     description:
       'A colorful Korean rice bowl topped with seasoned vegetables, spicy gochujang sauce, and a perfect fried egg.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Short-grain rice', quantity: '2 cups', image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=60&h=60&fit=crop' },
+      { name: 'Spinach', quantity: '2 cups blanched', image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=60&h=60&fit=crop' },
+      { name: 'Carrots', quantity: '2 julienned', image: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=60&h=60&fit=crop' },
+      { name: 'Zucchini', quantity: '1 sliced', image: 'https://images.unsplash.com/photo-1563252722-6434563a985d?w=60&h=60&fit=crop' },
+      { name: 'Shiitake mushrooms', quantity: '1 cup sliced', image: 'https://images.unsplash.com/photo-1504545102780-26774c1bb073?w=60&h=60&fit=crop' },
+      { name: 'Ground beef', quantity: '8 oz', image: 'https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=60&h=60&fit=crop' },
+      { name: 'Gochujang paste', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=60&h=60&fit=crop' },
+      { name: 'Sesame oil', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1474979266404-7eadf1758724?w=60&h=60&fit=crop' },
+      { name: 'Eggs', quantity: '4 large', image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Cook the Rice',
+        body: 'Rinse short-grain rice until water runs clear. Cook in a rice cooker or on the stovetop with 2.5 cups of water until fluffy and slightly sticky.',
+        videoThumb: 'https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Prepare the Toppings',
+        body: 'Saute each vegetable separately in sesame oil with a pinch of salt: blanch spinach, stir-fry julienned carrots, cook sliced zucchini, and brown the mushrooms. Season ground beef with soy sauce and garlic, then cook until browned.',
+        videoThumb: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Fry the Eggs',
+        body: 'Fry eggs sunny-side up in a lightly oiled pan over medium heat until the whites are set but the yolks remain runny, about 3-4 minutes.',
+        videoThumb: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=200&h=130&fit=crop',
+      },
+      {
+        step: '04',
+        title: 'Assemble the Bibimbap',
+        body: 'Divide rice among bowls and arrange each vegetable and the beef in separate sections on top. Place a fried egg in the center, add a generous spoonful of gochujang, and drizzle with sesame oil. Mix everything together before eating.',
+        videoThumb: 'https://images.unsplash.com/photo-1553163147-622ab57be1c7?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef Soo-Min Park',
       avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&crop=face',
@@ -655,8 +626,41 @@ export const recommendedRecipes: Recipe[] = [
     isFavorite: true,
     description:
       'Silky, authentic Italian carbonara with crispy pancetta, rich egg yolk, and sharp pecorino romano.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Spaghetti', quantity: '1 lb', image: 'https://images.unsplash.com/photo-1551462147-ff29053bfc14?w=60&h=60&fit=crop' },
+      { name: 'Pancetta', quantity: '6 oz diced', image: 'https://images.unsplash.com/photo-1602470520998-f4a52199a3d6?w=60&h=60&fit=crop' },
+      { name: 'Eggs', quantity: '3 large + 2 yolks', image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=60&h=60&fit=crop' },
+      { name: 'Pecorino Romano', quantity: '1 cup finely grated', image: 'https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?w=60&h=60&fit=crop' },
+      { name: 'Black pepper', quantity: '2 tsp freshly cracked', image: 'https://images.unsplash.com/photo-1599909533735-ddb8e6975b8f?w=60&h=60&fit=crop' },
+      { name: 'Garlic', quantity: '2 cloves', image: 'https://images.unsplash.com/photo-1615477550927-6ec8445b45ed?w=60&h=60&fit=crop' },
+      { name: 'Fresh parsley', quantity: '2 tbsp chopped', image: 'https://images.unsplash.com/photo-1592054597111-afa57d4e4a8e?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Cook the Pasta',
+        body: 'Bring a large pot of generously salted water to a rolling boil. Cook spaghetti until al dente, about 1 minute less than package directions. Reserve 1 cup of pasta water before draining.',
+        videoThumb: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Crisp the Pancetta',
+        body: 'While pasta cooks, add diced pancetta to a cold skillet and cook over medium heat for 6-8 minutes until golden and crispy. Add garlic in the last minute and remove from heat.',
+        videoThumb: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Make the Egg Mixture',
+        body: 'Whisk together eggs, extra yolks, grated pecorino, and a generous amount of freshly cracked black pepper in a bowl until smooth and creamy.',
+        videoThumb: 'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=200&h=130&fit=crop',
+      },
+      {
+        step: '04',
+        title: 'Combine and Serve',
+        body: 'Add drained pasta to the pancetta skillet off the heat. Pour the egg mixture over and toss vigorously, adding splashes of pasta water until a silky sauce coats every strand. Serve immediately with extra pecorino and black pepper.',
+        videoThumb: 'https://images.unsplash.com/photo-1612874742237-6526221588e3?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef Marco Rossi',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=face',
@@ -690,8 +694,42 @@ export const recommendedRecipes: Recipe[] = [
     isFavorite: false,
     description:
       'A vibrant, AI-generated recipe combining nutrient-dense ingredients into a beautiful rainbow bowl.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Sweet potato', quantity: '1 large cubed', image: 'https://images.unsplash.com/photo-1596097635121-14b63a7a4c19?w=60&h=60&fit=crop' },
+      { name: 'Purple cabbage', quantity: '1 cup shredded', image: 'https://images.unsplash.com/photo-1594282486756-fa7e0e5c4e89?w=60&h=60&fit=crop' },
+      { name: 'Edamame', quantity: '1/2 cup shelled', image: 'https://images.unsplash.com/photo-1564894809611-1742fc40ed80?w=60&h=60&fit=crop' },
+      { name: 'Avocado', quantity: '1 sliced', image: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=60&h=60&fit=crop' },
+      { name: 'Quinoa', quantity: '1 cup cooked', image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=60&h=60&fit=crop' },
+      { name: 'Carrots', quantity: '1 shredded', image: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=60&h=60&fit=crop' },
+      { name: 'Tahini', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?w=60&h=60&fit=crop' },
+      { name: 'Lemon', quantity: '1 juiced', image: 'https://images.unsplash.com/photo-1590502593747-42a996133562?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Roast the Sweet Potato',
+        body: 'Toss cubed sweet potato with olive oil, salt, and smoked paprika. Roast at 400F for 20-25 minutes until tender and caramelized at the edges.',
+        videoThumb: 'https://images.unsplash.com/photo-1596097635121-14b63a7a4c19?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Prepare the Rainbow Toppings',
+        body: 'While sweet potato roasts, shred purple cabbage, grate carrots, slice avocado, and cook edamame in boiling water for 3 minutes. Drain and set aside.',
+        videoThumb: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Make the Tahini Drizzle',
+        body: 'Whisk tahini with lemon juice, a clove of minced garlic, water, and a pinch of salt until smooth and drizzleable. Add water as needed to reach desired consistency.',
+        videoThumb: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&h=130&fit=crop',
+      },
+      {
+        step: '04',
+        title: 'Build the Buddha Bowl',
+        body: 'Divide quinoa between two bowls. Arrange sweet potato, cabbage, carrots, edamame, and avocado in rainbow sections. Drizzle generously with tahini sauce and sprinkle with sesame seeds.',
+        videoThumb: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'AI Chef',
       avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&crop=face',
@@ -706,76 +744,6 @@ export const recommendedRecipes: Recipe[] = [
     cleanup: 4,
     makeAgain: false,
     remade: 1,
-  },
-];
-
-export const liveCooks: LiveCook[] = [
-  {
-    id: 'live-1',
-    title: 'Making Perfect Homemade Pasta from Scratch',
-    channelName: 'Chef Marco',
-    image: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=600&h=400&fit=crop',
-    isLive: true,
-    viewerCount: 1243,
-  },
-  {
-    id: 'live-2',
-    title: 'Japanese Ramen: Tonkotsu Broth Masterclass',
-    channelName: 'Noodle House',
-    image: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=400&fit=crop',
-    isLive: true,
-    viewerCount: 892,
-  },
-];
-
-export const events: EventItem[] = [
-  {
-    id: 'event-1',
-    title: 'Farm-to-Table Cooking Workshop',
-    location: 'Portland, USA',
-    date: 'Mar 15, 2026',
-    time: '10:00 AM',
-    image: 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=200&h=200&fit=crop',
-    attendees: [
-      { src: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=40&h=40&fit=crop&crop=face', alt: 'User 1' },
-      { src: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=40&h=40&fit=crop&crop=face', alt: 'User 2' },
-      { src: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=40&h=40&fit=crop&crop=face', alt: 'User 3' },
-      { alt: 'User 4' },
-      { alt: 'User 5' },
-      { alt: 'User 6' },
-    ],
-  },
-  {
-    id: 'event-2',
-    title: 'International Pastry Festival',
-    location: 'Paris, France',
-    date: 'Apr 2, 2026',
-    time: '2:00 PM',
-    image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=200&h=200&fit=crop',
-    attendees: [
-      { src: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face', alt: 'User 1' },
-      { src: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=40&h=40&fit=crop&crop=face', alt: 'User 2' },
-      { alt: 'User 3' },
-      { alt: 'User 4' },
-    ],
-  },
-  {
-    id: 'event-3',
-    title: 'Asian Street Food Tour',
-    location: 'Bangkok, Thailand',
-    date: 'Apr 18, 2026',
-    time: '6:00 PM',
-    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&h=200&fit=crop',
-    attendees: [
-      { src: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=40&h=40&fit=crop&crop=face', alt: 'User 1' },
-      { alt: 'User 2' },
-      { alt: 'User 3' },
-      { alt: 'User 4' },
-      { alt: 'User 5' },
-      { alt: 'User 6' },
-      { alt: 'User 7' },
-      { alt: 'User 8' },
-    ],
   },
 ];
 
@@ -798,8 +766,42 @@ export const recentlyViewedRecipes: Recipe[] = [
     isFavorite: true,
     description:
       'Perfectly grilled salmon with a sweet honey glaze, served alongside colorful roasted seasonal vegetables.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Salmon fillets', quantity: '4 (6 oz each)', image: 'https://images.unsplash.com/photo-1574781330855-d0db8cc6a79c?w=60&h=60&fit=crop' },
+      { name: 'Honey', quantity: '3 tbsp', image: 'https://images.unsplash.com/photo-1587049352846-4a222e784d38?w=60&h=60&fit=crop' },
+      { name: 'Soy sauce', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=60&h=60&fit=crop' },
+      { name: 'Garlic', quantity: '3 cloves minced', image: 'https://images.unsplash.com/photo-1615477550927-6ec8445b45ed?w=60&h=60&fit=crop' },
+      { name: 'Lemon', quantity: '1 juiced', image: 'https://images.unsplash.com/photo-1590502593747-42a996133562?w=60&h=60&fit=crop' },
+      { name: 'Asparagus', quantity: '1 bunch trimmed', image: 'https://images.unsplash.com/photo-1515471209610-dae1c92d8777?w=60&h=60&fit=crop' },
+      { name: 'Bell peppers', quantity: '2 sliced', image: 'https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=60&h=60&fit=crop' },
+      { name: 'Olive oil', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1474979266404-7eadf1758724?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Prepare the Honey Glaze',
+        body: 'Whisk together honey, soy sauce, minced garlic, and lemon juice in a small bowl. Set aside half for basting and half for serving.',
+        videoThumb: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Roast the Vegetables',
+        body: 'Toss asparagus and bell peppers with olive oil, salt, and pepper. Spread on a baking sheet and roast at 425F for 18-20 minutes until tender and caramelized.',
+        videoThumb: 'https://images.unsplash.com/photo-1506084868230-bb9d95c24759?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Grill the Salmon',
+        body: 'Preheat grill to medium-high heat. Brush salmon fillets with olive oil and season with salt and pepper. Grill skin-side down for 4 minutes, flip, and baste with the honey glaze. Cook for another 3-4 minutes until the salmon flakes easily.',
+        videoThumb: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=200&h=130&fit=crop',
+      },
+      {
+        step: '04',
+        title: 'Plate and Serve',
+        body: 'Arrange roasted vegetables on plates, place the glazed salmon on top, and drizzle with the reserved honey glaze. Garnish with lemon wedges.',
+        videoThumb: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef James Oliver',
       avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=80&h=80&fit=crop&crop=face',
@@ -833,8 +835,36 @@ export const recentlyViewedRecipes: Recipe[] = [
     isFavorite: true,
     description:
       'Start your morning with these light, fluffy banana oat pancakes topped with warm cinnamon and a burst of fresh berries.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Bananas', quantity: '2 ripe', image: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?w=60&h=60&fit=crop' },
+      { name: 'Rolled oats', quantity: '1 cup', image: 'https://images.unsplash.com/photo-1614961233913-a5113b4a4983?w=60&h=60&fit=crop' },
+      { name: 'Baking powder', quantity: '1 tsp', image: 'https://images.unsplash.com/photo-1588165171080-c89acfa5ee83?w=60&h=60&fit=crop' },
+      { name: 'Cinnamon', quantity: '1/2 tsp', image: 'https://images.unsplash.com/photo-1587132137056-bfbf0166836e?w=60&h=60&fit=crop' },
+      { name: 'Eggs', quantity: '2 large', image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=60&h=60&fit=crop' },
+      { name: 'Milk', quantity: '1/2 cup', image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=60&h=60&fit=crop' },
+      { name: 'Fresh berries', quantity: '1 cup', image: 'https://images.unsplash.com/photo-1563746098251-d35aef196e83?w=60&h=60&fit=crop' },
+      { name: 'Maple syrup', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1589820296156-2454bb8a6ad1?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Blend the Batter',
+        body: 'Combine bananas, oats, eggs, milk, baking powder, and cinnamon in a blender. Blend until smooth and let the batter rest for 5 minutes.',
+        videoThumb: 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Heat the Pan',
+        body: 'Heat a non-stick pan over medium heat. Lightly grease with butter or coconut oil. The pan is ready when a drop of water sizzles.',
+        videoThumb: 'https://images.unsplash.com/photo-1556909172-54557c7e4fb7?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Cook the Pancakes',
+        body: 'Pour 1/4 cup of batter for each pancake. Cook until bubbles form on the surface (about 2-3 minutes), then flip and cook for another 1-2 minutes until golden.',
+        videoThumb: 'https://images.unsplash.com/photo-1528207776546-365bb710ee93?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef Maria Santos',
       avatar: 'https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=80&h=80&fit=crop&crop=face',
@@ -871,8 +901,36 @@ export const recentlyAddedRecipes: Recipe[] = [
     isFavorite: false,
     description:
       'Crispy sourdough topped with creamy avocado, perfectly poached eggs, and a kick of chili flakes.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Sourdough bread', quantity: '2 thick slices', image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=60&h=60&fit=crop' },
+      { name: 'Avocado', quantity: '1 ripe', image: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=60&h=60&fit=crop' },
+      { name: 'Eggs', quantity: '2 large', image: 'https://images.unsplash.com/photo-1582722872445-44dc5f7e3c8f?w=60&h=60&fit=crop' },
+      { name: 'Chili flakes', quantity: '1/2 tsp', image: 'https://images.unsplash.com/photo-1583119022894-919a68a3d0e3?w=60&h=60&fit=crop' },
+      { name: 'Lime', quantity: '1/2 juiced', image: 'https://images.unsplash.com/photo-1590502593747-42a996133562?w=60&h=60&fit=crop' },
+      { name: 'Olive oil', quantity: '1 tbsp', image: 'https://images.unsplash.com/photo-1474979266404-7eadf1758724?w=60&h=60&fit=crop' },
+      { name: 'Flaky sea salt', quantity: 'to taste', image: 'https://images.unsplash.com/photo-1518110925495-5fe2c8dcf2c6?w=60&h=60&fit=crop' },
+      { name: 'Microgreens', quantity: 'small handful', image: 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Toast the Bread',
+        body: 'Toast sourdough slices until deep golden and crispy on the outside but still slightly soft inside. Drizzle with a little olive oil while warm.',
+        videoThumb: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Poach the Eggs',
+        body: 'Bring a pot of water to a gentle simmer and add a splash of vinegar. Create a swirl and gently drop in each egg. Poach for 3-4 minutes until whites are set but yolks are still runny.',
+        videoThumb: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Smash and Assemble',
+        body: 'Halve the avocado, scoop into a bowl, and smash with a fork along with lime juice and salt. Spread generously on toast, top with poached eggs, chili flakes, microgreens, and a pinch of flaky sea salt.',
+        videoThumb: 'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef Alex Kim',
       avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=80&h=80&fit=crop&crop=face',
@@ -906,8 +964,43 @@ export const recentlyAddedRecipes: Recipe[] = [
     isFavorite: false,
     description:
       'Aromatic Thai green curry loaded with vegetables and tender chicken, served over fluffy jasmine rice.',
-    ingredients: [],
-    instructions: [],
+    ingredients: [
+      { name: 'Green curry paste', quantity: '3 tbsp', image: 'https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=60&h=60&fit=crop' },
+      { name: 'Coconut milk', quantity: '1 can (14 oz)', image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=60&h=60&fit=crop' },
+      { name: 'Chicken breast', quantity: '1 lb sliced', image: 'https://images.unsplash.com/photo-1604503468506-a8da13d82571?w=60&h=60&fit=crop' },
+      { name: 'Bamboo shoots', quantity: '1/2 cup', image: 'https://images.unsplash.com/photo-1574226516831-e1dff420e562?w=60&h=60&fit=crop' },
+      { name: 'Thai basil', quantity: '1/2 cup leaves', image: 'https://images.unsplash.com/photo-1592054597111-afa57d4e4a8e?w=60&h=60&fit=crop' },
+      { name: 'Bell peppers', quantity: '2 sliced', image: 'https://images.unsplash.com/photo-1563565375-f3fdfdbefa83?w=60&h=60&fit=crop' },
+      { name: 'Jasmine rice', quantity: '2 cups', image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=60&h=60&fit=crop' },
+      { name: 'Fish sauce', quantity: '2 tbsp', image: 'https://images.unsplash.com/photo-1590301157890-4810ed352733?w=60&h=60&fit=crop' },
+      { name: 'Brown sugar', quantity: '1 tbsp', image: 'https://images.unsplash.com/photo-1581268371637-f904b596b8a8?w=60&h=60&fit=crop' },
+    ],
+    instructions: [
+      {
+        step: '01',
+        title: 'Cook the Jasmine Rice',
+        body: 'Rinse jasmine rice until water runs clear. Combine with 2.5 cups of water, bring to a boil, reduce heat, cover, and cook for 15 minutes. Let steam with the lid on for 5 more minutes.',
+        videoThumb: 'https://images.unsplash.com/photo-1536304929831-ee1ca9d44906?w=200&h=130&fit=crop',
+      },
+      {
+        step: '02',
+        title: 'Build the Curry Base',
+        body: 'Heat a tablespoon of oil in a large wok or pot. Fry the green curry paste for 1-2 minutes until fragrant. Pour in half the coconut milk and stir, cooking until the oil separates and the paste sizzles.',
+        videoThumb: 'https://images.unsplash.com/photo-1455619452474-d2be8b1e70cd?w=200&h=130&fit=crop',
+      },
+      {
+        step: '03',
+        title: 'Add Chicken & Vegetables',
+        body: 'Add sliced chicken and cook for 3-4 minutes until no longer pink. Stir in bell peppers, bamboo shoots, the remaining coconut milk, fish sauce, and brown sugar. Simmer for 10 minutes.',
+        videoThumb: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=200&h=130&fit=crop',
+      },
+      {
+        step: '04',
+        title: 'Finish and Serve',
+        body: 'Remove from heat, stir in fresh Thai basil leaves, and let them wilt into the curry. Serve the curry ladled over fluffy jasmine rice in deep bowls.',
+        videoThumb: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=200&h=130&fit=crop',
+      },
+    ],
     chef: {
       name: 'Chef Sophie Laurent',
       avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=80&h=80&fit=crop&crop=face',
@@ -999,6 +1092,3 @@ export const aiSuggestedPrompts = [
   'Can I refrigerate the batter overnight?',
 ];
 
-export const dishTypeChips = ['Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Snack', 'Brunch'];
-export const timeChips = ['15 Mins', '30 Mins', '45 Mins', '60 Mins'];
-export const dietChips = ['Vegan', 'Keto', 'Gluten Free', 'High Protein'];
