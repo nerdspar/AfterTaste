@@ -1,6 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseRecipeFromHtml } from '@/lib/recipe-parser';
 
+const FETCH_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Cache-Control': 'no-cache',
+};
+
+async function fetchHtml(targetUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(targetUrl, {
+      headers: FETCH_HEADERS,
+      signal: AbortSignal.timeout(15000),
+      redirect: 'follow',
+    });
+    if (res.ok) return res.text();
+  } catch {}
+  return null;
+}
+
+async function fetchWithWaybackFallback(
+  url: string,
+): Promise<string | null> {
+  const direct = await fetchHtml(url);
+  if (direct) return direct;
+
+  const waybackUrl = `https://web.archive.org/web/2024/${url}`;
+  const cached = await fetchHtml(waybackUrl);
+  if (cached) return cached;
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { url } = (await request.json()) as { url: string };
@@ -23,32 +56,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36',
-        Accept:
-          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Cache-Control': 'no-cache',
-      },
-      signal: AbortSignal.timeout(15000),
-      redirect: 'follow',
-    });
+    const html = await fetchWithWaybackFallback(url);
 
-    if (!response.ok) {
-      const hint =
-        response.status === 403 || response.status === 402
-          ? ' This site may be blocking automated requests. Try "Import from Text" instead — visit the recipe page, copy the content, and paste it.'
-          : '';
+    if (!html) {
       return NextResponse.json(
-        { error: `Could not access this URL (${response.status}).${hint}` },
+        {
+          error:
+            'Could not access this URL. Try "Import from Text" instead — visit the recipe page, copy the content, and paste it.',
+        },
         { status: 422 },
       );
     }
 
-    const html = await response.text();
     const recipe = parseRecipeFromHtml(html);
 
     if (!recipe) {
