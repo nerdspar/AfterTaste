@@ -73,31 +73,56 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
       const rawInstructions =
         data.recipeInstructions ?? [];
       const instructions: Instruction[] = [];
-      for (const item of rawInstructions) {
-        if (typeof item === 'string') {
+
+      function pushStep(text: string, name?: string) {
+        const lines = text
+          .split(/\n+/)
+          .map((l) => l.trim())
+          .filter(Boolean);
+        if (lines.length <= 1) {
+          const body = lines[0] || '';
+          const title =
+            name && name !== body
+              ? name
+              : `Step ${instructions.length + 1}`;
           instructions.push({
             step: String(instructions.length + 1).padStart(2, '0'),
-            title: `Step ${instructions.length + 1}`,
-            body: item,
+            title,
+            body,
             videoThumb: '',
           });
-        } else if (item['@type'] === 'HowToStep') {
-          instructions.push({
-            step: String(instructions.length + 1).padStart(2, '0'),
-            title: item.name || `Step ${instructions.length + 1}`,
-            body: item.text || '',
-            videoThumb: '',
-          });
-        } else if (item['@type'] === 'HowToSection') {
-          for (const sub of item.itemListElement ?? []) {
+        } else {
+          for (const line of lines) {
             instructions.push({
               step: String(instructions.length + 1).padStart(2, '0'),
-              title: sub.name || `Step ${instructions.length + 1}`,
-              body: sub.text || '',
+              title: `Step ${instructions.length + 1}`,
+              body: line,
               videoThumb: '',
             });
           }
         }
+      }
+
+      function addStep(item: Record<string, unknown>) {
+        if (typeof item === 'string') {
+          pushStep(item as string);
+        } else if (item['@type'] === 'HowToStep') {
+          pushStep(
+            (item.text as string) || '',
+            item.name as string | undefined,
+          );
+        } else if (item['@type'] === 'HowToSection') {
+          const subs = (item.itemListElement ?? []) as Record<string, unknown>[];
+          if (subs.length > 0) {
+            for (const sub of subs) addStep(sub);
+          } else if (item.text) {
+            pushStep(item.text as string, item.name as string | undefined);
+          }
+        }
+      }
+
+      for (const item of rawInstructions) {
+        addStep(item as Record<string, unknown>);
       }
 
       let imageUrl = '';
