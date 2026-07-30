@@ -1,16 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Card } from '@/components/aftertaste/Card';
 import { Button } from '@/components/aftertaste/Button';
 import { cn } from '@/lib/utils';
-import { PlusIcon, TrashIcon } from 'lucide-react';
+import { PlusIcon, TrashIcon, ImageIcon } from 'lucide-react';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import type { Recipe, Ingredient, Instruction } from '@/data/sample/recipes';
+import type { ParsedRecipe } from '@/lib/recipe-parser';
 
 interface RecipeFormProps {
   recipe?: Recipe;
+  imported?: ParsedRecipe;
 }
 
 const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Dessert'];
@@ -50,43 +53,102 @@ const selectClasses = cn(
   'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
 );
 
-const labelClasses = 'block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5';
+const labelClasses =
+  'block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1.5';
 
 function generateId(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 40) + `-${Date.now().toString(36)}`;
+  return (
+    title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+      .slice(0, 40) + `-${Date.now().toString(36)}`
+  );
 }
 
-export function RecipeForm({ recipe }: RecipeFormProps) {
+function resolveCategory(value: string | undefined, fallback: string): string {
+  if (!value) return fallback;
+  const match = CATEGORIES.find(
+    (c) => c.toLowerCase() === value.toLowerCase(),
+  );
+  return match ?? fallback;
+}
+
+const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+
+export function RecipeForm({ recipe, imported }: RecipeFormProps) {
   const isEditing = !!recipe;
   const router = useRouter();
   const { addRecipe, updateRecipe } = useRecipeStore();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [title, setTitle] = useState(recipe?.title ?? '');
-  const [category, setCategory] = useState(recipe?.category ?? 'Dinner');
-  const [cuisine, setCuisine] = useState(recipe?.cuisine ?? '');
-  const [description, setDescription] = useState(recipe?.description ?? '');
-  const [image, setImage] = useState(recipe?.image ?? '');
-  const [servings, setServings] = useState(recipe?.servings ?? 4);
-  const [prepTime, setPrepTime] = useState(recipe?.prepTimeMinutes ?? 15);
-  const [cookTime, setCookTime] = useState(recipe?.cookTimeMinutes ?? 30);
-  const [calories, setCalories] = useState(recipe?.calories ?? 400);
-  const [difficulty, setDifficulty] = useState(recipe?.difficulty ?? 'Medium');
+  const init = imported ?? {};
+
+  const [title, setTitle] = useState(recipe?.title ?? init.title ?? '');
+  const [category, setCategory] = useState(
+    recipe?.category ?? resolveCategory(init.category, 'Dinner'),
+  );
+  const [cuisine, setCuisine] = useState(recipe?.cuisine ?? init.cuisine ?? '');
+  const [description, setDescription] = useState(
+    recipe?.description ?? init.description ?? '',
+  );
+  const [image, setImage] = useState(recipe?.image ?? init.image ?? '');
+  const [servings, setServings] = useState(
+    recipe?.servings ?? init.servings ?? 4,
+  );
+  const [prepTime, setPrepTime] = useState(
+    recipe?.prepTimeMinutes ?? init.prepTimeMinutes ?? 15,
+  );
+  const [cookTime, setCookTime] = useState(
+    recipe?.cookTimeMinutes ?? init.cookTimeMinutes ?? 30,
+  );
+  const [calories, setCalories] = useState(
+    recipe?.calories ?? init.calories ?? 400,
+  );
+  const [difficulty, setDifficulty] = useState(
+    recipe?.difficulty ?? 'Medium',
+  );
   const [source, setSource] = useState(recipe?.source ?? 'Original');
   const [cookingClassType, setCookingClassType] = useState(
     recipe?.cookingClassType ?? 'Cozy Comfort Food',
   );
   const [ingredients, setIngredients] = useState<Ingredient[]>(
-    recipe?.ingredients ?? [{ name: '', quantity: '', image: '' }],
+    recipe?.ingredients ??
+      init.ingredients ?? [{ name: '', quantity: '', image: '' }],
   );
   const [instructions, setInstructions] = useState<Instruction[]>(
-    recipe?.instructions ?? [
-      { step: '01', title: '', body: '', videoThumb: '' },
-    ],
+    recipe?.instructions ??
+      init.instructions ?? [
+        { step: '01', title: '', body: '', videoThumb: '' },
+      ],
   );
+  const [imageError, setImageError] = useState('');
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageError('');
+
+    if (!file.type.startsWith('image/')) {
+      setImageError('Please select an image file.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      setImageError('Image must be under 2 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeImage() {
+    setImage('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
 
   function updateIngredient(
     index: number,
@@ -169,7 +231,7 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
       title: title.trim(),
       category,
       image:
-        image.trim() ||
+        image ||
         'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=600&h=400&fit=crop',
       rating: recipe?.rating ?? 0,
       ratingCount: recipe?.ratingCount ?? 0,
@@ -244,15 +306,65 @@ export function RecipeForm({ recipe }: RecipeFormProps) {
             />
           </div>
 
+          {/* Image upload */}
           <div>
-            <label className={labelClasses}>Image URL</label>
+            <label className={labelClasses}>Photo</label>
             <input
-              type="url"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              placeholder="https://..."
-              className={inputClasses}
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
             />
+            {image ? (
+              <div className="relative w-full h-40 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                <Image
+                  src={image}
+                  alt="Recipe preview"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 600px"
+                  unoptimized={image.startsWith('data:')}
+                />
+                <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center gap-2 opacity-0 hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 rounded-lg bg-white/90 text-xs font-medium text-gray-700 hover:bg-white transition-colors"
+                  >
+                    Change
+                  </button>
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="px-3 py-1.5 rounded-lg bg-white/90 text-xs font-medium text-red-500 hover:bg-white transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={cn(
+                  'w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors',
+                  'border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-500',
+                  'bg-gray-50/50 dark:bg-gray-800/20',
+                )}
+              >
+                <ImageIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  Click to upload a photo
+                </span>
+                <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                  Max 2 MB
+                </span>
+              </button>
+            )}
+            {imageError && (
+              <p className="text-xs text-red-500 mt-1">{imageError}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

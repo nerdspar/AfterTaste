@@ -1,0 +1,305 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  XIcon,
+  GlobeIcon,
+  FileTextIcon,
+  UploadIcon,
+  LoaderIcon,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from './Button';
+import { parseRecipeFromText } from '@/lib/recipe-parser';
+import type { ParsedRecipe } from '@/lib/recipe-parser';
+
+interface ImportRecipeModalProps {
+  open: boolean;
+  onClose: () => void;
+  initialTab?: Tab;
+}
+
+const IMPORT_KEY = 'aftertaste-import-recipe';
+
+type Tab = 'url' | 'text' | 'file';
+
+const tabs: { key: Tab; label: string; icon: typeof GlobeIcon }[] = [
+  { key: 'url', label: 'From URL', icon: GlobeIcon },
+  { key: 'text', label: 'From Text', icon: FileTextIcon },
+  { key: 'file', label: 'From File', icon: UploadIcon },
+];
+
+const inputClasses = cn(
+  'w-full h-10 px-3 rounded-lg text-sm',
+  'border border-gray-200 bg-white',
+  'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
+  'focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/40',
+  'transition-colors',
+);
+
+export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeModalProps) {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'url');
+  const [url, setUrl] = useState('');
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden';
+      setError('');
+      if (initialTab) setActiveTab(initialTab);
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [open, initialTab]);
+
+  function navigateWithData(data: ParsedRecipe) {
+    sessionStorage.setItem(IMPORT_KEY, JSON.stringify(data));
+    onClose();
+    router.push('/recipes/new?import=1');
+  }
+
+  async function handleUrlImport() {
+    if (!url.trim()) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/import-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to import');
+        return;
+      }
+      navigateWithData(data.recipe);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleTextImport() {
+    if (!text.trim()) return;
+    setError('');
+    const parsed = parseRecipeFromText(text.trim());
+    navigateWithData(parsed);
+  }
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError('');
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const content = reader.result as string;
+
+      if (file.name.endsWith('.json')) {
+        try {
+          const json = JSON.parse(content);
+          const parsed: ParsedRecipe = {
+            title: json.title || json.name,
+            description: json.description,
+            image: json.image,
+            servings:
+              typeof json.servings === 'number'
+                ? json.servings
+                : parseInt(json.servings, 10) || undefined,
+            prepTimeMinutes:
+              typeof json.prepTimeMinutes === 'number'
+                ? json.prepTimeMinutes
+                : parseInt(json.prepTime, 10) || undefined,
+            cookTimeMinutes:
+              typeof json.cookTimeMinutes === 'number'
+                ? json.cookTimeMinutes
+                : parseInt(json.cookTime, 10) || undefined,
+            calories:
+              typeof json.calories === 'number'
+                ? json.calories
+                : parseInt(json.calories, 10) || undefined,
+            cuisine: json.cuisine,
+            category: json.category,
+            ingredients: json.ingredients,
+            instructions: json.instructions,
+          };
+          navigateWithData(parsed);
+        } catch {
+          setError('Could not parse JSON file.');
+        }
+      } else {
+        const parsed = parseRecipeFromText(content);
+        navigateWithData(parsed);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        className={cn(
+          'relative w-full max-w-lg max-h-[85vh] overflow-y-auto',
+          'rounded-2xl border border-gray-200 bg-white shadow-xl p-5',
+          'dark:border-gray-700 dark:bg-slate-900',
+          'animate-in fade-in zoom-in-95 duration-200',
+        )}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
+            Import Recipe
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            <XIcon className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-5 p-1 rounded-xl bg-gray-100 dark:bg-gray-800">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => {
+                setActiveTab(tab.key);
+                setError('');
+              }}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 h-9 rounded-lg text-xs font-medium transition-colors',
+                activeTab === tab.key
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300',
+              )}
+            >
+              <tab.icon className="w-3.5 h-3.5" />
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+            {error}
+          </div>
+        )}
+
+        {/* URL tab */}
+        {activeTab === 'url' && (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Paste a recipe URL and we&apos;ll extract the title, ingredients,
+              instructions, and more.
+            </p>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleUrlImport()}
+              placeholder="https://www.example.com/recipe/..."
+              className={inputClasses}
+              autoFocus
+            />
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className="w-full"
+              onClick={handleUrlImport}
+              disabled={loading || !url.trim()}
+            >
+              {loading ? (
+                <>
+                  <LoaderIcon className="w-4 h-4 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                'Import from URL'
+              )}
+            </Button>
+          </div>
+        )}
+
+        {/* Text tab */}
+        {activeTab === 'text' && (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Paste a recipe as plain text. Put the title on the first line,
+              then list ingredients and instructions.
+            </p>
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder={`Chicken Stir Fry\n\nIngredients:\n- 2 chicken breasts\n- 1 cup broccoli\n- 2 tbsp soy sauce\n\nInstructions:\n1. Cut chicken into strips\n2. Heat oil in a wok\n3. Stir fry chicken and vegetables`}
+              rows={10}
+              className={cn(inputClasses, 'h-auto py-2.5 font-mono text-xs')}
+              autoFocus
+            />
+            <Button
+              type="button"
+              variant="primary"
+              size="md"
+              className="w-full"
+              onClick={handleTextImport}
+              disabled={!text.trim()}
+            >
+              Import from Text
+            </Button>
+          </div>
+        )}
+
+        {/* File tab */}
+        {activeTab === 'file' && (
+          <div className="space-y-4">
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Upload a recipe file. Supports <code>.txt</code> (plain text) and{' '}
+              <code>.json</code> (structured data).
+            </p>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".txt,.json,.text"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className={cn(
+                'w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors',
+                'border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-500',
+                'bg-gray-50/50 dark:bg-gray-800/20',
+              )}
+            >
+              <UploadIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Click to choose a file
+              </span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                .txt or .json
+              </span>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export { IMPORT_KEY };
