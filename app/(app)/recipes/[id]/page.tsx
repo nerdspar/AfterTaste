@@ -92,6 +92,8 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
               scaleValue={scaleValue}
               onScaleModeChange={setScaleMode}
               onScaleValueChange={setScaleValue}
+              recipeId={recipe.id}
+              recipeTitle={recipe.title}
             />
           )}
           <AIAssistantPanel />

@@ -20,6 +20,8 @@ interface IngredientsPanelProps {
   scaleValue: number;
   onScaleModeChange: (mode: ScaleMode) => void;
   onScaleValueChange: (value: number) => void;
+  recipeId: string;
+  recipeTitle: string;
 }
 
 function scaleQuantity(quantity: string, multiplier: number): string {
@@ -51,6 +53,8 @@ export function IngredientsPanel({
   scaleValue,
   onScaleModeChange,
   onScaleValueChange,
+  recipeId,
+  recipeTitle,
 }: IngredientsPanelProps) {
   const multiplier =
     scaleMode === 'amount' ? scaleValue : scaleValue / baseServings;
@@ -120,6 +124,8 @@ export function IngredientsPanel({
         name: ing.name,
         quantity: scaleQuantity(ing.quantity, multiplier),
         category: guessGroceryCategory(ing.name),
+        recipeId,
+        recipeTitle,
       })),
     );
     setFeedback(

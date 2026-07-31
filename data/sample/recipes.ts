@@ -1027,6 +1027,9 @@ export interface GroceryItem {
   quantity: string;
   checked: boolean;
   category: string;
+  /** Set when the item was added from a recipe, for the "open recipe" chip. */
+  recipeId?: string;
+  recipeTitle?: string;
 }
 
 export const groceryItems: GroceryItem[] = [

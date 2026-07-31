@@ -9,6 +9,8 @@ export interface NewGroceryItem {
   name: string;
   quantity?: string;
   category?: string;
+  recipeId?: string;
+  recipeTitle?: string;
 }
 
 function getDefaultGrocery(): GroceryItem[] {
@@ -96,6 +98,8 @@ function addItems(inputs: NewGroceryItem[]): number {
       quantity: (input.quantity ?? '').trim() || '1',
       checked: false,
       category: input.category || 'Pantry Essentials',
+      ...(input.recipeId ? { recipeId: input.recipeId } : {}),
+      ...(input.recipeTitle ? { recipeTitle: input.recipeTitle } : {}),
     });
   }
   if (toAdd.length === 0) return 0;
@@ -109,12 +113,21 @@ function addItem(input: NewGroceryItem): number {
   return addItems([input]);
 }
 
+// Replace the whole ordered list — used by drag-and-drop, which computes the
+// new order (and any changed categories) and commits it in one shot.
+function reorderItems(next: GroceryItem[]) {
+  groceryList = next;
+  saveGrocery(groceryList);
+  emitChange();
+}
+
 interface GroceryStoreContextValue {
   items: GroceryItem[];
   addItem: (input: NewGroceryItem) => number;
   addItems: (inputs: NewGroceryItem[]) => number;
   toggleItem: (id: string) => void;
   removeItem: (id: string) => void;
+  reorderItems: (next: GroceryItem[]) => void;
 }
 
 const GroceryStoreContext = createContext<GroceryStoreContextValue | null>(null);
@@ -132,7 +145,7 @@ export function GroceryStoreProvider({
 
   return (
     <GroceryStoreContext.Provider
-      value={{ items, addItem, addItems, toggleItem, removeItem }}
+      value={{ items, addItem, addItems, toggleItem, removeItem, reorderItems }}
     >
       {children}
     </GroceryStoreContext.Provider>
