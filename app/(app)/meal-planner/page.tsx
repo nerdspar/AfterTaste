@@ -8,6 +8,7 @@ import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { useMealPlan } from '@/components/aftertaste/MealPlanStoreProvider';
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'] as const;
 
@@ -195,22 +196,29 @@ function MealPlannerContent() {
                         key={key}
                         className="h-16 rounded-xl border border-gray-200 dark:border-gray-700/40 bg-white dark:bg-gray-800/40 overflow-hidden relative group"
                       >
-                        <Image
-                          src={recipe.image}
-                          alt={recipe.title}
-                          fill
-                          className="object-cover opacity-40"
-                          sizes="80px"
-                        />
-                        <div className="relative p-1.5 h-full flex flex-col justify-end">
-                          <p className="text-[9px] font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
-                            {recipe.title.split(' ').slice(0, 3).join(' ')}
-                          </p>
-                        </div>
+                        <Link
+                          href={`/recipes/${recipe.id}`}
+                          aria-label={`Open ${recipe.title}`}
+                          className="block relative h-full w-full"
+                        >
+                          <Image
+                            src={recipe.image}
+                            alt={recipe.title}
+                            fill
+                            className="object-cover opacity-40 transition-opacity group-hover:opacity-60"
+                            sizes="80px"
+                          />
+                          <div className="relative p-1.5 h-full flex flex-col justify-end">
+                            <p className="text-[9px] font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
+                              {recipe.title.split(' ').slice(0, 3).join(' ')}
+                            </p>
+                          </div>
+                        </Link>
                         <button
                           type="button"
                           onClick={() => clearSlot(key)}
-                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          aria-label="Remove from plan"
+                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60"
                         >
                           <XIcon className="w-2.5 h-2.5 text-white" />
                         </button>
