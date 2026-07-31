@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/aftertaste/Card';
 import { Button } from '@/components/aftertaste/Button';
 import { cn } from '@/lib/utils';
-import { PlusIcon, TrashIcon, ImageIcon } from 'lucide-react';
+import { PlusIcon, TrashIcon, ImageIcon, PlayIcon } from 'lucide-react';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
+import { isVideoSource } from '@/lib/media';
 import type { Recipe, Ingredient, Instruction } from '@/data/sample/recipes';
 import type { ParsedRecipe } from '@/lib/recipe-parser';
 
@@ -74,6 +75,7 @@ function resolveCategory(value: string | undefined, fallback: string): string {
 }
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 10 * 1024 * 1024;
 
 export function RecipeForm({ recipe, imported }: RecipeFormProps) {
   const isEditing = !!recipe;
@@ -125,6 +127,7 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
   const [imageError, setImageError] = useState('');
   const [stepUploadIndex, setStepUploadIndex] = useState<number | null>(null);
   const [stepImageError, setStepImageError] = useState('');
+  const [submitError, setSubmitError] = useState('');
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -152,23 +155,29 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
-  function openStepImagePicker(index: number) {
+  function openStepMediaPicker(index: number) {
     setStepImageError('');
     setStepUploadIndex(index);
     stepFileInputRef.current?.click();
   }
 
-  function handleStepImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleStepMediaUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     const index = stepUploadIndex;
     e.target.value = '';
     if (!file || index === null) return;
 
-    if (!file.type.startsWith('image/')) {
-      setStepImageError('Please select an image file.');
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    if (!isImage && !isVideo) {
+      setStepImageError('Please select an image or video file.');
       return;
     }
-    if (file.size > MAX_IMAGE_SIZE) {
+    if (isVideo && file.size > MAX_VIDEO_SIZE) {
+      setStepImageError('Video must be under 10 MB.');
+      return;
+    }
+    if (isImage && file.size > MAX_IMAGE_SIZE) {
       setStepImageError('Image must be under 2 MB.');
       return;
     }
@@ -180,7 +189,7 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
     reader.readAsDataURL(file);
   }
 
-  function removeStepImage(index: number) {
+  function removeStepMedia(index: number) {
     updateInstruction(index, 'videoThumb', '');
   }
 
@@ -298,12 +307,19 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
       remade: recipe?.remade ?? 0,
     };
 
-    if (isEditing) {
-      updateRecipe(recipe.id, recipeData);
-      router.push(`/recipes/${recipe.id}`);
-    } else {
-      addRecipe(recipeData);
-      router.push(`/recipes/${recipeData.id}`);
+    try {
+      setSubmitError('');
+      if (isEditing) {
+        updateRecipe(recipe.id, recipeData);
+        router.push(`/recipes/${recipe.id}`);
+      } else {
+        addRecipe(recipeData);
+        router.push(`/recipes/${recipeData.id}`);
+      }
+    } catch {
+      setSubmitError(
+        'Could not save — a step photo or video may be too large for browser storage. Try a smaller file.',
+      );
     }
   }
 
@@ -607,19 +623,36 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
                   rows={2}
                   className={cn(inputClasses, 'h-auto py-2.5')}
                 />
-                {/* Per-step photo */}
+                {/* Per-step photo / video */}
                 {inst.videoThumb ? (
                   <div className="relative w-24 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={inst.videoThumb}
-                      alt="Step preview"
-                      className="absolute inset-0 w-full h-full object-cover"
-                    />
+                    {isVideoSource(inst.videoThumb) ? (
+                      <>
+                        <video
+                          src={inst.videoThumb}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          muted
+                          playsInline
+                          preload="metadata"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-6 h-6 rounded-full bg-white/85 flex items-center justify-center">
+                            <PlayIcon className="w-3 h-3 text-gray-900 fill-gray-900 ml-0.5" />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={inst.videoThumb}
+                        alt="Step preview"
+                        className="absolute inset-0 w-full h-full object-cover"
+                      />
+                    )}
                     <button
                       type="button"
-                      onClick={() => removeStepImage(i)}
-                      aria-label="Remove step photo"
+                      onClick={() => removeStepMedia(i)}
+                      aria-label="Remove step media"
                       className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 opacity-0 hover:opacity-100 transition-all"
                     >
                       <TrashIcon className="w-4 h-4 text-white" />
@@ -628,7 +661,7 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => openStepImagePicker(i)}
+                    onClick={() => openStepMediaPicker(i)}
                     className={cn(
                       'inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs',
                       'border border-dashed border-gray-300 text-gray-500',
@@ -638,7 +671,7 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
                     )}
                   >
                     <ImageIcon className="w-3.5 h-3.5" />
-                    Add photo
+                    Add photo/video
                   </button>
                 )}
               </div>
@@ -653,12 +686,12 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
             </div>
           ))}
         </div>
-        {/* Shared hidden input for per-step photo uploads */}
+        {/* Shared hidden input for per-step photo/video uploads */}
         <input
           ref={stepFileInputRef}
           type="file"
-          accept="image/*"
-          onChange={handleStepImageUpload}
+          accept="image/*,video/*"
+          onChange={handleStepMediaUpload}
           className="hidden"
         />
         {stepImageError && (
@@ -667,18 +700,23 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
       </Card>
 
       {/* Actions */}
-      <div className="flex items-center gap-3">
-        <Button type="submit" variant="primary" size="lg">
-          {isEditing ? 'Save Changes' : 'Create Recipe'}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          onClick={() => router.back()}
-        >
-          Cancel
-        </Button>
+      <div className="space-y-3">
+        {submitError && (
+          <p className="text-sm text-red-500">{submitError}</p>
+        )}
+        <div className="flex items-center gap-3">
+          <Button type="submit" variant="primary" size="lg">
+            {isEditing ? 'Save Changes' : 'Create Recipe'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={() => router.back()}
+          >
+            Cancel
+          </Button>
+        </div>
       </div>
     </form>
   );

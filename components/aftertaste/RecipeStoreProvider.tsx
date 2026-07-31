@@ -41,9 +41,10 @@ function loadRecipes(): Recipe[] {
 }
 
 function saveRecipes(recipes: Recipe[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes));
-  } catch {}
+  // Intentionally not swallowed: a failed write (e.g. storage quota exceeded by
+  // a large step video) must surface so callers can tell the user instead of
+  // silently losing the recipe.
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes));
 }
 
 let recipeList: Recipe[] = loadRecipes();
@@ -72,22 +73,28 @@ function getServerSnapshot(): Recipe[] {
 }
 
 function addRecipe(recipe: Recipe) {
-  recipeList = [recipe, ...recipeList];
-  saveRecipes(recipeList);
+  const next = [recipe, ...recipeList];
+  saveRecipes(next); // may throw (quota) — only commit in-memory on success
+  recipeList = next;
   emitChange();
 }
 
 function updateRecipe(id: string, updates: Partial<Recipe>) {
-  recipeList = recipeList.map((r) =>
+  const next = recipeList.map((r) =>
     r.id === id ? { ...r, ...updates } : r,
   );
-  saveRecipes(recipeList);
+  saveRecipes(next); // may throw (quota) — only commit in-memory on success
+  recipeList = next;
   emitChange();
 }
 
 function deleteRecipe(id: string) {
-  recipeList = recipeList.filter((r) => r.id !== id);
-  saveRecipes(recipeList);
+  const next = recipeList.filter((r) => r.id !== id);
+  // Deleting frees storage, so a persistence hiccup shouldn't block removal.
+  try {
+    saveRecipes(next);
+  } catch {}
+  recipeList = next;
   emitChange();
 }
 

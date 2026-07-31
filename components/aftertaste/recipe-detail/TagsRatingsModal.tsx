@@ -89,15 +89,20 @@ export function TagsRatingsModal({
   if (!open) return null;
 
   function handleSave() {
-    updateRecipe(recipe.id, {
-      ease,
-      taste,
-      cleanup,
-      sweetness,
-      makeAgain,
-      remade,
-      rating,
-    });
+    try {
+      updateRecipe(recipe.id, {
+        ease,
+        taste,
+        cleanup,
+        sweetness,
+        makeAgain,
+        remade,
+        rating,
+      });
+    } catch {
+      // Ratings are tiny; a storage write failure here is unexpected. Close
+      // rather than trap the user in the modal.
+    }
     onClose();
   }
 

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
-import { PlayIcon } from 'lucide-react';
 import { SectionHeader } from '../SectionHeader';
+import { StepMedia } from './StepMedia';
 import type { Instruction } from '@/data/sample/recipes';
 
 interface CookingInstructionsProps {
@@ -34,22 +34,9 @@ export function CookingInstructions({ instructions }: CookingInstructionsProps) 
               </p>
             </div>
 
-            {/* Thumbnail — only shown when one has been uploaded for this step */}
+            {/* Photo/video — only shown when one has been uploaded for this step */}
             {inst.videoThumb && (
-              <div className="relative w-24 h-16 rounded-xl overflow-hidden flex-shrink-0 group cursor-pointer">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={inst.videoThumb}
-                  alt={inst.title}
-                  className="absolute inset-0 w-full h-full object-cover dark:brightness-90"
-                />
-                {/* Play overlay */}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center">
-                    <PlayIcon className="w-3.5 h-3.5 text-gray-900 fill-gray-900 ml-0.5" />
-                  </div>
-                </div>
-              </div>
+              <StepMedia src={inst.videoThumb} title={inst.title} />
             )}
           </div>
         ))}
