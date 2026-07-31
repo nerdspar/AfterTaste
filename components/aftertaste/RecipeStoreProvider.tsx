@@ -79,6 +79,27 @@ function addRecipe(recipe: Recipe) {
   emitChange();
 }
 
+// Bulk add (e.g. Crouton import); skips ids/titles already present. Returns the
+// number actually added. May throw (quota) — commit in-memory only on success.
+function addRecipes(newRecipes: Recipe[]): number {
+  const ids = new Set(recipeList.map((r) => r.id));
+  const titles = new Set(recipeList.map((r) => r.title.trim().toLowerCase()));
+  const toAdd: Recipe[] = [];
+  for (const r of newRecipes) {
+    const key = r.title.trim().toLowerCase();
+    if (ids.has(r.id) || titles.has(key)) continue;
+    ids.add(r.id);
+    titles.add(key);
+    toAdd.push(r);
+  }
+  if (toAdd.length === 0) return 0;
+  const next = [...toAdd, ...recipeList];
+  saveRecipes(next);
+  recipeList = next;
+  emitChange();
+  return toAdd.length;
+}
+
 function updateRecipe(id: string, updates: Partial<Recipe>) {
   const next = recipeList.map((r) =>
     r.id === id ? { ...r, ...updates } : r,
@@ -102,6 +123,7 @@ interface RecipeStoreContextValue {
   recipes: Recipe[];
   getRecipe: (id: string) => Recipe | undefined;
   addRecipe: (recipe: Recipe) => void;
+  addRecipes: (recipes: Recipe[]) => number;
   updateRecipe: (id: string, updates: Partial<Recipe>) => void;
   deleteRecipe: (id: string) => void;
 }
@@ -130,6 +152,7 @@ export function RecipeStoreProvider({
         recipes,
         getRecipe: getRecipeById,
         addRecipe,
+        addRecipes,
         updateRecipe,
         deleteRecipe,
       }}

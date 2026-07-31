@@ -28,6 +28,7 @@ export interface Recipe {
   remade: number; // 0-10+
   tags?: string[]; // free-form keywords for search/filter
   createdAt?: number; // epoch ms when the recipe was added
+  sourceUrl?: string; // original web link (e.g. from an imported recipe)
 }
 
 export interface Ingredient {

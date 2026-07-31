@@ -8,11 +8,15 @@ import {
   FileTextIcon,
   UploadIcon,
   LoaderIcon,
+  SoupIcon,
+  CheckCircle2Icon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './Button';
 import { parseRecipeFromText, parseRecipeFromHtml } from '@/lib/recipe-parser';
 import type { ParsedRecipe } from '@/lib/recipe-parser';
+import { useRecipeStore } from './RecipeStoreProvider';
+import { importCroutonFiles } from '@/lib/crouton-import';
 
 interface ImportRecipeModalProps {
   open: boolean;
@@ -22,12 +26,13 @@ interface ImportRecipeModalProps {
 
 const IMPORT_KEY = 'aftertaste-import-recipe';
 
-type Tab = 'url' | 'text' | 'file';
+type Tab = 'url' | 'text' | 'file' | 'crouton';
 
 const tabs: { key: Tab; label: string; icon: typeof GlobeIcon }[] = [
-  { key: 'url', label: 'From URL', icon: GlobeIcon },
-  { key: 'text', label: 'From Text', icon: FileTextIcon },
-  { key: 'file', label: 'From File', icon: UploadIcon },
+  { key: 'url', label: 'URL', icon: GlobeIcon },
+  { key: 'text', label: 'Text', icon: FileTextIcon },
+  { key: 'file', label: 'File', icon: UploadIcon },
+  { key: 'crouton', label: 'Crouton', icon: SoupIcon },
 ];
 
 const inputClasses = cn(
@@ -40,23 +45,62 @@ const inputClasses = cn(
 
 export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeModalProps) {
   const router = useRouter();
+  const { addRecipes } = useRecipeStore();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'url');
   const [url, setUrl] = useState('');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [croutonResult, setCroutonResult] = useState<{
+    added: number;
+    total: number;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const croutonRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
       setError('');
+      setCroutonResult(null);
       if (initialTab) setActiveTab(initialTab);
     }
     return () => {
       document.body.style.overflow = '';
     };
   }, [open, initialTab]);
+
+  async function handleCroutonUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = '';
+    if (files.length === 0) return;
+    setError('');
+    setCroutonResult(null);
+    setLoading(true);
+    try {
+      const recipes = await importCroutonFiles(files);
+      if (recipes.length === 0) {
+        setError(
+          "No recipes found — pick your Crouton export (.zip) or its .crumb files.",
+        );
+        return;
+      }
+      let added = 0;
+      try {
+        added = addRecipes(recipes);
+      } catch {
+        setError(
+          'Ran out of browser storage while importing. Try fewer recipes at a time.',
+        );
+        return;
+      }
+      setCroutonResult({ added, total: recipes.length });
+    } catch {
+      setError('Could not read that file. Is it a Crouton export?');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function navigateWithData(data: ParsedRecipe) {
     sessionStorage.setItem(IMPORT_KEY, JSON.stringify(data));
@@ -298,6 +342,84 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
                 .txt or .json
               </span>
             </button>
+          </div>
+        )}
+
+        {/* Crouton tab — bulk import */}
+        {activeTab === 'crouton' && (
+          <div className="space-y-4">
+            {croutonResult ? (
+              <div className="flex flex-col items-center text-center py-4">
+                <CheckCircle2Icon className="w-10 h-10 text-emerald-500 mb-3" />
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Imported {croutonResult.added}{' '}
+                  {croutonResult.added === 1 ? 'recipe' : 'recipes'}
+                </p>
+                {croutonResult.added < croutonResult.total && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                    Skipped {croutonResult.total - croutonResult.added} already
+                    in your collection
+                  </p>
+                )}
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  className="w-full mt-5"
+                  onClick={() => {
+                    onClose();
+                    router.push('/recipes');
+                  }}
+                >
+                  View recipes
+                </Button>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  In Crouton, export your recipes (Settings &rarr; Export) and
+                  upload the <code>.zip</code> here — or select individual{' '}
+                  <code>.crumb</code> files. All of them import at once.
+                </p>
+                <input
+                  ref={croutonRef}
+                  type="file"
+                  accept=".zip,.crumb"
+                  multiple
+                  onChange={handleCroutonUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => croutonRef.current?.click()}
+                  disabled={loading}
+                  className={cn(
+                    'w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors',
+                    'border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-500',
+                    'bg-gray-50/50 dark:bg-gray-800/20 disabled:opacity-60',
+                  )}
+                >
+                  {loading ? (
+                    <>
+                      <LoaderIcon className="w-6 h-6 text-primary-500 animate-spin" />
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        Importing your recipes…
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <SoupIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        Choose your Crouton export
+                      </span>
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                        .zip or .crumb files
+                      </span>
+                    </>
+                  )}
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
