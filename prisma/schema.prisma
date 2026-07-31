@@ -1,0 +1,152 @@
+// AfterTaste — self-hosted Postgres schema.
+// Model: each user belongs to one household; recipes, groceries, meal plan,
+// ratings, and favorites are household-shared; recently-viewed is per-user.
+// Access is scoped to the session's household in the app layer.
+
+generator client {
+  provider      = "prisma-client-js"
+  // "native" for local dev; the debian target matches the node:slim Docker image.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String
+  displayName  String?
+  avatarUrl    String?
+  accent       String  @default("orange")
+  theme        String  @default("system")
+  units        String  @default("imperial")
+
+  household   Household? @relation("HouseholdMembers", fields: [householdId], references: [id])
+  householdId String?
+
+  ownedHouseholds Household[]       @relation("HouseholdOwner")
+  createdRecipes  Recipe[]          @relation("RecipeCreator")
+  recentlyViewed  RecentlyViewed[]
+  sentInvites     HouseholdInvite[] @relation("InviteSender")
+
+  createdAt DateTime @default(now())
+}
+
+model Household {
+  id      String @id @default(cuid())
+  name    String @default("My Household")
+  owner   User   @relation("HouseholdOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId String
+
+  members      User[]            @relation("HouseholdMembers")
+  recipes      Recipe[]
+  groceryItems GroceryItem[]
+  mealPlan     MealPlan[]
+  invites      HouseholdInvite[]
+
+  createdAt DateTime @default(now())
+}
+
+model HouseholdInvite {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+  email       String
+  invitedBy   User?     @relation("InviteSender", fields: [invitedById], references: [id], onDelete: SetNull)
+  invitedById String?
+  status      String    @default("pending") // pending | accepted | revoked
+  createdAt   DateTime  @default(now())
+}
+
+model Recipe {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+  createdBy   User?     @relation("RecipeCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String?
+
+  title            String
+  category         String  @default("Dinner")
+  image            String?
+  sourceUrl        String?
+  rating           Float   @default(0) // community/source rating
+  ratingCount      Int     @default(0)
+  cookTime         String  @default("")
+  cookTimeMinutes  Int     @default(0)
+  prepTimeMinutes  Int     @default(0)
+  totalTimeMinutes Int     @default(0)
+  servings         Int     @default(4)
+  calories         Int     @default(0)
+  difficulty       String  @default("Medium")
+  cost             Int     @default(0)
+  cookingClassType String  @default("Cozy Comfort Food")
+  cuisine          String  @default("")
+  source           String  @default("Original")
+  description      String  @default("")
+  ingredients      Json    @default("[]")
+  instructions     Json    @default("[]")
+  chef             Json?
+
+  // shared personal ratings (household-wide)
+  ease       Int      @default(0)
+  taste      Int      @default(0)
+  cleanup    Int      @default(0)
+  makeAgain  Boolean?
+  remade     Int      @default(0)
+  tags       String[] @default([])
+  isFavorite Boolean  @default(false) // shared favorite
+
+  groceryItems   GroceryItem[]
+  mealPlan       MealPlan[]
+  recentlyViewed RecentlyViewed[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([householdId])
+}
+
+model GroceryItem {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+  name        String
+  quantity    String    @default("")
+  category    String    @default("Pantry Essentials")
+  checked     Boolean   @default(false)
+  recipe      Recipe?   @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  recipeId    String?
+  recipeTitle String?
+  position    Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  @@index([householdId])
+}
+
+model MealPlan {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+  date        String // local YYYY-MM-DD, matching the app's slot keys
+  meal        String // Breakfast | Lunch | Dinner | Snack
+  recipe      Recipe?   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId    String?
+  note        String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([householdId, date, meal])
+  @@index([householdId])
+}
+
+model RecentlyViewed {
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  recipe   Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  recipeId String
+  viewedAt DateTime @default(now())
+
+  @@id([userId, recipeId])
+}

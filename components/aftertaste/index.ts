@@ -5,7 +5,5 @@ export { Chip } from './Chip';
 export { RatingStars } from './RatingStars';
 export { Avatar } from './Avatar';
 export { AvatarStack } from './AvatarStack';
-export { MediaCard } from './MediaCard';
-export { EventListItem } from './EventListItem';
 export { Breadcrumbs } from './Breadcrumbs';
 export { SectionHeader } from './SectionHeader';

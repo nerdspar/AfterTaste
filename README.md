@@ -15,6 +15,7 @@ See the full video here:
 - [Installation](#installation)
 - [Development](#development)
 - [Build](#build)
+- [Self-hosting / Deployment](DEPLOY.md) — run AfterTaste on TrueNAS (or any Docker host) with `docker compose`
 
 ## Installation
 

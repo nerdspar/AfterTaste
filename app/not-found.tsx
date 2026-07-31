@@ -1,34 +1,23 @@
-import Link from '@/components/shared/Link';
-import Footer from '@/components/shared/Footer';
-import Header from '@/components/shared/Header';
+import Link from 'next/link';
 
 export default function NotFound() {
   return (
-    <>
-      <Header />
-      <div className="min-h-[500px] flex flex-col items-start justify-start md:mt-24 md:flex-row md:items-center md:justify-center md:space-x-6">
-        <div className="space-x-2 pb-8 pt-6 md:space-y-5">
-          <h1 className="text-6xl font-semibold leading-9 tracking-tight text-gray-900 dark:text-gray-100 md:border-r-2 md:px-6 md:text-8xl md:leading-14">
-            404
-          </h1>
-        </div>
-        <div className="max-w-md">
-          <p className="mb-4 text-xl font-bold leading-normal md:text-2xl">
-            Sorry, we couldn't find this page.
-          </p>
-          <p className="mb-8">
-            Please head back to the homepage or contact us if you think this is
-            an error.
-          </p>
-          <Link
-            href="/"
-            className="focus:shadow-outline-primary inline rounded-lg border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium leading-5 text-white shadow transition-colors duration-150 hover:bg-primary-700 focus:outline-none dark:hover:bg-primary-500"
-          >
-            Back to homepage
-          </Link>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0B1220] px-4">
+      <div className="text-center">
+        <p className="text-6xl font-bold text-primary-500 mb-4">404</p>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+          Page not found
+        </h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
+          The page you&apos;re looking for doesn&apos;t exist or has been moved.
+        </p>
+        <Link
+          href="/dashboard"
+          className="inline-flex h-10 items-center px-5 rounded-xl bg-primary-500 text-white text-sm font-medium hover:bg-primary-700 transition-colors"
+        >
+          Back to Dashboard
+        </Link>
       </div>
-      <Footer />
-    </>
+    </div>
   );
 }

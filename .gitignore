@@ -46,3 +46,14 @@ yarn-error.log*
 
 # typescript
 tsconfig.tsbuildinfo
+
+/generated/prisma
+
+# local env (secrets)
+.env
+
+# local dev postgres data
+.pgdata/
+
+# local dev uploads (prod uses the mounted volume)
+/uploads/

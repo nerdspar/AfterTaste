@@ -5,8 +5,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { HeartIcon, ClockIcon, FlameIcon } from 'lucide-react';
 import { RatingStars } from '../RatingStars';
-import { Button } from '../Button';
+import { recipePersonalRating } from '@/lib/recipe-rating';
 import { useFavorites } from '../FavoritesProvider';
+import { useRecipeActions } from '../RecipeActionsProvider';
+import { useLongPress } from '@/lib/useLongPress';
 import type { Recipe } from '@/data/sample/recipes';
 
 interface RecipeCardProps {
@@ -17,14 +19,21 @@ interface RecipeCardProps {
 export function RecipeCard({ recipe, className }: RecipeCardProps) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const favorited = isFavorite(recipe.id);
+  const { openMenu } = useRecipeActions();
+  const longPress = useLongPress({
+    onLongPress: ({ clientX, clientY }) => openMenu(recipe, clientX, clientY),
+  });
 
   return (
-    <div
+    <Link
+      href={`/recipes/${recipe.id}`}
+      {...longPress}
       className={cn(
-        'rounded-2xl border border-gray-200 bg-white overflow-hidden',
+        'block rounded-2xl border border-gray-200 bg-white overflow-hidden',
         'dark:border-gray-700/40 dark:bg-slate-900',
         'hover:-translate-y-0.5 transition-all duration-150',
-        'group',
+        'group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-500/40',
+        'select-none',
         className,
       )}
     >
@@ -42,6 +51,7 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
         <button
           onClick={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             toggleFavorite(recipe.id);
           }}
           className={cn(
@@ -65,18 +75,14 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
 
       {/* Content */}
       <div className="p-3.5">
-        <RatingStars
-          rating={recipe.rating}
-          count={recipe.ratingCount}
-          className="mb-1.5"
-        />
+        <RatingStars rating={recipePersonalRating(recipe)} className="mb-1.5" />
 
         <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 line-clamp-2 mb-2 leading-snug">
           {recipe.title}
         </h3>
 
         {/* Meta row */}
-        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-3">
+        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
           <span className="flex items-center gap-1 tabular-nums">
             <ClockIcon className="w-3.5 h-3.5" />
             {recipe.cookTime}
@@ -86,13 +92,7 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
             {recipe.calories} kcal
           </span>
         </div>
-
-        <Link href={`/recipes/${recipe.id}`}>
-          <Button variant="outline" size="sm" fullWidth>
-            View Details
-          </Button>
-        </Link>
       </div>
-    </div>
+    </Link>
   );
 }

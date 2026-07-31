@@ -1,0 +1,62 @@
+# =============================================================================
+# AfterTaste — self-contained stack (app + Postgres). No .env file needed:
+# paste your two secrets directly below.
+#
+# ── 1. Generate two secrets ──────────────────────────────────────────────
+#      DB password  (hex only, so it's safe inside the connection URL):
+#          openssl rand -hex 24
+#      Auth secret  (signs login sessions):
+#          openssl rand -base64 48
+#
+# ── 2. Paste them below ──────────────────────────────────────────────────
+#      • the DB password goes in BOTH spots marked  ⬅ DB_PASSWORD  (must match)
+#      • the auth secret goes in the one spot marked ⬅ AUTH_SECRET
+#
+# ── 3. Create the (empty) storage folders on your NAS ────────────────────
+#          mkdir -p /mnt/NAS/Data/aftertaste/db /mnt/NAS/Data/aftertaste/uploads
+#          chown -R 1001:1001 /mnt/NAS/Data/aftertaste/uploads
+#      (Postgres manages ownership of the db folder itself.)
+#
+# ── 4. Log in to GHCR once (private image) and launch ────────────────────
+#          docker login ghcr.io -u <github-username>   # paste a PAT as password
+#          docker compose up -d                        # pulls the image + starts
+#      App: http://<nas-ip>:3000   — first boot runs DB migrations automatically.
+#      See DEPLOY.md for the GHCR token, HTTPS, updates, and backups.
+# =============================================================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aftertaste
+      POSTGRES_PASSWORD: "PASTE_DB_PASSWORD_HERE" # ⬅ DB_PASSWORD
+      POSTGRES_DB: aftertaste
+    volumes:
+      - /mnt/NAS/Data/aftertaste/db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U aftertaste']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    # Pull the image built by GitHub Actions (ghcr.io). Requires a one-time
+    # `docker login ghcr.io` on the host — see DEPLOY.md. To build locally on
+    # the box instead, comment out `image:` and uncomment `build: .`.
+    image: ghcr.io/nerdspar/aftertaste:latest
+    # build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # Keep the password below identical to POSTGRES_PASSWORD above.
+      DATABASE_URL: "postgresql://aftertaste:PASTE_DB_PASSWORD_HERE@db:5432/aftertaste?schema=public" # ⬅ DB_PASSWORD
+      AUTH_SECRET: "PASTE_AUTH_SECRET_HERE" # ⬅ AUTH_SECRET
+      UPLOADS_DIR: /app/uploads
+      NODE_ENV: production
+    ports:
+      - '3000:3000'
+    volumes:
+      - /mnt/NAS/Data/aftertaste/uploads:/app/uploads

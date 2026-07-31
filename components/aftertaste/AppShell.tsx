@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { XIcon } from 'lucide-react';
 import { SidebarNav } from './SidebarNav';
 import { HeaderBar } from './HeaderBar';
+import { initInstallCapture } from '@/lib/pwa-install';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -12,6 +13,18 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    initInstallCapture();
+    // Register the service worker (PWA install + offline). Production only —
+    // a runtime cache fights with dev HMR.
+    if (
+      process.env.NODE_ENV === 'production' &&
+      'serviceWorker' in navigator
+    ) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0B1220] transition-colors">
@@ -55,8 +68,10 @@ export function AppShell({ children }: AppShellProps) {
           </>
         )}
 
-        {/* Main area */}
-        <div className="flex-1 md:ml-[280px] min-h-screen flex flex-col">
+        {/* Main area — min-w-0 lets this flex child shrink below its content's
+            intrinsic width so wide content (e.g. the meal-planner grid) scrolls
+            inside its own container instead of widening the whole page. */}
+        <div className="flex-1 min-w-0 md:ml-[280px] min-h-screen flex flex-col">
           <HeaderBar onMenuToggle={() => setSidebarOpen(true)} />
 
           <main className="flex-1 px-4 md:px-5 pb-6">

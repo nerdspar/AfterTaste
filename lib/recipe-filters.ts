@@ -1,4 +1,5 @@
 import type { Recipe } from '@/data/sample/recipes';
+import { computePersonalRating } from '@/lib/recipe-rating';
 
 // ---------------------------------------------------------------------------
 // Filter config types – extensible by design.
@@ -32,20 +33,25 @@ export interface FilterConfig {
 
 export interface SortOption {
   label: string;
-  field: keyof Recipe;
+  /** A Recipe field, or the derived personal rating. */
+  field: keyof Recipe | 'personalRating';
   direction: 'asc' | 'desc';
 }
 
 export const sortOptions: SortOption[] = [
-  { label: 'Rating (High to Low)', field: 'rating', direction: 'desc' },
-  { label: 'Rating (Low to High)', field: 'rating', direction: 'asc' },
+  { label: 'Rating (High to Low)', field: 'personalRating', direction: 'desc' },
+  { label: 'Rating (Low to High)', field: 'personalRating', direction: 'asc' },
   { label: 'Cook Time (Quick First)', field: 'cookTimeMinutes', direction: 'asc' },
   { label: 'Cook Time (Longest First)', field: 'cookTimeMinutes', direction: 'desc' },
   { label: 'Calories (Low to High)', field: 'calories', direction: 'asc' },
   { label: 'Calories (High to Low)', field: 'calories', direction: 'desc' },
+  { label: 'Date Added (Newest First)', field: 'createdAt', direction: 'desc' },
+  { label: 'Date Added (Oldest First)', field: 'createdAt', direction: 'asc' },
   { label: 'Ease (Easiest First)', field: 'ease', direction: 'desc' },
   { label: 'Taste (Best First)', field: 'taste', direction: 'desc' },
   { label: 'Cleanup (Easiest First)', field: 'cleanup', direction: 'desc' },
+  { label: 'Cost (Low to High)', field: 'cost', direction: 'asc' },
+  { label: 'Cost (High to Low)', field: 'cost', direction: 'desc' },
   { label: 'Times Remade (Most First)', field: 'remade', direction: 'desc' },
   { label: 'Title (A-Z)', field: 'title', direction: 'asc' },
   { label: 'Title (Z-A)', field: 'title', direction: 'desc' },
@@ -98,23 +104,6 @@ export const defaultFilterConfigs: FilterConfig[] = [
     ],
   },
   {
-    key: 'cookingClassType',
-    label: 'Cooking Class Type',
-    recipeField: 'cookingClassType',
-    matchMode: 'exact',
-    order: 3,
-    options: [
-      { label: 'Light & Fresh', value: 'Light & Fresh' },
-      { label: 'Taco Tuesday', value: 'Taco Tuesday' },
-      { label: 'Fusion Feast', value: 'Fusion Feast' },
-      { label: 'Cozy Comfort Food', value: 'Cozy Comfort Food' },
-      { label: 'Feeling Fancy', value: 'Feeling Fancy' },
-      { label: 'Date Night In', value: 'Date Night In' },
-      { label: 'Pasta Party', value: 'Pasta Party' },
-      { label: 'Salad Celebration', value: 'Salad Celebration' },
-    ],
-  },
-  {
     key: 'ease',
     label: 'Ease',
     recipeField: 'ease',
@@ -157,11 +146,23 @@ export const defaultFilterConfigs: FilterConfig[] = [
     ],
   },
   {
+    key: 'cost',
+    label: 'Cost',
+    recipeField: 'cost',
+    matchMode: 'exact',
+    order: 7,
+    options: [
+      { label: '$', value: '1' },
+      { label: '$$', value: '2' },
+      { label: '$$$', value: '3' },
+    ],
+  },
+  {
     key: 'cookTime',
     label: 'Cook Time',
     recipeField: 'cookTimeMinutes',
     matchMode: 'range',
-    order: 7,
+    order: 8,
     options: [
       { label: '0-15 mins', value: '0-15' },
       { label: '15-30 mins', value: '15-30' },
@@ -169,7 +170,13 @@ export const defaultFilterConfigs: FilterConfig[] = [
       { label: '45-60 mins', value: '45-60' },
       { label: '60-75 mins', value: '60-75' },
       { label: '75-90 mins', value: '75-90' },
-      { label: '90+ mins', value: '90-9999' },
+      { label: '90-105 mins', value: '90-105' },
+      { label: '105-120 mins', value: '105-120' },
+      { label: '120-135 mins', value: '120-135' },
+      { label: '135-150 mins', value: '135-150' },
+      { label: '150-165 mins', value: '150-165' },
+      { label: '165-180 mins', value: '165-180' },
+      { label: '180+ mins', value: '180-9999' },
     ],
   },
   {
@@ -177,7 +184,7 @@ export const defaultFilterConfigs: FilterConfig[] = [
     label: 'Make Again?',
     recipeField: 'makeAgain',
     matchMode: 'exact',
-    order: 8,
+    order: 9,
     options: [
       { label: 'Yes', value: 'true' },
       { label: 'No', value: 'false' },
@@ -187,19 +194,14 @@ export const defaultFilterConfigs: FilterConfig[] = [
     key: 'remade',
     label: 'Remade',
     recipeField: 'remade',
-    matchMode: 'exact',
-    order: 9,
+    matchMode: 'range',
+    order: 10,
     options: [
-      { label: '1', value: '1' },
-      { label: '2', value: '2' },
-      { label: '3', value: '3' },
-      { label: '4', value: '4' },
-      { label: '5', value: '5' },
-      { label: '6', value: '6' },
-      { label: '7', value: '7' },
-      { label: '8', value: '8' },
-      { label: '9', value: '9' },
-      { label: '10+', value: '10' },
+      { label: 'Never', value: '0-0' },
+      { label: '1-3 times', value: '1-3' },
+      { label: '4-6 times', value: '4-6' },
+      { label: '7-9 times', value: '7-9' },
+      { label: '10+ times', value: '10-9999' },
     ],
   },
 ];
@@ -260,6 +262,14 @@ export function applySort(recipes: Recipe[], sort: SortOption | null): Recipe[] 
   if (!sort) return recipes;
 
   return [...recipes].sort((a, b) => {
+    if (sort.field === 'personalRating') {
+      const aRating = computePersonalRating(a.taste, a.ease, a.cleanup);
+      const bRating = computePersonalRating(b.taste, b.ease, b.cleanup);
+      return sort.direction === 'asc'
+        ? aRating - bRating
+        : bRating - aRating;
+    }
+
     const aVal = a[sort.field];
     const bVal = b[sort.field];
 
@@ -269,8 +279,8 @@ export function applySort(recipes: Recipe[], sort: SortOption | null): Recipe[] 
         : bVal.localeCompare(aVal);
     }
 
-    const aNum = Number(aVal);
-    const bNum = Number(bVal);
+    const aNum = Number(aVal) || 0;
+    const bNum = Number(bVal) || 0;
     return sort.direction === 'asc' ? aNum - bNum : bNum - aNum;
   });
 }
