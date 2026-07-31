@@ -10,6 +10,7 @@ import { FilterBar } from '@/components/aftertaste/recipes/FilterBar';
 import { SortDropdown } from '@/components/aftertaste/recipes/SortDropdown';
 import { useFavorites } from '@/components/aftertaste/FavoritesProvider';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
+import { computePersonalRating } from '@/lib/recipe-rating';
 import { cn } from '@/lib/utils';
 import {
   defaultFilterConfigs,
@@ -44,14 +45,19 @@ function MyRecipesContent() {
   const { isFavorite } = useFavorites();
   const { recipes: allRecipes } = useRecipeStore();
 
-  // A `cuisine` param (e.g. from the Insights "Top Cuisines" list) pre-applies
-  // that cuisine filter.
+  // Deep-link filters from the Insights charts: cuisine / source pre-apply a
+  // filter; rating filters by rounded personal rating (no config field for it).
   const cuisineParam = searchParams.get('cuisine');
+  const sourceParam = searchParams.get('source');
+  const ratingParam = searchParams.get('rating');
 
   const [activeTab, setActiveTab] = useState<string>(initialTab);
-  const [filters, setFilters] = useState<ActiveFilters>(
-    cuisineParam ? { cuisine: [cuisineParam] } : {},
-  );
+  const [filters, setFilters] = useState<ActiveFilters>(() => {
+    const init: ActiveFilters = {};
+    if (cuisineParam) init.cuisine = [cuisineParam];
+    if (sourceParam) init.source = [sourceParam];
+    return init;
+  });
   const [sort, setSort] = useState<SortOption | null>(null);
   // Default to grid on first render (matches SSR), then restore the saved
   // preference on the client to avoid a hydration mismatch.
@@ -91,10 +97,21 @@ function MyRecipesContent() {
     }
 
     result = applyFilters(result, filters, defaultFilterConfigs);
+
+    // Rating deep-link (from the Insights rating-distribution chart).
+    const ratingTarget = ratingParam ? Number(ratingParam) : null;
+    if (ratingTarget !== null && ratingTarget >= 1 && ratingTarget <= 5) {
+      result = result.filter(
+        (r) =>
+          Math.round(computePersonalRating(r.taste, r.ease, r.cleanup)) ===
+          ratingTarget,
+      );
+    }
+
     result = applySort(result, sort);
 
     return result;
-  }, [activeTab, filters, sort, isFavorite, searchQuery, allRecipes]);
+  }, [activeTab, filters, sort, isFavorite, searchQuery, allRecipes, ratingParam]);
 
   return (
     <div className="max-w-7xl mx-auto">

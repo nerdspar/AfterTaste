@@ -169,22 +169,41 @@ export function RatingsTab({ recipes }: { recipes: Recipe[] }) {
             </p>
           ) : (
             <div className="space-y-2.5">
-              {[...data.ratingBuckets].reverse().map((bucket) => (
-                <div key={bucket.star} className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-8 flex-shrink-0 tabular-nums">
-                    {bucket.star}★
-                  </span>
-                  <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
-                    <div
-                      className="h-full bg-amber-400 rounded-lg transition-all"
-                      style={{ width: `${(bucket.count / maxBucket) * 100}%` }}
-                    />
+              {[...data.ratingBuckets].reverse().map((bucket) => {
+                const content = (
+                  <>
+                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-8 flex-shrink-0 tabular-nums">
+                      {bucket.star}★
+                    </span>
+                    <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+                      <div
+                        className="h-full bg-amber-400 rounded-lg transition-all"
+                        style={{ width: `${(bucket.count / maxBucket) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums w-6 text-right flex-shrink-0">
+                      {bucket.count}
+                    </span>
+                  </>
+                );
+                return bucket.count > 0 ? (
+                  <Link
+                    key={bucket.star}
+                    href={`/recipes?rating=${bucket.star}`}
+                    title={`View ${bucket.star}-star recipes`}
+                    className="flex items-center gap-3 rounded-lg hover:opacity-80 transition-opacity"
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div
+                    key={bucket.star}
+                    className="flex items-center gap-3 opacity-60"
+                  >
+                    {content}
                   </div>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 tabular-nums w-6 text-right flex-shrink-0">
-                    {bucket.count}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>

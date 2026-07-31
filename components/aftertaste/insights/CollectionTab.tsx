@@ -56,29 +56,35 @@ export function CollectionTab({ recipes }: { recipes: Recipe[] }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         {/* Category distribution */}
-        <Card>
+        <Card className="h-full flex flex-col">
           <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-4">
             Category Distribution
           </h2>
-          <div className="space-y-3">
+          {/* flex-1 + justify-between spreads the bars to fill the card height;
+              gap-4 keeps sensible spacing when the card is short (mobile). */}
+          <div className="flex-1 flex flex-col justify-between gap-4">
             {data.categoryEntries.map(([cat, count], i) => (
-              <div key={cat} className="flex items-center gap-3">
-                <span className="text-xs text-gray-500 dark:text-gray-400 w-16 text-right tabular-nums flex-shrink-0">
-                  {count} {count === 1 ? 'recipe' : 'recipes'}
+              <Link
+                key={cat}
+                href={`/recipes?tab=${encodeURIComponent(cat)}`}
+                title={`View ${cat} recipes`}
+                className="flex items-center gap-3 rounded-lg hover:opacity-80 transition-opacity"
+              >
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-20 flex-shrink-0 truncate">
+                  {cat}
                 </span>
-                <div className="flex-1 h-6 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
+                <div className="flex-1 h-10 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                   <div
-                    className={`h-full rounded-lg ${CATEGORY_COLORS[i % CATEGORY_COLORS.length]} flex items-center px-2`}
+                    className={`h-full rounded-lg ${CATEGORY_COLORS[i % CATEGORY_COLORS.length]}`}
                     style={{
                       width: `${(count / data.totalRecipes) * 100}%`,
                     }}
-                  >
-                    <span className="text-[10px] font-semibold text-white truncate">
-                      {cat}
-                    </span>
-                  </div>
+                  />
                 </div>
-              </div>
+                <span className="text-sm text-gray-500 dark:text-gray-400 w-6 text-right tabular-nums flex-shrink-0">
+                  {count}
+                </span>
+              </Link>
             ))}
           </div>
         </Card>
@@ -90,7 +96,12 @@ export function CollectionTab({ recipes }: { recipes: Recipe[] }) {
           </h2>
           <div className="space-y-3">
             {data.sourceEntries.map(([source, count]) => (
-              <div key={source}>
+              <Link
+                key={source}
+                href={`/recipes?source=${encodeURIComponent(source)}`}
+                title={`View ${source} recipes`}
+                className="block rounded-lg hover:opacity-80 transition-opacity"
+              >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {source}
@@ -105,7 +116,7 @@ export function CollectionTab({ recipes }: { recipes: Recipe[] }) {
                     style={{ width: `${(count / maxSource) * 100}%` }}
                   />
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </Card>
