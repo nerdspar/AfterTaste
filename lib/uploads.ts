@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import os from 'node:os';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { Recipe } from '@/data/sample/recipes';
@@ -6,8 +7,12 @@ import type { Recipe } from '@/data/sample/recipes';
 // Image/video files live on a mounted volume (see docker-compose), NOT as
 // data-URIs in the database. Uploaded/imported media is written here and
 // referenced by a hashed URL; external http(s) URLs are left untouched.
+//
+// Default is OUTSIDE the repo (~/.aftertaste/uploads) for the same reason the
+// dev database is: writes into a watched project dir make Next rebuild in a
+// loop. Docker sets UPLOADS_DIR=/app/uploads (a volume, no watcher).
 export const UPLOADS_DIR =
-  process.env.UPLOADS_DIR ?? path.join(process.cwd(), 'uploads');
+  process.env.UPLOADS_DIR ?? path.join(os.homedir(), '.aftertaste', 'uploads');
 
 const MIME_EXT: Record<string, string> = {
   'image/jpeg': 'jpg',

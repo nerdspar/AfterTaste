@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import {
   SunIcon,
@@ -13,8 +14,10 @@ import {
   ClipboardIcon,
   BellIcon,
   Share2Icon,
+  CameraIcon,
 } from 'lucide-react';
 import { Card } from '@/components/aftertaste/Card';
+import { Avatar } from '@/components/aftertaste/Avatar';
 import { HouseholdManager } from '@/components/aftertaste/HouseholdManager';
 import { cn } from '@/lib/utils';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
@@ -116,10 +119,14 @@ export function SettingsClient({
   const { recipes } = useRecipeStore();
   const { theme, setTheme } = useTheme();
   const user = useCurrentUser();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [accent, setAccent] = useState(user.accent);
   const [units, setUnits] = useState(user.units);
   const [displayName, setDisplayName] = useState(user.displayName);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(user.image);
+  const [avatarError, setAvatarError] = useState('');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [importOpen, setImportOpen] = useState(false);
 
   const clipboardOn = usePref(PREF_CLIPBOARD, true);
@@ -152,6 +159,27 @@ export function SettingsClient({
     persistPrefs({ displayName: trimmed });
   };
 
+  const onAvatarFile = (file: File | undefined) => {
+    setAvatarError('');
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Please choose an image file.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setAvatarError('Image must be under 2 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const dataUrl = reader.result as string;
+      setAvatarPreview(dataUrl); // instant preview
+      await updateUserPrefs({ avatarUrl: dataUrl });
+      router.refresh(); // update the header avatar with the persisted URL
+    };
+    reader.readAsDataURL(file);
+  };
+
   const isStandalone =
     mounted &&
     (window.matchMedia?.('(display-mode: standalone)').matches ||
@@ -169,6 +197,53 @@ export function SettingsClient({
         {/* Profile */}
         <Section title="Profile">
           <div className="space-y-5">
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Photo
+              </p>
+              <div className="flex items-center gap-4">
+                <Avatar
+                  src={avatarPreview ?? undefined}
+                  alt={displayName || user.email}
+                  size="lg"
+                />
+                <div>
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => onAvatarFile(e.target.files?.[0])}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => avatarInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    <CameraIcon className="w-3.5 h-3.5" />
+                    {avatarPreview ? 'Change photo' : 'Upload photo'}
+                  </button>
+                  {avatarPreview && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAvatarPreview(null);
+                        setAvatarError('');
+                        persistPrefs({ avatarUrl: '' });
+                        router.refresh();
+                      }}
+                      className="ml-2 text-xs font-medium text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                    >
+                      Remove
+                    </button>
+                  )}
+                  {avatarError && (
+                    <p className="mt-1.5 text-xs text-red-500">{avatarError}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div>
               <label
                 htmlFor="displayName"
