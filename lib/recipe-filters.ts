@@ -102,23 +102,6 @@ export const defaultFilterConfigs: FilterConfig[] = [
     ],
   },
   {
-    key: 'cookingClassType',
-    label: 'Cooking Class Type',
-    recipeField: 'cookingClassType',
-    matchMode: 'exact',
-    order: 3,
-    options: [
-      { label: 'Light & Fresh', value: 'Light & Fresh' },
-      { label: 'Taco Tuesday', value: 'Taco Tuesday' },
-      { label: 'Fusion Feast', value: 'Fusion Feast' },
-      { label: 'Cozy Comfort Food', value: 'Cozy Comfort Food' },
-      { label: 'Feeling Fancy', value: 'Feeling Fancy' },
-      { label: 'Date Night In', value: 'Date Night In' },
-      { label: 'Pasta Party', value: 'Pasta Party' },
-      { label: 'Salad Celebration', value: 'Salad Celebration' },
-    ],
-  },
-  {
     key: 'ease',
     label: 'Ease',
     recipeField: 'ease',

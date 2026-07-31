@@ -125,6 +125,28 @@ export function RecipeRatings({ recipe }: RecipeRatingsProps) {
             </span>
           </Metric>
         </div>
+
+        {(recipe.tags?.length ?? 0) > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500 mb-2">
+              Tags
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {recipe.tags!.map((tag) => (
+                <span
+                  key={tag}
+                  className={cn(
+                    'inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-medium',
+                    'bg-primary-50 text-primary-700 border border-primary-200',
+                    'dark:bg-primary-500/10 dark:text-primary-300 dark:border-primary-500/30',
+                  )}
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </button>
 
       <TagsRatingsModal

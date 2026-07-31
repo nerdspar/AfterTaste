@@ -52,7 +52,8 @@ function MyRecipesContent() {
           r.title.toLowerCase().includes(q) ||
           r.category.toLowerCase().includes(q) ||
           r.cuisine.toLowerCase().includes(q) ||
-          r.description.toLowerCase().includes(q),
+          r.description.toLowerCase().includes(q) ||
+          (r.tags ?? []).some((t) => t.toLowerCase().includes(q)),
       );
     }
 

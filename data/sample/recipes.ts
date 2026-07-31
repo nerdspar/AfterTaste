@@ -26,6 +26,7 @@ export interface Recipe {
   cleanup: number; // 1-5
   makeAgain: boolean | null; // null = not set
   remade: number; // 0-10+
+  tags?: string[]; // free-form keywords for search/filter
 }
 
 export interface Ingredient {

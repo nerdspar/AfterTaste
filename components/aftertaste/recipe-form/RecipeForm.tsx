@@ -17,7 +17,6 @@ interface RecipeFormProps {
 }
 
 const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'];
-const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
 const SOURCES = [
   'Cooking Class',
   'Internet',
@@ -26,16 +25,6 @@ const SOURCES = [
   'Friend Recommendation',
   'Original',
   'AI Generated',
-];
-const COOKING_CLASS_TYPES = [
-  'Light & Fresh',
-  'Taco Tuesday',
-  'Fusion Feast',
-  'Cozy Comfort Food',
-  'Feeling Fancy',
-  'Date Night In',
-  'Pasta Party',
-  'Salad Celebration',
 ];
 
 const inputClasses = cn(
@@ -107,13 +96,7 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
   const [calories, setCalories] = useState(
     recipe?.calories ?? init.calories ?? 400,
   );
-  const [difficulty, setDifficulty] = useState(
-    recipe?.difficulty ?? 'Medium',
-  );
   const [source, setSource] = useState(recipe?.source ?? 'Original');
-  const [cookingClassType, setCookingClassType] = useState(
-    recipe?.cookingClassType ?? 'Cozy Comfort Food',
-  );
   const [ingredients, setIngredients] = useState<Ingredient[]>(
     recipe?.ingredients ??
       init.ingredients ?? [{ name: '', quantity: '', image: '' }],
@@ -284,7 +267,7 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
       totalTimeMinutes: totalTime,
       servings,
       calories,
-      difficulty,
+      difficulty: recipe?.difficulty ?? 'Medium',
       cost: recipe?.cost ?? 0,
       isFavorite: recipe?.isFavorite ?? false,
       description: description.trim(),
@@ -299,12 +282,13 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
       },
       source,
       cuisine: cuisine.trim() || 'American',
-      cookingClassType,
+      cookingClassType: recipe?.cookingClassType ?? 'Cozy Comfort Food',
       ease: recipe?.ease ?? 0,
       taste: recipe?.taste ?? 0,
       cleanup: recipe?.cleanup ?? 0,
       makeAgain: recipe?.makeAgain ?? null,
       remade: recipe?.remade ?? 0,
+      tags: recipe?.tags ?? [],
     };
 
     try {
@@ -441,15 +425,15 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
               />
             </div>
             <div>
-              <label className={labelClasses}>Difficulty</label>
+              <label className={labelClasses}>Source</label>
               <select
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
                 className={cn(selectClasses, 'w-full')}
               >
-                {DIFFICULTIES.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
+                {SOURCES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
                   </option>
                 ))}
               </select>
@@ -499,36 +483,6 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelClasses}>Source</label>
-              <select
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-                className={cn(selectClasses, 'w-full')}
-              >
-                {SOURCES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelClasses}>Class Type</label>
-              <select
-                value={cookingClassType}
-                onChange={(e) => setCookingClassType(e.target.value)}
-                className={cn(selectClasses, 'w-full')}
-              >
-                {COOKING_CLASS_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
         </div>
       </Card>
 

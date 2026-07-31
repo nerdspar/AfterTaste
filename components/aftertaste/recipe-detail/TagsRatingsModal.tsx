@@ -93,6 +93,8 @@ export function TagsRatingsModal({
   );
   const [makeAgain, setMakeAgain] = useState(recipe.makeAgain);
   const [remade, setRemade] = useState(recipe.remade);
+  const [tags, setTags] = useState<string[]>(recipe.tags ?? []);
+  const [tagInput, setTagInput] = useState('');
 
   useEffect(() => {
     setEase(recipe.ease);
@@ -102,7 +104,22 @@ export function TagsRatingsModal({
     setCookMinutes(snapCookTime(recipe.cookTimeMinutes));
     setMakeAgain(recipe.makeAgain);
     setRemade(recipe.remade);
+    setTags(recipe.tags ?? []);
+    setTagInput('');
   }, [recipe]);
+
+  function addTag() {
+    const value = tagInput.trim();
+    if (!value) return;
+    if (!tags.some((t) => t.toLowerCase() === value.toLowerCase())) {
+      setTags([...tags, value]);
+    }
+    setTagInput('');
+  }
+
+  function removeTag(tag: string) {
+    setTags(tags.filter((t) => t !== tag));
+  }
 
   const overallRating = computePersonalRating(taste, ease, cleanup);
 
@@ -129,6 +146,7 @@ export function TagsRatingsModal({
         totalTimeMinutes: recipe.prepTimeMinutes + cookMinutes,
         makeAgain,
         remade,
+        tags,
       });
     } catch {
       // Ratings are tiny; a storage write failure here is unexpected. Close
@@ -303,6 +321,55 @@ export function TagsRatingsModal({
                 +
               </button>
             </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+              Tags
+            </label>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className={cn(
+                      'inline-flex items-center gap-1 h-7 pl-2.5 pr-1.5 rounded-full text-xs font-medium',
+                      'bg-primary-50 text-primary-700 border border-primary-200',
+                      'dark:bg-primary-500/10 dark:text-primary-300 dark:border-primary-500/30',
+                    )}
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      aria-label={`Remove ${tag}`}
+                      className="rounded-full p-0.5 hover:bg-primary-200/60 dark:hover:bg-primary-500/20 transition-colors"
+                    >
+                      <XIcon className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <input
+              type="text"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addTag();
+                }
+              }}
+              placeholder="Add a tag and press Enter"
+              className={cn(
+                'w-full h-10 px-3 rounded-lg text-sm',
+                'border border-gray-200 bg-white text-gray-900',
+                'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
+                'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
+              )}
+            />
           </div>
         </div>
 

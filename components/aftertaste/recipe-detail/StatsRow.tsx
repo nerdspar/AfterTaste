@@ -1,5 +1,12 @@
 import { cn } from '@/lib/utils';
-import { ClockIcon, ZapIcon, FlameIcon, UsersIcon } from 'lucide-react';
+import {
+  ClockIcon,
+  FlameIcon,
+  UsersIcon,
+  GlobeIcon,
+  BookmarkIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import type { Recipe } from '@/data/sample/recipes';
 
 interface StatsRowProps {
@@ -15,75 +22,52 @@ function formatMinutes(mins: number) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+function StatTile({
+  icon: Icon,
+  value,
+  sub,
+}: {
+  icon: LucideIcon;
+  value: string;
+  sub: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2.5 min-w-0',
+        'dark:border-gray-700/40 dark:bg-slate-900',
+      )}
+    >
+      <Icon className="w-4 h-4 text-secondary-500 dark:text-secondary-400 flex-shrink-0" />
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums leading-tight truncate">
+          {value}
+        </p>
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-tight truncate">
+          {sub}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function StatsRow({ recipe, servings, multiplier }: StatsRowProps) {
   const scaledCalories = Math.round(recipe.calories * multiplier);
   return (
-    <div className="flex items-stretch gap-2 flex-wrap">
-      {/* Total Time – with Prep / Cook sub-entries */}
-      <div
-        className={cn(
-          'flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2.5',
-          'dark:border-gray-700/40 dark:bg-slate-900',
-        )}
-      >
-        <ClockIcon className="w-4 h-4 text-secondary-500 dark:text-secondary-400 flex-shrink-0" />
-        <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">
-            {formatMinutes(recipe.totalTimeMinutes)}
-          </p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500 tabular-nums leading-tight">
-            {formatMinutes(recipe.prepTimeMinutes)} prep · {formatMinutes(recipe.cookTimeMinutes)} cook
-          </p>
-        </div>
-      </div>
-
-      {/* Difficulty */}
-      <div
-        className={cn(
-          'flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2.5',
-          'dark:border-gray-700/40 dark:bg-slate-900',
-        )}
-      >
-        <ZapIcon className="w-4 h-4 text-secondary-500 dark:text-secondary-400 flex-shrink-0" />
-        <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight">
-            {recipe.difficulty}
-          </p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">Difficulty</p>
-        </div>
-      </div>
-
-      {/* Calories */}
-      <div
-        className={cn(
-          'flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2.5',
-          'dark:border-gray-700/40 dark:bg-slate-900',
-        )}
-      >
-        <FlameIcon className="w-4 h-4 text-secondary-500 dark:text-secondary-400 flex-shrink-0" />
-        <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">
-            {scaledCalories} kcal
-          </p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">Calories</p>
-        </div>
-      </div>
-
-      {/* Servings */}
-      <div
-        className={cn(
-          'flex items-center gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2.5',
-          'dark:border-gray-700/40 dark:bg-slate-900',
-        )}
-      >
-        <UsersIcon className="w-4 h-4 text-secondary-500 dark:text-secondary-400 flex-shrink-0" />
-        <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums leading-tight">
-            {servings}
-          </p>
-          <p className="text-[11px] text-gray-400 dark:text-gray-500">Servings</p>
-        </div>
-      </div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+      <StatTile
+        icon={ClockIcon}
+        value={formatMinutes(recipe.totalTimeMinutes)}
+        sub={`${formatMinutes(recipe.prepTimeMinutes)} prep · ${formatMinutes(recipe.cookTimeMinutes)} cook`}
+      />
+      <StatTile icon={GlobeIcon} value={recipe.cuisine} sub="Cuisine" />
+      <StatTile icon={BookmarkIcon} value={recipe.source} sub="Source" />
+      <StatTile
+        icon={FlameIcon}
+        value={`${scaledCalories} kcal`}
+        sub="Calories"
+      />
+      <StatTile icon={UsersIcon} value={String(servings)} sub="Servings" />
     </div>
   );
 }
