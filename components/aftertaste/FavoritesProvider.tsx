@@ -1,69 +1,10 @@
 'use client';
 
-import { createContext, useCallback, useContext, useSyncExternalStore } from 'react';
-import {
-  recommendedRecipes,
-  recentlyViewedRecipes,
-  recentlyAddedRecipes,
-} from '@/data/sample/recipes';
+import { createContext, useCallback, useContext, useState } from 'react';
+import { setFavoriteAction } from '@/app/(app)/data-actions';
 
-const STORAGE_KEY = 'aftertaste-favorites';
-
-function getDefaultFavorites(): Set<string> {
-  const all = [...recommendedRecipes, ...recentlyViewedRecipes, ...recentlyAddedRecipes];
-  return new Set(all.filter((r) => r.isFavorite).map((r) => r.id));
-}
-
-function loadFavorites(): Set<string> {
-  if (typeof window === 'undefined') return getDefaultFavorites();
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return new Set(JSON.parse(stored) as string[]);
-  } catch {}
-  return getDefaultFavorites();
-}
-
-function saveFavorites(set: Set<string>) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...set]));
-  } catch {}
-}
-
-let favoritesSet: Set<string> = loadFavorites();
-let listeners: Array<() => void> = [];
-
-function emitChange() {
-  for (const listener of listeners) {
-    listener();
-  }
-}
-
-function subscribe(listener: () => void) {
-  listeners = [...listeners, listener];
-  return () => {
-    listeners = listeners.filter((l) => l !== listener);
-  };
-}
-
-function getSnapshot(): Set<string> {
-  return favoritesSet;
-}
-
-const serverSnapshot = getDefaultFavorites();
-function getServerSnapshot(): Set<string> {
-  return serverSnapshot;
-}
-
-function toggleFavorite(id: string) {
-  const next = new Set(favoritesSet);
-  if (next.has(id)) {
-    next.delete(id);
-  } else {
-    next.add(id);
-  }
-  favoritesSet = next;
-  saveFavorites(next);
-  emitChange();
+function reportError(op: string, err: unknown) {
+  console.error(`[favorites] ${op} failed`, err);
 }
 
 interface FavoritesContextValue {
@@ -74,11 +15,38 @@ interface FavoritesContextValue {
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
-export function FavoritesProvider({ children }: { children: React.ReactNode }) {
-  const favorites = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+export function FavoritesProvider({
+  initialFavorites,
+  children,
+}: {
+  initialFavorites: string[];
+  children: React.ReactNode;
+}) {
+  const [favorites, setFavorites] = useState<Set<string>>(
+    () => new Set(initialFavorites),
+  );
 
-  const isFavorite = useCallback(
-    (id: string) => favorites.has(id),
+  const isFavorite = useCallback((id: string) => favorites.has(id), [favorites]);
+
+  const toggleFavorite = useCallback(
+    (id: string) => {
+      const willFavorite = !favorites.has(id);
+      setFavorites((prev) => {
+        const next = new Set(prev);
+        if (willFavorite) next.add(id);
+        else next.delete(id);
+        return next;
+      });
+      setFavoriteAction(id, willFavorite).catch((err) => {
+        reportError('toggleFavorite', err);
+        setFavorites((prev) => {
+          const next = new Set(prev);
+          if (willFavorite) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+      });
+    },
     [favorites],
   );
 

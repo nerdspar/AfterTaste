@@ -1,9 +1,13 @@
 'use client';
 
-import { createContext, useContext, useSyncExternalStore } from 'react';
-import { groceryItems, type GroceryItem } from '@/data/sample/recipes';
-
-const STORAGE_KEY = 'aftertaste-grocery';
+import { createContext, useCallback, useContext, useState } from 'react';
+import type { GroceryItem } from '@/data/sample/recipes';
+import {
+  addGroceryItemsAction,
+  toggleGroceryItemAction,
+  removeGroceryItemAction,
+  reorderGroceryItemsAction,
+} from '@/app/(app)/data-actions';
 
 export interface NewGroceryItem {
   name: string;
@@ -13,112 +17,14 @@ export interface NewGroceryItem {
   recipeTitle?: string;
 }
 
-function getDefaultGrocery(): GroceryItem[] {
-  return groceryItems;
+function reportError(op: string, err: unknown) {
+  console.error(`[grocery] ${op} failed`, err);
 }
 
-function loadGrocery(): GroceryItem[] {
-  if (typeof window === 'undefined') return getDefaultGrocery();
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as GroceryItem[];
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch {}
-  return getDefaultGrocery();
-}
-
-function saveGrocery(items: GroceryItem[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  } catch {}
-}
-
-let groceryList: GroceryItem[] = loadGrocery();
-let listeners: Array<() => void> = [];
 let idCounter = 0;
-
-function emitChange() {
-  for (const listener of listeners) listener();
-}
-
-function subscribe(listener: () => void) {
-  listeners = [...listeners, listener];
-  return () => {
-    listeners = listeners.filter((l) => l !== listener);
-  };
-}
-
-function getSnapshot(): GroceryItem[] {
-  return groceryList;
-}
-
-// Must be a stable module-level constant — returning a fresh value here causes
-// an infinite render loop with useSyncExternalStore.
-const serverSnapshot = getDefaultGrocery();
-function getServerSnapshot(): GroceryItem[] {
-  return serverSnapshot;
-}
-
 function nextId(): string {
   idCounter += 1;
   return `g-${Date.now()}-${idCounter}`;
-}
-
-function toggleItem(id: string) {
-  groceryList = groceryList.map((item) =>
-    item.id === id ? { ...item, checked: !item.checked } : item,
-  );
-  saveGrocery(groceryList);
-  emitChange();
-}
-
-function removeItem(id: string) {
-  groceryList = groceryList.filter((item) => item.id !== id);
-  saveGrocery(groceryList);
-  emitChange();
-}
-
-// Adds items that aren't already on the list (case-insensitive by name) and
-// returns how many were actually added.
-function addItems(inputs: NewGroceryItem[]): number {
-  const existing = new Set(
-    groceryList.map((item) => item.name.trim().toLowerCase()),
-  );
-  const toAdd: GroceryItem[] = [];
-  for (const input of inputs) {
-    const name = input.name.trim();
-    const key = name.toLowerCase();
-    if (!name || existing.has(key)) continue;
-    existing.add(key);
-    toAdd.push({
-      id: nextId(),
-      name,
-      quantity: (input.quantity ?? '').trim() || '1',
-      checked: false,
-      category: input.category || 'Pantry Essentials',
-      ...(input.recipeId ? { recipeId: input.recipeId } : {}),
-      ...(input.recipeTitle ? { recipeTitle: input.recipeTitle } : {}),
-    });
-  }
-  if (toAdd.length === 0) return 0;
-  groceryList = [...groceryList, ...toAdd];
-  saveGrocery(groceryList);
-  emitChange();
-  return toAdd.length;
-}
-
-function addItem(input: NewGroceryItem): number {
-  return addItems([input]);
-}
-
-// Replace the whole ordered list — used by drag-and-drop, which computes the
-// new order (and any changed categories) and commits it in one shot.
-function reorderItems(next: GroceryItem[]) {
-  groceryList = next;
-  saveGrocery(groceryList);
-  emitChange();
 }
 
 interface GroceryStoreContextValue {
@@ -133,14 +39,92 @@ interface GroceryStoreContextValue {
 const GroceryStoreContext = createContext<GroceryStoreContextValue | null>(null);
 
 export function GroceryStoreProvider({
+  initialItems,
   children,
 }: {
+  initialItems: GroceryItem[];
   children: React.ReactNode;
 }) {
-  const items = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot,
+  const [items, setItems] = useState<GroceryItem[]>(initialItems);
+
+  // Adds items that aren't already on the list (case-insensitive by name) and
+  // returns how many were actually added.
+  const addItems = useCallback(
+    (inputs: NewGroceryItem[]): number => {
+      const existing = new Set(items.map((i) => i.name.trim().toLowerCase()));
+      const toAdd: GroceryItem[] = [];
+      for (const input of inputs) {
+        const name = input.name.trim();
+        const key = name.toLowerCase();
+        if (!name || existing.has(key)) continue;
+        existing.add(key);
+        toAdd.push({
+          id: nextId(),
+          name,
+          quantity: (input.quantity ?? '').trim() || '1',
+          checked: false,
+          category: input.category || 'Pantry Essentials',
+          ...(input.recipeId ? { recipeId: input.recipeId } : {}),
+          ...(input.recipeTitle ? { recipeTitle: input.recipeTitle } : {}),
+        });
+      }
+      if (toAdd.length === 0) return 0;
+      setItems((prev) => [...prev, ...toAdd]);
+      addGroceryItemsAction(toAdd).catch((err) => {
+        reportError('addItems', err);
+        const addedIds = new Set(toAdd.map((i) => i.id));
+        setItems((prev) => prev.filter((i) => !addedIds.has(i.id)));
+      });
+      return toAdd.length;
+    },
+    [items],
+  );
+
+  const addItem = useCallback(
+    (input: NewGroceryItem) => addItems([input]),
+    [addItems],
+  );
+
+  const toggleItem = useCallback((id: string) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, checked: !item.checked } : item,
+      ),
+    );
+    toggleGroceryItemAction(id).catch((err) => {
+      reportError('toggleItem', err);
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, checked: !item.checked } : item,
+        ),
+      );
+    });
+  }, []);
+
+  const removeItem = useCallback(
+    (id: string) => {
+      const removed = items.find((i) => i.id === id);
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      removeGroceryItemAction(id).catch((err) => {
+        reportError('removeItem', err);
+        if (removed) setItems((prev) => [...prev, removed]);
+      });
+    },
+    [items],
+  );
+
+  // Replace the whole ordered list — used by drag-and-drop, which computes the
+  // new order (and any changed categories) and commits it in one shot.
+  const reorderItems = useCallback(
+    (next: GroceryItem[]) => {
+      const prevItems = items;
+      setItems(next);
+      reorderGroceryItemsAction(next).catch((err) => {
+        reportError('reorderItems', err);
+        setItems(prevItems);
+      });
+    },
+    [items],
   );
 
   return (

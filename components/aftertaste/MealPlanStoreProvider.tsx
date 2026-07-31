@@ -1,16 +1,17 @@
 'use client';
 
-import { createContext, useContext, useSyncExternalStore } from 'react';
-
-const STORAGE_KEY = 'aftertaste-meal-plan';
+import { createContext, useCallback, useContext, useState } from 'react';
+import {
+  setMealSlotAction,
+  clearMealSlotAction,
+} from '@/app/(app)/data-actions';
 
 // A slot value is either a recipe id or a note. Notes are stored with this
-// prefix so the map stays a plain Record<string, string> and old plans (which
-// only ever held recipe ids) keep working unchanged. Recipe ids are slugs and
-// never contain a colon, so the prefix can't collide with one.
+// prefix so the map stays a plain Record<string, string>. Recipe ids are slugs
+// and never contain a colon, so the prefix can't collide with one.
 const NOTE_PREFIX = 'note:';
 
-// slotKey (`<ISO date>_<meal>`) -> recipe id or `note:<text>`
+// slotKey (`<YYYY-MM-DD>_<meal>`) -> recipe id or `note:<text>`
 type Plan = Record<string, string>;
 
 export type PlanEntry =
@@ -28,70 +29,8 @@ export function parsePlanEntry(
   return { type: 'recipe', recipeId: value };
 }
 
-function loadPlan(): Plan {
-  if (typeof window === 'undefined') return {};
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as Plan;
-      if (parsed && typeof parsed === 'object') return parsed;
-    }
-  } catch {}
-  return {};
-}
-
-function savePlan(plan: Plan) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(plan));
-  } catch {}
-}
-
-let planState: Plan = loadPlan();
-let listeners: Array<() => void> = [];
-
-function emitChange() {
-  for (const listener of listeners) listener();
-}
-
-function subscribe(listener: () => void) {
-  listeners = [...listeners, listener];
-  return () => {
-    listeners = listeners.filter((l) => l !== listener);
-  };
-}
-
-function getSnapshot(): Plan {
-  return planState;
-}
-
-// Must be a stable module-level constant — returning a fresh object here causes
-// an infinite render loop with useSyncExternalStore.
-const serverSnapshot: Plan = {};
-function getServerSnapshot(): Plan {
-  return serverSnapshot;
-}
-
-function assignSlot(slotKey: string, recipeId: string) {
-  planState = { ...planState, [slotKey]: recipeId };
-  savePlan(planState);
-  emitChange();
-}
-
-function assignNote(slotKey: string, text: string) {
-  const trimmed = text.trim();
-  if (!trimmed) return;
-  planState = { ...planState, [slotKey]: NOTE_PREFIX + trimmed };
-  savePlan(planState);
-  emitChange();
-}
-
-function clearSlot(slotKey: string) {
-  if (!(slotKey in planState)) return;
-  const next = { ...planState };
-  delete next[slotKey];
-  planState = next;
-  savePlan(planState);
-  emitChange();
+function reportError(op: string, err: unknown) {
+  console.error(`[mealplan] ${op} failed`, err);
 }
 
 interface MealPlanContextValue {
@@ -104,11 +43,68 @@ interface MealPlanContextValue {
 const MealPlanContext = createContext<MealPlanContextValue | null>(null);
 
 export function MealPlanStoreProvider({
+  initialPlan,
   children,
 }: {
+  initialPlan: Plan;
   children: React.ReactNode;
 }) {
-  const plan = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [plan, setPlan] = useState<Plan>(initialPlan);
+
+  const persist = useCallback(
+    (slotKey: string, value: string, prevValue: string | undefined) => {
+      setMealSlotAction(slotKey, value).catch((err) => {
+        reportError('assign', err);
+        setPlan((prev) => {
+          const next = { ...prev };
+          if (prevValue === undefined) delete next[slotKey];
+          else next[slotKey] = prevValue;
+          return next;
+        });
+      });
+    },
+    [],
+  );
+
+  const assignSlot = useCallback(
+    (slotKey: string, recipeId: string) => {
+      const prevValue = plan[slotKey];
+      setPlan((prev) => ({ ...prev, [slotKey]: recipeId }));
+      persist(slotKey, recipeId, prevValue);
+    },
+    [plan, persist],
+  );
+
+  const assignNote = useCallback(
+    (slotKey: string, text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      const value = NOTE_PREFIX + trimmed;
+      const prevValue = plan[slotKey];
+      setPlan((prev) => ({ ...prev, [slotKey]: value }));
+      persist(slotKey, value, prevValue);
+    },
+    [plan, persist],
+  );
+
+  const clearSlot = useCallback(
+    (slotKey: string) => {
+      if (!(slotKey in plan)) return;
+      const prevValue = plan[slotKey];
+      setPlan((prev) => {
+        const next = { ...prev };
+        delete next[slotKey];
+        return next;
+      });
+      clearMealSlotAction(slotKey).catch((err) => {
+        reportError('clearSlot', err);
+        if (prevValue !== undefined) {
+          setPlan((prev) => ({ ...prev, [slotKey]: prevValue }));
+        }
+      });
+    },
+    [plan],
+  );
 
   return (
     <MealPlanContext.Provider value={{ plan, assignSlot, assignNote, clearSlot }}>

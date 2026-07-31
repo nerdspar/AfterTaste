@@ -4,8 +4,10 @@ import { RecipeStoreProvider } from '@/components/aftertaste/RecipeStoreProvider
 import { GroceryStoreProvider } from '@/components/aftertaste/GroceryStoreProvider';
 import { MealPlanStoreProvider } from '@/components/aftertaste/MealPlanStoreProvider';
 import { RecipeActionsProvider } from '@/components/aftertaste/RecipeActionsProvider';
-import { requireSession } from '@/lib/session';
+import { RecentlyViewedHydrator } from '@/components/aftertaste/RecentlyViewedHydrator';
 import { auth } from '@/auth';
+import { redirect } from 'next/navigation';
+import { loadHouseholdState } from '@/lib/data';
 
 export default async function AppLayout({
   children,
@@ -14,20 +16,25 @@ export default async function AppLayout({
 }) {
   // Gate the app (defense in depth alongside middleware) and surface the
   // signed-in user to the header.
-  await requireSession();
   const session = await auth();
+  if (!session?.user?.id || !session.user.householdId) redirect('/login');
+
   const user = {
-    name: session?.user?.name ?? session?.user?.email ?? 'Account',
-    email: session?.user?.email ?? '',
-    image: session?.user?.image ?? null,
+    name: session.user.name ?? session.user.email ?? 'Account',
+    email: session.user.email ?? '',
+    image: session.user.image ?? null,
   };
 
+  // Load the household's data on the server and seed the client stores.
+  const state = await loadHouseholdState();
+
   return (
-    <RecipeStoreProvider>
-      <FavoritesProvider>
-        <GroceryStoreProvider>
-          <MealPlanStoreProvider>
+    <RecipeStoreProvider initialRecipes={state.recipes}>
+      <FavoritesProvider initialFavorites={state.favorites}>
+        <GroceryStoreProvider initialItems={state.grocery}>
+          <MealPlanStoreProvider initialPlan={state.plan}>
             <RecipeActionsProvider>
+              <RecentlyViewedHydrator ids={state.recentlyViewed} />
               <AppShell user={user}>{children}</AppShell>
             </RecipeActionsProvider>
           </MealPlanStoreProvider>
