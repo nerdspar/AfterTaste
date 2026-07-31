@@ -9,6 +9,11 @@ function computeScoring() {
   const avgEase = recipes.reduce((s, r) => s + r.ease, 0) / total;
   const avgTaste = recipes.reduce((s, r) => s + r.taste, 0) / total;
   const avgCleanup = recipes.reduce((s, r) => s + r.cleanup, 0) / total;
+  const avgCost = recipes.reduce((s, r) => s + r.cost, 0) / total;
+  const avgCookTime = Math.round(
+    recipes.reduce((s, r) => s + r.cookTimeMinutes, 0) / total,
+  );
+  const quickCount = recipes.filter((r) => r.cookTimeMinutes <= 30).length;
   const totalRemade = recipes.reduce((s, r) => s + r.remade, 0);
   const makeAgainCount = recipes.filter((r) => r.makeAgain).length;
   const makeAgainPct = Math.round((makeAgainCount / total) * 100);
@@ -39,6 +44,9 @@ function computeScoring() {
     avgEase,
     avgTaste,
     avgCleanup,
+    avgCost,
+    avgCookTime,
+    quickCount,
     totalRemade,
     makeAgainCount,
     makeAgainPct,
@@ -223,6 +231,35 @@ export default function ScoringPage() {
             <ScoreBar label="Ease" value={data.avgEase} max={5} />
             <ScoreBar label="Taste" value={data.avgTaste} max={5} />
             <ScoreBar label="Cleanup" value={data.avgCleanup} max={5} />
+          </div>
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-2.5">
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                Avg Cook Time
+              </span>
+              <span className="font-bold text-gray-900 dark:text-gray-100 tabular-nums">
+                {data.avgCookTime} min
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                Avg Cost
+              </span>
+              <span className="font-bold text-gray-900 dark:text-gray-100">
+                {'$'.repeat(Math.max(1, Math.round(data.avgCost)))}
+                <span className="ml-1 text-xs font-normal text-gray-400 dark:text-gray-500">
+                  ({data.avgCost.toFixed(1)})
+                </span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium text-gray-700 dark:text-gray-300">
+                Quick Meals (≤30 min)
+              </span>
+              <span className="font-bold text-gray-900 dark:text-gray-100 tabular-nums">
+                {data.quickCount}
+              </span>
+            </div>
           </div>
         </Card>
 

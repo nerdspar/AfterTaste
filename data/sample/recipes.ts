@@ -12,7 +12,7 @@ export interface Recipe {
   servings: number;
   calories: number;
   difficulty: string;
-  sweetness: number; // 0-3
+  cost: number; // 1=$, 2=$$, 3=$$$
   isFavorite: boolean;
   description: string;
   ingredients: Ingredient[];
@@ -77,7 +77,7 @@ export const recommendedRecipes: Recipe[] = [
     servings: 4,
     calories: 1253,
     difficulty: 'Medium',
-    sweetness: 2,
+    cost: 1,
     isFavorite: true,
     description:
       'Start your morning with these light, fluffy banana oat pancakes topped with warm cinnamon and a burst of fresh berries. Perfect for a cozy weekend breakfast that the whole family will love.',
@@ -140,7 +140,7 @@ export const recommendedRecipes: Recipe[] = [
     servings: 2,
     calories: 520,
     difficulty: 'Easy',
-    sweetness: 0,
+    cost: 2,
     isFavorite: false,
     description:
       'A vibrant, nutrient-packed bowl featuring fluffy quinoa, roasted vegetables, and a creamy lemon tahini dressing.',
@@ -210,7 +210,7 @@ export const recommendedRecipes: Recipe[] = [
     servings: 4,
     calories: 680,
     difficulty: 'Medium',
-    sweetness: 1,
+    cost: 3,
     isFavorite: true,
     description:
       'Perfectly grilled salmon with a sweet honey glaze, served alongside colorful roasted seasonal vegetables.',
@@ -279,7 +279,7 @@ export const recommendedRecipes: Recipe[] = [
     servings: 2,
     calories: 450,
     difficulty: 'Hard',
-    sweetness: 3,
+    cost: 2,
     isFavorite: false,
     description:
       'Rich, indulgent chocolate lava cake with a molten center, paired with creamy vanilla ice cream.',
@@ -348,7 +348,7 @@ export const recommendedRecipes: Recipe[] = [
     servings: 6,
     calories: 720,
     difficulty: 'Medium',
-    sweetness: 1,
+    cost: 2,
     isFavorite: true,
     description:
       'Authentic tacos al pastor with marinated pork, grilled pineapple salsa, and zesty cilantro lime rice.',
@@ -418,7 +418,7 @@ export const recommendedRecipes: Recipe[] = [
     servings: 4,
     calories: 580,
     difficulty: 'Medium',
-    sweetness: 1,
+    cost: 3,
     isFavorite: false,
     description:
       'A classic Thai stir-fried noodle dish with succulent shrimp, crunchy bean sprouts, and crushed peanuts.',
@@ -488,7 +488,7 @@ export const recommendedRecipes: Recipe[] = [
     servings: 2,
     calories: 340,
     difficulty: 'Easy',
-    sweetness: 0,
+    cost: 1,
     isFavorite: false,
     description:
       'Crispy romaine lettuce tossed in creamy Caesar dressing with parmesan and golden homemade croutons.',
@@ -552,7 +552,7 @@ export const recommendedRecipes: Recipe[] = [
     servings: 4,
     calories: 620,
     difficulty: 'Medium',
-    sweetness: 0,
+    cost: 2,
     isFavorite: true,
     description:
       'A colorful Korean rice bowl topped with seasoned vegetables, spicy gochujang sauce, and a perfect fried egg.',
@@ -622,7 +622,7 @@ export const recommendedRecipes: Recipe[] = [
     servings: 4,
     calories: 750,
     difficulty: 'Medium',
-    sweetness: 0,
+    cost: 3,
     isFavorite: true,
     description:
       'Silky, authentic Italian carbonara with crispy pancetta, rich egg yolk, and sharp pecorino romano.',
@@ -690,7 +690,7 @@ export const recommendedRecipes: Recipe[] = [
     servings: 2,
     calories: 410,
     difficulty: 'Easy',
-    sweetness: 0,
+    cost: 1,
     isFavorite: false,
     description:
       'A vibrant, AI-generated recipe combining nutrient-dense ingredients into a beautiful rainbow bowl.',
@@ -762,7 +762,7 @@ export const recentlyViewedRecipes: Recipe[] = [
     servings: 4,
     calories: 680,
     difficulty: 'Medium',
-    sweetness: 1,
+    cost: 3,
     isFavorite: true,
     description:
       'Perfectly grilled salmon with a sweet honey glaze, served alongside colorful roasted seasonal vegetables.',
@@ -831,7 +831,7 @@ export const recentlyViewedRecipes: Recipe[] = [
     servings: 4,
     calories: 1253,
     difficulty: 'Medium',
-    sweetness: 2,
+    cost: 1,
     isFavorite: true,
     description:
       'Start your morning with these light, fluffy banana oat pancakes topped with warm cinnamon and a burst of fresh berries.',
@@ -897,7 +897,7 @@ export const recentlyAddedRecipes: Recipe[] = [
     servings: 1,
     calories: 380,
     difficulty: 'Easy',
-    sweetness: 0,
+    cost: 1,
     isFavorite: false,
     description:
       'Crispy sourdough topped with creamy avocado, perfectly poached eggs, and a kick of chili flakes.',
@@ -960,7 +960,7 @@ export const recentlyAddedRecipes: Recipe[] = [
     servings: 4,
     calories: 590,
     difficulty: 'Medium',
-    sweetness: 0,
+    cost: 2,
     isFavorite: false,
     description:
       'Aromatic Thai green curry loaded with vegetables and tender chicken, served over fluffy jasmine rice.',

@@ -13,6 +13,29 @@ interface TagsRatingsModalProps {
   onClose: () => void;
 }
 
+// 15-minute increments up to 3 hours.
+const COOK_TIME_OPTIONS = Array.from({ length: 12 }, (_, i) => (i + 1) * 15);
+
+function formatCookTime(mins: number): string {
+  if (mins >= 60) {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m > 0 ? `${h}h ${m} mins` : `${h}h`;
+  }
+  return `${mins} mins`;
+}
+
+function snapCookTime(mins: number): number {
+  const snapped = Math.round(mins / 15) * 15;
+  return Math.min(180, Math.max(15, snapped || 15));
+}
+
+const COST_OPTIONS = [
+  { value: 1, label: '$' },
+  { value: 2, label: '$$' },
+  { value: 3, label: '$$$' },
+];
+
 function ScoreSelector({
   label,
   value,
@@ -62,7 +85,10 @@ export function TagsRatingsModal({
   const [ease, setEase] = useState(recipe.ease);
   const [taste, setTaste] = useState(recipe.taste);
   const [cleanup, setCleanup] = useState(recipe.cleanup);
-  const [sweetness, setSweetness] = useState(recipe.sweetness);
+  const [cost, setCost] = useState(recipe.cost);
+  const [cookMinutes, setCookMinutes] = useState(
+    snapCookTime(recipe.cookTimeMinutes),
+  );
   const [makeAgain, setMakeAgain] = useState(recipe.makeAgain);
   const [remade, setRemade] = useState(recipe.remade);
   const [rating, setRating] = useState(recipe.rating);
@@ -71,7 +97,8 @@ export function TagsRatingsModal({
     setEase(recipe.ease);
     setTaste(recipe.taste);
     setCleanup(recipe.cleanup);
-    setSweetness(recipe.sweetness);
+    setCost(recipe.cost);
+    setCookMinutes(snapCookTime(recipe.cookTimeMinutes));
     setMakeAgain(recipe.makeAgain);
     setRemade(recipe.remade);
     setRating(recipe.rating);
@@ -94,7 +121,10 @@ export function TagsRatingsModal({
         ease,
         taste,
         cleanup,
-        sweetness,
+        cost,
+        cookTimeMinutes: cookMinutes,
+        cookTime: formatCookTime(cookMinutes),
+        totalTimeMinutes: recipe.prepTimeMinutes + cookMinutes,
         makeAgain,
         remade,
         rating,
@@ -159,12 +189,53 @@ export function TagsRatingsModal({
           <ScoreSelector label="Ease of Cooking" value={ease} onChange={setEase} />
           <ScoreSelector label="Taste" value={taste} onChange={setTaste} />
           <ScoreSelector label="Cleanup" value={cleanup} onChange={setCleanup} />
-          <ScoreSelector
-            label="Sweetness"
-            value={sweetness}
-            onChange={setSweetness}
-            max={3}
-          />
+
+          {/* Cost */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+              Cost
+            </label>
+            <div className="flex gap-2">
+              {COST_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setCost(opt.value)}
+                  className={cn(
+                    'flex-1 h-10 rounded-lg text-sm font-bold transition-colors',
+                    cost === opt.value
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-500 dark:hover:bg-gray-700',
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cook time */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
+              Cook Time
+            </label>
+            <select
+              value={cookMinutes}
+              onChange={(e) => setCookMinutes(Number(e.target.value))}
+              className={cn(
+                'w-full h-10 px-3 rounded-lg text-sm',
+                'border border-gray-200 bg-white text-gray-900',
+                'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
+                'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
+              )}
+            >
+              {COOK_TIME_OPTIONS.map((mins) => (
+                <option key={mins} value={mins}>
+                  {formatCookTime(mins)}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Make again toggle */}
           <div>

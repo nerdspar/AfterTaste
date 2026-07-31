@@ -285,7 +285,7 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
       servings,
       calories,
       difficulty,
-      sweetness: recipe?.sweetness ?? 0,
+      cost: recipe?.cost ?? 2,
       isFavorite: recipe?.isFavorite ?? false,
       description: description.trim(),
       ingredients: validIngredients,
