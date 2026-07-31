@@ -5,7 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/aftertaste/Card';
 import { Button } from '@/components/aftertaste/Button';
 import { cn } from '@/lib/utils';
-import { PlusIcon, TrashIcon, ImageIcon, PlayIcon } from 'lucide-react';
+import {
+  PlusIcon,
+  TrashIcon,
+  ImageIcon,
+  PlayIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+} from 'lucide-react';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { isVideoSource } from '@/lib/media';
 import type { Recipe, Ingredient, Instruction } from '@/data/sample/recipes';
@@ -70,6 +77,47 @@ function resolveCategory(value: string | undefined, fallback: string): string {
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 10 * 1024 * 1024;
+
+// Up/down reorder buttons — touch-friendly (works where drag-and-drop doesn't).
+function ReorderControls({
+  onUp,
+  onDown,
+  canUp,
+  canDown,
+}: {
+  onUp: () => void;
+  onDown: () => void;
+  canUp: boolean;
+  canDown: boolean;
+}) {
+  const btn = cn(
+    'flex items-center justify-center w-5 h-5 rounded text-gray-400 transition-colors',
+    'hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-gray-800',
+    'disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-gray-400',
+  );
+  return (
+    <div className="flex flex-col flex-shrink-0">
+      <button
+        type="button"
+        aria-label="Move up"
+        onClick={onUp}
+        disabled={!canUp}
+        className={btn}
+      >
+        <ChevronUpIcon className="w-3.5 h-3.5" />
+      </button>
+      <button
+        type="button"
+        aria-label="Move down"
+        onClick={onDown}
+        disabled={!canDown}
+        className={btn}
+      >
+        <ChevronDownIcon className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
 
 export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   const isEditing = !!recipe;
@@ -205,6 +253,16 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
     setIngredients((prev) => prev.filter((_, i) => i !== index));
   }
 
+  function moveIngredient(index: number, dir: -1 | 1) {
+    setIngredients((prev) => {
+      const target = index + dir;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
   function updateInstruction(
     index: number,
     field: keyof Instruction,
@@ -238,6 +296,19 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
           step: String(i + 1).padStart(2, '0'),
         })),
     );
+  }
+
+  function moveInstruction(index: number, dir: -1 | 1) {
+    setInstructions((prev) => {
+      const target = index + dir;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next.map((inst, i) => ({
+        ...inst,
+        step: String(i + 1).padStart(2, '0'),
+      }));
+    });
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -517,12 +588,18 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
         <div className="space-y-2">
           {ingredients.map((ing, i) => (
             <div key={i} className="flex items-center gap-2">
+              <ReorderControls
+                onUp={() => moveIngredient(i, -1)}
+                onDown={() => moveIngredient(i, 1)}
+                canUp={i > 0}
+                canDown={i < ingredients.length - 1}
+              />
               <input
                 type="text"
                 value={ing.name}
                 onChange={(e) => updateIngredient(i, 'name', e.target.value)}
                 placeholder="Ingredient name"
-                className={cn(inputClasses, 'flex-1')}
+                className={cn(inputClasses, 'flex-1 min-w-0')}
               />
               <input
                 type="text"
@@ -531,11 +608,12 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
                   updateIngredient(i, 'quantity', e.target.value)
                 }
                 placeholder="Qty"
-                className={cn(inputClasses, 'w-28')}
+                className={cn(inputClasses, 'w-20 sm:w-28 flex-shrink-0')}
               />
               <button
                 type="button"
                 onClick={() => removeIngredient(i)}
+                aria-label="Remove ingredient"
                 className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
               >
                 <TrashIcon className="w-4 h-4 text-red-400" />
@@ -630,14 +708,22 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
                   </button>
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => removeInstruction(i)}
-                aria-label="Remove step"
-                className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0 self-start"
-              >
-                <TrashIcon className="w-4 h-4 text-red-400" />
-              </button>
+              <div className="flex flex-col items-center gap-1 self-start flex-shrink-0">
+                <ReorderControls
+                  onUp={() => moveInstruction(i, -1)}
+                  onDown={() => moveInstruction(i, 1)}
+                  canUp={i > 0}
+                  canDown={i < instructions.length - 1}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeInstruction(i)}
+                  aria-label="Remove step"
+                  className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <TrashIcon className="w-4 h-4 text-red-400" />
+                </button>
+              </div>
             </div>
           ))}
         </div>

@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { LayoutGridIcon, ListIcon } from 'lucide-react';
 import { RecipeCard } from '@/components/aftertaste/dashboard/RecipeCard';
+import { RecipeListItem } from '@/components/aftertaste/recipes/RecipeListItem';
 import { Chip } from '@/components/aftertaste/Chip';
 import { FilterBar } from '@/components/aftertaste/recipes/FilterBar';
 import { SortDropdown } from '@/components/aftertaste/recipes/SortDropdown';
 import { useFavorites } from '@/components/aftertaste/FavoritesProvider';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
+import { cn } from '@/lib/utils';
 import {
   defaultFilterConfigs,
   sortOptions,
@@ -16,6 +19,9 @@ import {
   type ActiveFilters,
   type SortOption,
 } from '@/lib/recipe-filters';
+
+type ViewMode = 'grid' | 'list';
+const VIEW_STORAGE_KEY = 'aftertaste-recipes-view';
 
 const dishTabs = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert', 'Favorites'] as const;
 
@@ -41,6 +47,21 @@ function MyRecipesContent() {
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [filters, setFilters] = useState<ActiveFilters>({});
   const [sort, setSort] = useState<SortOption | null>(null);
+  // Default to grid on first render (matches SSR), then restore the saved
+  // preference on the client to avoid a hydration mismatch.
+  const [view, setView] = useState<ViewMode>('grid');
+
+  useEffect(() => {
+    const saved = localStorage.getItem(VIEW_STORAGE_KEY);
+    if (saved === 'list' || saved === 'grid') setView(saved);
+  }, []);
+
+  const changeView = (next: ViewMode) => {
+    setView(next);
+    try {
+      localStorage.setItem(VIEW_STORAGE_KEY, next);
+    } catch {}
+  };
 
   const displayRecipes = useMemo(() => {
     let result = [...allRecipes];
@@ -87,30 +108,63 @@ function MyRecipesContent() {
         ))}
       </div>
 
-      {/* Filter bar + sort */}
+      {/* Filter bar + sort + view toggle */}
       <div className="flex items-start justify-between gap-3 mb-5">
         <FilterBar
           configs={defaultFilterConfigs}
           filters={filters}
           onChange={setFilters}
         />
-        <SortDropdown
-          options={sortOptions}
-          value={sort}
-          onChange={setSort}
-        />
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
+            <button
+              type="button"
+              aria-label="Grid view"
+              aria-pressed={view === 'grid'}
+              onClick={() => changeView('grid')}
+              className={cn(
+                'p-1.5 rounded-md transition-colors',
+                view === 'grid'
+                  ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300',
+              )}
+            >
+              <LayoutGridIcon className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="List view"
+              aria-pressed={view === 'list'}
+              onClick={() => changeView('list')}
+              className={cn(
+                'p-1.5 rounded-md transition-colors',
+                view === 'list'
+                  ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+                  : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300',
+              )}
+            >
+              <ListIcon className="w-4 h-4" />
+            </button>
+          </div>
+          <SortDropdown options={sortOptions} value={sort} onChange={setSort} />
+        </div>
       </div>
 
-      {/* Recipe grid */}
+      {/* Recipes */}
       {displayRecipes.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {displayRecipes.map((recipe) => (
-            <RecipeCard
-              key={recipe.id}
-              recipe={recipe}
-            />
-          ))}
-        </div>
+        view === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {displayRecipes.map((recipe) => (
+              <RecipeCard key={recipe.id} recipe={recipe} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {displayRecipes.map((recipe) => (
+              <RecipeListItem key={recipe.id} recipe={recipe} />
+            ))}
+          </div>
+        )
       ) : (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">

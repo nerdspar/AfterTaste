@@ -22,6 +22,7 @@ import { useRecipeStore } from './RecipeStoreProvider';
 import { TagsRatingsModal } from './recipe-detail/TagsRatingsModal';
 import { DeleteRecipeDialog } from './recipe-detail/DeleteRecipeDialog';
 import { DUPLICATE_KEY } from './recipe-form/RecipeForm';
+import { shareOrCopy } from '@/lib/share';
 import type { Recipe } from '@/data/sample/recipes';
 
 const MENU_WIDTH = 208;
@@ -117,14 +118,14 @@ export function RecipeActionsProvider({
       label: 'Share',
       icon: ShareIcon,
       run: async (r) => {
-        try {
-          await navigator.clipboard.writeText(
-            `${window.location.origin}/recipes/${r.id}`,
-          );
-          setToast('Link copied to clipboard');
-        } catch {
-          setToast('Could not copy link');
-        }
+        const url = `${window.location.origin}/recipes/${r.id}`;
+        const result = await shareOrCopy({
+          title: r.title,
+          text: `Check out this recipe: ${r.title}`,
+          url,
+        });
+        if (result === 'copied') setToast('Link copied to clipboard');
+        else if (result === 'error') setToast('Could not share');
       },
     },
     {

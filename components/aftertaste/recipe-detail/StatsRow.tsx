@@ -3,7 +3,6 @@ import {
   ClockIcon,
   FlameIcon,
   UsersIcon,
-  GlobeIcon,
   BookmarkIcon,
   type LucideIcon,
 } from 'lucide-react';
@@ -62,13 +61,12 @@ function StatTile({
 export function StatsRow({ recipe, servings, multiplier }: StatsRowProps) {
   const scaledCalories = Math.round(recipe.calories * multiplier);
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
       <StatTile
         icon={ClockIcon}
         value={formatMinutes(recipe.totalTimeMinutes)}
         sub={`${compactMinutes(recipe.prepTimeMinutes)} prep · ${compactMinutes(recipe.cookTimeMinutes)} cook`}
       />
-      <StatTile icon={GlobeIcon} value={recipe.cuisine} sub="Cuisine" />
       <StatTile icon={BookmarkIcon} value={recipe.source} sub="Source" />
       <StatTile
         icon={FlameIcon}

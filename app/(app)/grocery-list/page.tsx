@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/aftertaste/Card';
 import { cn } from '@/lib/utils';
 import { useGroceryStore } from '@/components/aftertaste/GroceryStoreProvider';
+import { shareOrCopy } from '@/lib/share';
 import type { GroceryItem } from '@/data/sample/recipes';
-import { PlusIcon, TrashIcon, CheckIcon } from 'lucide-react';
+import { PlusIcon, TrashIcon, CheckIcon, Share2Icon } from 'lucide-react';
 
 export default function GroceryListPage() {
   const { items, addItem: addGroceryItem, toggleItem, removeItem } =
@@ -13,6 +14,13 @@ export default function GroceryListPage() {
   const [newName, setNewName] = useState('');
   const [newQty, setNewQty] = useState('');
   const [newCategory, setNewCategory] = useState('Fruits & Vegetables');
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const addItem = () => {
     if (!newName.trim()) return;
@@ -44,6 +52,35 @@ export default function GroceryListPage() {
     'Pantry Essentials',
   ];
 
+  // Build a readable, grouped plain-text version of the list for export/share.
+  const buildListText = () => {
+    const lines: string[] = ['Grocery List', ''];
+    for (const cat of allCategories) {
+      const catItems = items.filter((i) => i.category === cat);
+      if (catItems.length === 0) continue;
+      lines.push(cat);
+      for (const item of catItems) {
+        const qty = item.quantity ? ` — ${item.quantity}` : '';
+        lines.push(`${item.checked ? '✓' : '•'} ${item.name}${qty}`);
+      }
+      lines.push('');
+    }
+    return lines.join('\n').trim();
+  };
+
+  const shareList = async () => {
+    if (items.length === 0) {
+      setToast('Your list is empty');
+      return;
+    }
+    const result = await shareOrCopy({
+      title: 'Grocery List',
+      text: buildListText(),
+    });
+    if (result === 'copied') setToast('List copied to clipboard');
+    else if (result === 'error') setToast('Could not export list');
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-5">
@@ -54,13 +91,29 @@ export default function GroceryListPage() {
         {/* Main list */}
         <div className="lg:col-span-2 space-y-4">
           <Card>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 gap-2">
               <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
                 Shopping List
               </h2>
-              <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-                {checkedCount}/{items.length} done
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+                  {checkedCount}/{items.length} done
+                </span>
+                <button
+                  type="button"
+                  onClick={shareList}
+                  disabled={items.length === 0}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-colors',
+                    'border border-gray-200 text-gray-600 hover:bg-gray-50',
+                    'dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800',
+                    'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+                  )}
+                >
+                  <Share2Icon className="w-3.5 h-3.5" />
+                  Share
+                </button>
+              </div>
             </div>
 
             {/* Progress bar */}
@@ -245,6 +298,12 @@ export default function GroceryListPage() {
           })}
         </div>
       </div>
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] px-4 py-2 rounded-lg bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium shadow-lg animate-in fade-in slide-in-from-bottom-2 duration-200">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

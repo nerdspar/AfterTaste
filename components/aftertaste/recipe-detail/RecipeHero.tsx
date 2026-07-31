@@ -13,6 +13,7 @@ import {
   HeartIcon,
   Trash2Icon,
   StarIcon,
+  GlobeIcon,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,7 @@ import { IconButton } from '../IconButton';
 import { useFavorites } from '../FavoritesProvider';
 import { useRecipeStore } from '../RecipeStoreProvider';
 import { DUPLICATE_KEY } from '../recipe-form/RecipeForm';
+import { shareOrCopy } from '@/lib/share';
 import { TagsRatingsModal } from './TagsRatingsModal';
 import { DeleteRecipeDialog } from './DeleteRecipeDialog';
 import type { Recipe } from '@/data/sample/recipes';
@@ -124,13 +126,14 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
       label: 'Share',
       icon: ShareIcon,
       action: async () => {
-        const url = window.location.href;
-        try {
-          await navigator.clipboard.writeText(url);
-          showToast('Link copied to clipboard');
-        } catch {
-          showToast('Could not copy link');
-        }
+        setMenuOpen(false);
+        const result = await shareOrCopy({
+          title: recipe.title,
+          text: `Check out this recipe: ${recipe.title}`,
+          url: window.location.href,
+        });
+        if (result === 'copied') showToast('Link copied to clipboard');
+        else if (result === 'error') showToast('Could not share');
       },
     },
     {
@@ -163,9 +166,17 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 mb-1.5">
-              <span className="inline-block text-xs font-semibold text-primary-600 dark:text-primary-400">
-                {recipe.category}
-              </span>
+              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                <span className="inline-flex items-center rounded-full bg-primary-500/10 px-2 py-0.5 text-[11px] font-semibold text-primary-600 dark:text-primary-400">
+                  {recipe.category}
+                </span>
+                {recipe.cuisine && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                    <GlobeIcon className="w-3 h-3" />
+                    {recipe.cuisine}
+                  </span>
+                )}
+              </div>
 
               <div className="flex items-center gap-1 flex-shrink-0">
                 {/* Favorite button */}
