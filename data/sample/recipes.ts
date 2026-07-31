@@ -160,7 +160,7 @@ export const recommendedRecipes: Recipe[] = [
         step: '01',
         title: 'Cook the Quinoa',
         body: 'Rinse quinoa under cold water, then combine with 2 cups of water in a saucepan. Bring to a boil, reduce heat, cover, and simmer for 15 minutes until fluffy.',
-        videoThumb: 'https://images.unsplash.com/photo-1505576399279-0d754687a2d8?w=200&h=130&fit=crop',
+        videoThumb: '',
       },
       {
         step: '02',
@@ -695,7 +695,7 @@ export const recommendedRecipes: Recipe[] = [
     description:
       'A vibrant, AI-generated recipe combining nutrient-dense ingredients into a beautiful rainbow bowl.',
     ingredients: [
-      { name: 'Sweet potato', quantity: '1 large cubed', image: 'https://images.unsplash.com/photo-1596097635121-14b63a7a4c19?w=60&h=60&fit=crop' },
+      { name: 'Sweet potato', quantity: '1 large cubed', image: '' },
       { name: 'Purple cabbage', quantity: '1 cup shredded', image: 'https://images.unsplash.com/photo-1594282486756-fa7e0e5c4e89?w=60&h=60&fit=crop' },
       { name: 'Edamame', quantity: '1/2 cup shelled', image: 'https://images.unsplash.com/photo-1564894809611-1742fc40ed80?w=60&h=60&fit=crop' },
       { name: 'Avocado', quantity: '1 sliced', image: 'https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?w=60&h=60&fit=crop' },
@@ -709,7 +709,7 @@ export const recommendedRecipes: Recipe[] = [
         step: '01',
         title: 'Roast the Sweet Potato',
         body: 'Toss cubed sweet potato with olive oil, salt, and smoked paprika. Roast at 400F for 20-25 minutes until tender and caramelized at the edges.',
-        videoThumb: 'https://images.unsplash.com/photo-1596097635121-14b63a7a4c19?w=200&h=130&fit=crop',
+        videoThumb: '',
       },
       {
         step: '02',
