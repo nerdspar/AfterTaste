@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import Image from 'next/image';
 import { ChevronDownIcon } from 'lucide-react';
 import { Card } from '../Card';
+import { IngredientIcon } from '../IngredientIcon';
 import type { Ingredient } from '@/data/sample/recipes';
 
 type ScaleMode = 'amount' | 'serving';
@@ -186,15 +186,10 @@ export function IngredientsPanel({
             key={ing.name}
             className="flex items-center gap-3 h-11 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
           >
-            <div className="relative w-7 h-7 rounded-full overflow-hidden flex-shrink-0 border border-gray-100 dark:border-gray-700">
-              <Image
-                src={ing.image}
-                alt={ing.name}
-                fill
-                className="object-cover"
-                sizes="28px"
-              />
-            </div>
+            <IngredientIcon
+              name={ing.name}
+              className="w-7 h-7 flex-shrink-0 border border-gray-100 dark:border-gray-700"
+            />
             <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1">
               {ing.name}
             </span>
