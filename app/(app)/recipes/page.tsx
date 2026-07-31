@@ -17,7 +17,7 @@ import {
   type SortOption,
 } from '@/lib/recipe-filters';
 
-const dishTabs = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Dessert', 'Favorites'] as const;
+const dishTabs = ['All', 'Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert', 'Favorites'] as const;
 
 export default function MyRecipesPage() {
   return (

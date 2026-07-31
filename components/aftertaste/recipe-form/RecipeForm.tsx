@@ -16,7 +16,7 @@ interface RecipeFormProps {
   imported?: ParsedRecipe;
 }
 
-const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Dessert'];
+const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'];
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
 const SOURCES = [
   'Cooking Class',

@@ -58,6 +58,7 @@ export const categories: Category[] = [
   { label: 'Breakfast', icon: '🥞', slug: 'breakfast' },
   { label: 'Lunch', icon: '🥗', slug: 'lunch' },
   { label: 'Dinner', icon: '🍝', slug: 'dinner' },
+  { label: 'Snack', icon: '🍿', slug: 'snack' },
   { label: 'Dessert', icon: '🍰', slug: 'dessert' },
   { label: 'Favorites', icon: '❤️', slug: 'favorites' },
 ];
