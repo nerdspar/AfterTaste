@@ -224,6 +224,7 @@ export async function loadHouseholdState(): Promise<HouseholdState> {
 }
 
 export interface UserProfile {
+  id: string;
   /** Display name, falling back to the email. Used for greetings/avatars. */
   name: string;
   displayName: string;
@@ -250,6 +251,7 @@ export async function loadUserProfile(): Promise<UserProfile> {
   });
   if (!u) redirect('/login');
   return {
+    id: userId,
     name: u.displayName ?? u.email,
     displayName: u.displayName ?? '',
     email: u.email,

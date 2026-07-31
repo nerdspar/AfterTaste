@@ -20,6 +20,8 @@ interface RecipeStoreContextValue {
   addRecipes: (recipes: Recipe[]) => number;
   updateRecipe: (id: string, updates: Partial<Recipe>) => void;
   deleteRecipe: (id: string) => void;
+  /** Replace the whole list (used by realtime sync). */
+  replaceRecipes: (recipes: Recipe[]) => void;
 }
 
 const RecipeStoreContext = createContext<RecipeStoreContextValue | null>(null);
@@ -101,6 +103,8 @@ export function RecipeStoreProvider({
     [recipes],
   );
 
+  const replaceRecipes = useCallback((next: Recipe[]) => setRecipes(next), []);
+
   return (
     <RecipeStoreContext.Provider
       value={{
@@ -110,6 +114,7 @@ export function RecipeStoreProvider({
         addRecipes,
         updateRecipe,
         deleteRecipe,
+        replaceRecipes,
       }}
     >
       {children}

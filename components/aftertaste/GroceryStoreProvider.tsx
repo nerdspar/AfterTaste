@@ -34,6 +34,8 @@ interface GroceryStoreContextValue {
   toggleItem: (id: string) => void;
   removeItem: (id: string) => void;
   reorderItems: (next: GroceryItem[]) => void;
+  /** Replace the whole list (used by realtime sync). */
+  replaceItems: (next: GroceryItem[]) => void;
 }
 
 const GroceryStoreContext = createContext<GroceryStoreContextValue | null>(null);
@@ -127,9 +129,19 @@ export function GroceryStoreProvider({
     [items],
   );
 
+  const replaceItems = useCallback((next: GroceryItem[]) => setItems(next), []);
+
   return (
     <GroceryStoreContext.Provider
-      value={{ items, addItem, addItems, toggleItem, removeItem, reorderItems }}
+      value={{
+        items,
+        addItem,
+        addItems,
+        toggleItem,
+        removeItem,
+        reorderItems,
+        replaceItems,
+      }}
     >
       {children}
     </GroceryStoreContext.Provider>

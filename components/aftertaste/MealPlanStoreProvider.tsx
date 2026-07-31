@@ -38,6 +38,8 @@ interface MealPlanContextValue {
   assignSlot: (slotKey: string, recipeId: string) => void;
   assignNote: (slotKey: string, text: string) => void;
   clearSlot: (slotKey: string) => void;
+  /** Replace the whole plan (used by realtime sync). */
+  replacePlan: (plan: Plan) => void;
 }
 
 const MealPlanContext = createContext<MealPlanContextValue | null>(null);
@@ -106,8 +108,12 @@ export function MealPlanStoreProvider({
     [plan],
   );
 
+  const replacePlan = useCallback((next: Plan) => setPlan(next), []);
+
   return (
-    <MealPlanContext.Provider value={{ plan, assignSlot, assignNote, clearSlot }}>
+    <MealPlanContext.Provider
+      value={{ plan, assignSlot, assignNote, clearSlot, replacePlan }}
+    >
       {children}
     </MealPlanContext.Provider>
   );

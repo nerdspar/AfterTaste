@@ -11,6 +11,8 @@ interface FavoritesContextValue {
   favorites: Set<string>;
   isFavorite: (id: string) => boolean;
   toggleFavorite: (id: string) => void;
+  /** Replace the whole set (used by realtime sync). */
+  replaceFavorites: (ids: string[]) => void;
 }
 
 const FavoritesContext = createContext<FavoritesContextValue | null>(null);
@@ -50,8 +52,15 @@ export function FavoritesProvider({
     [favorites],
   );
 
+  const replaceFavorites = useCallback(
+    (ids: string[]) => setFavorites(new Set(ids)),
+    [],
+  );
+
   return (
-    <FavoritesContext.Provider value={{ favorites, isFavorite, toggleFavorite }}>
+    <FavoritesContext.Provider
+      value={{ favorites, isFavorite, toggleFavorite, replaceFavorites }}
+    >
       {children}
     </FavoritesContext.Provider>
   );

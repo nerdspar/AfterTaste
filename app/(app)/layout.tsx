@@ -5,6 +5,7 @@ import { GroceryStoreProvider } from '@/components/aftertaste/GroceryStoreProvid
 import { MealPlanStoreProvider } from '@/components/aftertaste/MealPlanStoreProvider';
 import { RecipeActionsProvider } from '@/components/aftertaste/RecipeActionsProvider';
 import { RecentlyViewedHydrator } from '@/components/aftertaste/RecentlyViewedHydrator';
+import { RealtimeSync } from '@/components/aftertaste/RealtimeSync';
 import { CurrentUserProvider } from '@/components/aftertaste/CurrentUserProvider';
 import { PrefsInitializer } from '@/components/aftertaste/PrefsInitializer';
 import { loadHouseholdState, loadUserProfile } from '@/lib/data';
@@ -30,6 +31,7 @@ export default async function AppLayout({
             <MealPlanStoreProvider initialPlan={state.plan}>
               <RecipeActionsProvider>
                 <RecentlyViewedHydrator ids={state.recentlyViewed} />
+                <RealtimeSync />
                 <AppShell>{children}</AppShell>
               </RecipeActionsProvider>
             </MealPlanStoreProvider>

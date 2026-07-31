@@ -7,11 +7,13 @@ import {
   recipeToUpdateData,
   parseSlotValue,
 } from '@/lib/data';
+import { notifyHousehold } from '@/lib/realtime';
 import type { Recipe, GroceryItem } from '@/data/sample/recipes';
 
 // All mutations are scoped to the session's household. Writes that target an
 // existing row use `where: { id, householdId }` so a client can never touch
-// another household's data even if it forges an id.
+// another household's data even if it forges an id. After each write we NOTIFY
+// the household channel so other members' open sessions refetch that slice.
 
 // ---------------------------------------------------------------------------
 // Recipes
@@ -22,6 +24,7 @@ export async function createRecipeAction(recipe: Recipe): Promise<void> {
   await prisma.recipe.create({
     data: recipeToCreateData(recipe, householdId, userId),
   });
+  await notifyHousehold(householdId, 'recipes', userId);
 }
 
 export async function createRecipesAction(recipes: Recipe[]): Promise<void> {
@@ -31,22 +34,25 @@ export async function createRecipesAction(recipes: Recipe[]): Promise<void> {
     data: recipes.map((r) => recipeToCreateData(r, householdId, userId)),
     skipDuplicates: true,
   });
+  await notifyHousehold(householdId, 'recipes', userId);
 }
 
 export async function updateRecipeAction(
   id: string,
   updates: Partial<Recipe>,
 ): Promise<void> {
-  const { householdId } = await requireSession();
+  const { householdId, userId } = await requireSession();
   await prisma.recipe.updateMany({
     where: { id, householdId },
     data: recipeToUpdateData(updates),
   });
+  await notifyHousehold(householdId, 'recipes', userId);
 }
 
 export async function deleteRecipeAction(id: string): Promise<void> {
-  const { householdId } = await requireSession();
+  const { householdId, userId } = await requireSession();
   await prisma.recipe.deleteMany({ where: { id, householdId } });
+  await notifyHousehold(householdId, 'recipes', userId);
 }
 
 // ---------------------------------------------------------------------------
@@ -57,11 +63,12 @@ export async function setFavoriteAction(
   recipeId: string,
   isFavorite: boolean,
 ): Promise<void> {
-  const { householdId } = await requireSession();
+  const { householdId, userId } = await requireSession();
   await prisma.recipe.updateMany({
     where: { id: recipeId, householdId },
     data: { isFavorite },
   });
+  await notifyHousehold(householdId, 'favorites', userId);
 }
 
 // ---------------------------------------------------------------------------
@@ -71,7 +78,7 @@ export async function setFavoriteAction(
 export async function addGroceryItemsAction(
   items: GroceryItem[],
 ): Promise<void> {
-  const { householdId } = await requireSession();
+  const { householdId, userId } = await requireSession();
   if (items.length === 0) return;
   const agg = await prisma.groceryItem.aggregate({
     where: { householdId },
@@ -92,10 +99,11 @@ export async function addGroceryItemsAction(
     })),
     skipDuplicates: true,
   });
+  await notifyHousehold(householdId, 'grocery', userId);
 }
 
 export async function toggleGroceryItemAction(id: string): Promise<void> {
-  const { householdId } = await requireSession();
+  const { householdId, userId } = await requireSession();
   const item = await prisma.groceryItem.findFirst({
     where: { id, householdId },
     select: { checked: true },
@@ -105,17 +113,19 @@ export async function toggleGroceryItemAction(id: string): Promise<void> {
     where: { id, householdId },
     data: { checked: !item.checked },
   });
+  await notifyHousehold(householdId, 'grocery', userId);
 }
 
 export async function removeGroceryItemAction(id: string): Promise<void> {
-  const { householdId } = await requireSession();
+  const { householdId, userId } = await requireSession();
   await prisma.groceryItem.deleteMany({ where: { id, householdId } });
+  await notifyHousehold(householdId, 'grocery', userId);
 }
 
 export async function reorderGroceryItemsAction(
   items: GroceryItem[],
 ): Promise<void> {
-  const { householdId } = await requireSession();
+  const { householdId, userId } = await requireSession();
   await prisma.$transaction(
     items.map((it, index) =>
       prisma.groceryItem.updateMany({
@@ -124,6 +134,7 @@ export async function reorderGroceryItemsAction(
       }),
     ),
   );
+  await notifyHousehold(householdId, 'grocery', userId);
 }
 
 // ---------------------------------------------------------------------------
@@ -139,7 +150,7 @@ export async function setMealSlotAction(
   slotKey: string,
   value: string,
 ): Promise<void> {
-  const { householdId } = await requireSession();
+  const { householdId, userId } = await requireSession();
   const { date, meal } = splitSlotKey(slotKey);
   const { recipeId, note } = parseSlotValue(value);
   await prisma.mealPlan.upsert({
@@ -147,16 +158,18 @@ export async function setMealSlotAction(
     create: { householdId, date, meal, recipeId, note },
     update: { recipeId, note },
   });
+  await notifyHousehold(householdId, 'mealplan', userId);
 }
 
 export async function clearMealSlotAction(slotKey: string): Promise<void> {
-  const { householdId } = await requireSession();
+  const { householdId, userId } = await requireSession();
   const { date, meal } = splitSlotKey(slotKey);
   await prisma.mealPlan.deleteMany({ where: { householdId, date, meal } });
+  await notifyHousehold(householdId, 'mealplan', userId);
 }
 
 // ---------------------------------------------------------------------------
-// Recently viewed (per-user)
+// Recently viewed (per-user — no household broadcast)
 // ---------------------------------------------------------------------------
 
 export async function recordViewAction(recipeId: string): Promise<void> {
