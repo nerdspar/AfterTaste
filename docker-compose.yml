@@ -1,7 +1,27 @@
-# AfterTaste — self-hosted stack (app + Postgres) for TrueNAS / any Docker host.
-# Set POSTGRES_PASSWORD and AUTH_SECRET in a .env file next to this one:
-#   POSTGRES_PASSWORD=<a-strong-password>
-#   AUTH_SECRET=<output of: openssl rand -base64 32>
+# =============================================================================
+# AfterTaste — self-contained stack (app + Postgres). No .env file needed:
+# paste your two secrets directly below.
+#
+# ── 1. Generate two secrets ──────────────────────────────────────────────
+#      DB password  (hex only, so it's safe inside the connection URL):
+#          openssl rand -hex 24
+#      Auth secret  (signs login sessions):
+#          openssl rand -base64 48
+#
+# ── 2. Paste them below ──────────────────────────────────────────────────
+#      • the DB password goes in BOTH spots marked  ⬅ DB_PASSWORD  (must match)
+#      • the auth secret goes in the one spot marked ⬅ AUTH_SECRET
+#
+# ── 3. Create the (empty) storage folders on your NAS ────────────────────
+#          mkdir -p /mnt/NAS/Data/aftertaste/db /mnt/NAS/Data/aftertaste/uploads
+#          chown -R 1001:1001 /mnt/NAS/Data/aftertaste/uploads
+#      (Postgres manages ownership of the db folder itself.)
+#
+# ── 4. Launch (from the project directory, on the NAS) ───────────────────
+#          docker compose up -d --build
+#      App: http://<nas-ip>:3000   — first boot runs DB migrations automatically.
+#      See DEPLOY.md for HTTPS, updates, and backups.
+# =============================================================================
 
 services:
   db:
@@ -9,10 +29,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: aftertaste
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aftertaste}
+      POSTGRES_PASSWORD: "PASTE_DB_PASSWORD_HERE" # ⬅ DB_PASSWORD
       POSTGRES_DB: aftertaste
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - /mnt/NAS/Data/aftertaste/db:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U aftertaste']
       interval: 10s
@@ -26,15 +46,12 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://aftertaste:${POSTGRES_PASSWORD:-aftertaste}@db:5432/aftertaste?schema=public
-      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      # Keep the password below identical to POSTGRES_PASSWORD above.
+      DATABASE_URL: "postgresql://aftertaste:PASTE_DB_PASSWORD_HERE@db:5432/aftertaste?schema=public" # ⬅ DB_PASSWORD
+      AUTH_SECRET: "PASTE_AUTH_SECRET_HERE" # ⬅ AUTH_SECRET
       UPLOADS_DIR: /app/uploads
       NODE_ENV: production
     ports:
       - '3000:3000'
     volumes:
-      - uploads:/app/uploads
-
-volumes:
-  db-data:
-  uploads:
+      - /mnt/NAS/Data/aftertaste/uploads:/app/uploads
