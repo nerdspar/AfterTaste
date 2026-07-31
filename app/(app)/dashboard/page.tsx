@@ -7,6 +7,7 @@ import { RecipeCard } from '@/components/aftertaste/dashboard/RecipeCard';
 import { TodaysMeals } from '@/components/aftertaste/dashboard/TodaysMeals';
 import { GroceryListWidget } from '@/components/aftertaste/dashboard/GroceryListWidget';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
+import { useFirstName } from '@/components/aftertaste/CurrentUserProvider';
 import { useRecentlyViewedIds } from '@/lib/recently-viewed';
 import { recipePersonalRating } from '@/lib/recipe-rating';
 import type { Recipe } from '@/data/sample/recipes';
@@ -27,6 +28,7 @@ function mealCategoryForHour(hour: number): MealCategory {
 
 export default function DashboardPage() {
   const { recipes } = useRecipeStore();
+  const firstName = useFirstName();
   const viewedIds = useRecentlyViewedIds();
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
@@ -103,7 +105,7 @@ export default function DashboardPage() {
       {/* Greeting */}
       <div className="mb-5">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          Good {greeting}, John
+          Good {greeting}, {firstName}
         </h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
           What would you like to cook today?
