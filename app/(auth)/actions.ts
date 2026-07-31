@@ -58,23 +58,49 @@ export async function signup(
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  // User and Household reference each other, so create both in a transaction:
-  // user first (household null), then the household it owns, then link them.
-  await prisma.$transaction(async (tx) => {
-    const user = await tx.user.create({
-      data: { email, passwordHash, displayName: displayName || null },
-    });
-    const household = await tx.household.create({
-      data: {
-        name: displayName ? `${displayName}'s Household` : 'My Household',
-        ownerId: user.id,
-      },
-    });
-    await tx.user.update({
-      where: { id: user.id },
-      data: { householdId: household.id },
-    });
+
+  // If someone already invited this email to a household, join it instead of
+  // creating a new one.
+  const invite = await prisma.householdInvite.findFirst({
+    where: { email, status: 'pending' },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, householdId: true },
   });
+
+  if (invite) {
+    await prisma.$transaction(async (tx) => {
+      await tx.user.create({
+        data: {
+          email,
+          passwordHash,
+          displayName: displayName || null,
+          householdId: invite.householdId,
+        },
+      });
+      await tx.householdInvite.update({
+        where: { id: invite.id },
+        data: { status: 'accepted' },
+      });
+    });
+  } else {
+    // User and Household reference each other, so create both in a transaction:
+    // user first (household null), then the household it owns, then link them.
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { email, passwordHash, displayName: displayName || null },
+      });
+      const household = await tx.household.create({
+        data: {
+          name: displayName ? `${displayName}'s Household` : 'My Household',
+          ownerId: user.id,
+        },
+      });
+      await tx.user.update({
+        where: { id: user.id },
+        data: { householdId: household.id },
+      });
+    });
+  }
 
   try {
     await signIn('credentials', { email, password, redirect: false });

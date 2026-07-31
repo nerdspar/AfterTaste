@@ -10,12 +10,12 @@ import {
   UploadIcon,
   CheckIcon,
   SmartphoneIcon,
-  UsersIcon,
   ClipboardIcon,
   BellIcon,
   Share2Icon,
 } from 'lucide-react';
 import { Card } from '@/components/aftertaste/Card';
+import { HouseholdManager } from '@/components/aftertaste/HouseholdManager';
 import { cn } from '@/lib/utils';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { ImportRecipeModal } from '@/components/aftertaste/ImportRecipeModal';
@@ -413,19 +413,7 @@ export default function SettingsPage() {
           title="Household"
           description="Recipes, groceries, meal plans, ratings, and favorites are shared with everyone in your household."
         >
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-              <UsersIcon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Invite people to your household
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                Member management is set up on the household page.
-              </p>
-            </div>
-          </div>
+          <HouseholdManager />
         </Section>
       </div>
 
