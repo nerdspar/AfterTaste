@@ -5,22 +5,32 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/aftertaste/Card';
 import { cn } from '@/lib/utils';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
-import { useMealPlan } from '@/components/aftertaste/MealPlanStoreProvider';
-import { ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react';
+import {
+  useMealPlan,
+  parsePlanEntry,
+} from '@/components/aftertaste/MealPlanStoreProvider';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  SearchIcon,
+  StickyNoteIcon,
+  XIcon,
+} from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'] as const;
 
+// Rolling 7-day week: today is always the first column. `offset` pages a full
+// week forward/back.
 function getWeekDates(offset: number) {
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - ((dayOfWeek + 6) % 7) + offset * 7);
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() + offset * 7);
 
   return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
     return d;
   });
 }
@@ -33,7 +43,8 @@ function formatDateRange(dates: Date[]) {
   return `${fmt.format(dates[0])} - ${fmt.format(dates[6])}, ${dates[0].getFullYear()}`;
 }
 
-const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+// Indexed by Date.getDay() (0 = Sunday) since columns now roll from today.
+const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 type PlanKey = string;
 
@@ -41,12 +52,26 @@ function MealPlannerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { recipes, getRecipe } = useRecipeStore();
-  const { plan, assignSlot, clearSlot } = useMealPlan();
+  const { plan, assignSlot, assignNote, clearSlot } = useMealPlan();
   const [weekOffset, setWeekOffset] = useState(0);
   const [pickingSlot, setPickingSlot] = useState<PlanKey | null>(null);
   const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
+  const [pickerQuery, setPickerQuery] = useState('');
+  const [noteText, setNoteText] = useState('');
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
+
+  const filteredRecipes = useMemo(() => {
+    const q = pickerQuery.trim().toLowerCase();
+    if (!q) return recipes;
+    return recipes.filter(
+      (r) =>
+        r.title.toLowerCase().includes(q) ||
+        r.category.toLowerCase().includes(q) ||
+        r.cuisine.toLowerCase().includes(q) ||
+        (r.tags ?? []).some((t) => t.toLowerCase().includes(q)),
+    );
+  }, [recipes, pickerQuery]);
 
   // Arriving from a recipe's "Add to Meal Plan" enters a mode where clicking a
   // slot drops that recipe straight in, instead of opening the recipe picker.
@@ -72,17 +97,37 @@ function MealPlannerContent() {
     return `${y}-${m}-${day}_${meal}`;
   };
 
+  const openPicker = (slotKey: string) => {
+    setPickingSlot(slotKey);
+    setPickerQuery('');
+    setNoteText('');
+  };
+
+  const closePicker = () => {
+    setPickingSlot(null);
+    setPickerQuery('');
+    setNoteText('');
+  };
+
   const assignRecipe = (slotKey: string, recipeId: string) => {
     assignSlot(slotKey, recipeId);
-    setPickingSlot(null);
+    closePicker();
+  };
+
+  const addNote = () => {
+    if (!pickingSlot || !noteText.trim()) return;
+    assignNote(pickingSlot, noteText);
+    closePicker();
   };
 
   const handleSlotClick = (slotKey: string) => {
     if (pendingRecipeId) {
       assignRecipe(slotKey, pendingRecipeId);
       setPendingRecipeId(null);
+    } else if (pickingSlot === slotKey) {
+      closePicker();
     } else {
-      setPickingSlot(pickingSlot === slotKey ? null : slotKey);
+      openPicker(slotKey);
     }
   };
 
@@ -162,7 +207,7 @@ function MealPlannerContent() {
                           : 'text-gray-500 dark:text-gray-400',
                       )}
                     >
-                      {DAY_NAMES[i]}
+                      {WEEKDAY_SHORT[date.getDay()]}
                     </p>
                     <p
                       className={cn(
@@ -187,8 +232,33 @@ function MealPlannerContent() {
                 </div>
                 {weekDates.map((_, dayIdx) => {
                   const key = makeKey(dayIdx, meal);
-                  const recipeId = plan[key];
-                  const recipe = recipeId ? getRecipe(recipeId) : null;
+                  const entry = parsePlanEntry(plan[key]);
+                  const recipe =
+                    entry?.type === 'recipe'
+                      ? getRecipe(entry.recipeId)
+                      : null;
+
+                  if (entry?.type === 'note') {
+                    return (
+                      <div
+                        key={key}
+                        className="h-16 rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 overflow-hidden relative group p-1.5"
+                      >
+                        <StickyNoteIcon className="w-3 h-3 text-amber-500 dark:text-amber-400 mb-0.5" />
+                        <p className="text-[9px] font-medium text-gray-800 dark:text-gray-100 line-clamp-2 leading-tight">
+                          {entry.text}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => clearSlot(key)}
+                          aria-label="Remove note"
+                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50"
+                        >
+                          <XIcon className="w-2.5 h-2.5 text-white" />
+                        </button>
+                      </div>
+                    );
+                  }
 
                   if (recipe) {
                     return (
@@ -261,49 +331,114 @@ function MealPlannerContent() {
         </div>
       </Card>
 
-      {/* Recipe picker */}
+      {/* Slot picker: add a note or choose a recipe */}
       {pickingSlot && (
         <Card className="mt-4">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-              Choose a recipe
+              Add to your plan
             </h3>
             <button
               type="button"
-              onClick={() => setPickingSlot(null)}
+              onClick={closePicker}
               className="text-xs text-gray-400 hover:text-gray-600"
             >
               Cancel
             </button>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-            {recipes.map((recipe) => (
+
+          {/* Custom note (e.g. eating out) */}
+          <div className="mb-4">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+              Eating out or something else? Add a note
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addNote();
+                  }
+                }}
+                placeholder="e.g. Dinner out, Leftovers, Order pizza"
+                className={cn(
+                  'flex-1 min-w-0 h-9 px-3 rounded-lg text-sm',
+                  'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
+                  'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
+                )}
+              />
               <button
                 type="button"
-                key={recipe.id}
-                onClick={() => assignRecipe(pickingSlot, recipe.id)}
-                className="rounded-xl border border-gray-200 dark:border-gray-700/40 overflow-hidden hover:ring-2 hover:ring-primary-500/40 transition-all text-left"
+                onClick={addNote}
+                disabled={!noteText.trim()}
+                className={cn(
+                  'h-9 px-4 rounded-lg text-sm font-medium transition-colors flex-shrink-0',
+                  'bg-primary-500 text-white hover:bg-primary-700',
+                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary-500',
+                )}
               >
-                <div className="relative h-16">
-                  <Image
-                    src={recipe.image}
-                    alt={recipe.title}
-                    fill
-                    className="object-cover"
-                    sizes="120px"
-                  />
-                </div>
-                <div className="p-1.5">
-                  <p className="text-[10px] font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
-                    {recipe.title}
-                  </p>
-                  <p className="text-[9px] text-gray-400 mt-0.5">
-                    {recipe.cookTime} · {recipe.calories} kcal
-                  </p>
-                </div>
+                Add
               </button>
-            ))}
+            </div>
           </div>
+
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+            Or choose a recipe
+          </p>
+
+          {/* Recipe search */}
+          <div className="relative mb-3">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={pickerQuery}
+              onChange={(e) => setPickerQuery(e.target.value)}
+              placeholder="Search recipes..."
+              className={cn(
+                'w-full h-9 pl-9 pr-3 rounded-lg text-sm',
+                'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
+                'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
+              )}
+            />
+          </div>
+
+          {filteredRecipes.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+              {filteredRecipes.map((recipe) => (
+                <button
+                  type="button"
+                  key={recipe.id}
+                  onClick={() => assignRecipe(pickingSlot, recipe.id)}
+                  className="rounded-xl border border-gray-200 dark:border-gray-700/40 overflow-hidden hover:ring-2 hover:ring-primary-500/40 transition-all text-left"
+                >
+                  <div className="relative h-16">
+                    <Image
+                      src={recipe.image}
+                      alt={recipe.title}
+                      fill
+                      className="object-cover"
+                      sizes="120px"
+                    />
+                  </div>
+                  <div className="p-1.5">
+                    <p className="text-[10px] font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
+                      {recipe.title}
+                    </p>
+                    <p className="text-[9px] text-gray-400 mt-0.5">
+                      {recipe.cookTime} · {recipe.calories} kcal
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-6">
+              No recipes match “{pickerQuery}”.
+            </p>
+          )}
         </Card>
       )}
     </div>

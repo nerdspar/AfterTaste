@@ -3,8 +3,8 @@
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ClockIcon, FlameIcon } from 'lucide-react';
-import { useMealPlan } from '../MealPlanStoreProvider';
+import { ClockIcon, FlameIcon, StickyNoteIcon } from 'lucide-react';
+import { useMealPlan, parsePlanEntry } from '../MealPlanStoreProvider';
 import { useRecipeStore } from '../RecipeStoreProvider';
 import type { Recipe } from '@/data/sample/recipes';
 
@@ -19,18 +19,22 @@ function todayKey(meal: string): string {
   return `${y}-${m}-${day}_${meal}`;
 }
 
+type MealType = (typeof MEAL_TYPES)[number];
+type MealItem =
+  | { mealType: MealType; recipe: Recipe }
+  | { mealType: MealType; note: string };
+
 export function TodaysMeals() {
   const { plan } = useMealPlan();
   const { getRecipe } = useRecipeStore();
 
-  const meals = MEAL_TYPES.map((mealType) => {
-    const recipeId = plan[todayKey(mealType)];
-    const recipe = recipeId ? getRecipe(recipeId) : undefined;
+  const meals = MEAL_TYPES.map((mealType): MealItem | null => {
+    const entry = parsePlanEntry(plan[todayKey(mealType)]);
+    if (!entry) return null;
+    if (entry.type === 'note') return { mealType, note: entry.text };
+    const recipe = getRecipe(entry.recipeId);
     return recipe ? { mealType, recipe } : null;
-  }).filter(
-    (m): m is { mealType: (typeof MEAL_TYPES)[number]; recipe: Recipe } =>
-      m !== null,
-  );
+  }).filter((m): m is MealItem => m !== null);
 
   if (meals.length === 0) {
     return (
@@ -50,49 +54,77 @@ export function TodaysMeals() {
 
   return (
     <div className="space-y-3">
-      {meals.map(({ mealType, recipe }) => (
-        <Link key={mealType} href={`/recipes/${recipe.id}`}>
-          <div
-            className={cn(
-              'flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3',
-              'dark:border-gray-700/40 dark:bg-slate-900',
-              'hover:border-primary-300 dark:hover:border-primary-500/40',
-              'transition-colors cursor-pointer',
-            )}
-          >
-            {/* Image */}
-            <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
-              <Image
-                src={recipe.image}
-                alt={recipe.title}
-                fill
-                className="object-cover"
-                sizes="56px"
-              />
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-primary-500 dark:text-primary-400">
-                {mealType}
-              </span>
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                {recipe.title}
-              </h4>
-              <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                <span className="flex items-center gap-1">
-                  <ClockIcon className="w-3 h-3" />
-                  {recipe.cookTime}
+      {meals.map((meal) => {
+        // Free-text note (e.g. eating out) — no recipe to link to.
+        if ('note' in meal) {
+          return (
+            <div
+              key={meal.mealType}
+              className={cn(
+                'flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3',
+                'dark:border-amber-500/30 dark:bg-amber-500/10',
+              )}
+            >
+              <div className="relative w-14 h-14 rounded-xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                <StickyNoteIcon className="w-5 h-5 text-amber-500 dark:text-amber-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                  {meal.mealType}
                 </span>
-                <span className="flex items-center gap-1">
-                  <FlameIcon className="w-3 h-3" />
-                  {recipe.calories} kcal
-                </span>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2">
+                  {meal.note}
+                </h4>
               </div>
             </div>
-          </div>
-        </Link>
-      ))}
+          );
+        }
+
+        const { mealType, recipe } = meal;
+        return (
+          <Link key={mealType} href={`/recipes/${recipe.id}`}>
+            <div
+              className={cn(
+                'flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3',
+                'dark:border-gray-700/40 dark:bg-slate-900',
+                'hover:border-primary-300 dark:hover:border-primary-500/40',
+                'transition-colors cursor-pointer',
+              )}
+            >
+              {/* Image */}
+              <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
+                <Image
+                  src={recipe.image}
+                  alt={recipe.title}
+                  fill
+                  className="object-cover"
+                  sizes="56px"
+                />
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-primary-500 dark:text-primary-400">
+                  {mealType}
+                </span>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                  {recipe.title}
+                </h4>
+                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  <span className="flex items-center gap-1">
+                    <ClockIcon className="w-3 h-3" />
+                    {recipe.cookTime}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <FlameIcon className="w-3 h-3" />
+                    {recipe.calories} kcal
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        );
+      })}
 
       <Link
         href="/meal-planner"

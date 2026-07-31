@@ -4,8 +4,29 @@ import { createContext, useContext, useSyncExternalStore } from 'react';
 
 const STORAGE_KEY = 'aftertaste-meal-plan';
 
-// slotKey (`<ISO date>_<meal>`) -> recipeId
+// A slot value is either a recipe id or a note. Notes are stored with this
+// prefix so the map stays a plain Record<string, string> and old plans (which
+// only ever held recipe ids) keep working unchanged. Recipe ids are slugs and
+// never contain a colon, so the prefix can't collide with one.
+const NOTE_PREFIX = 'note:';
+
+// slotKey (`<ISO date>_<meal>`) -> recipe id or `note:<text>`
 type Plan = Record<string, string>;
+
+export type PlanEntry =
+  | { type: 'recipe'; recipeId: string }
+  | { type: 'note'; text: string };
+
+/** Interpret a stored slot value as either a recipe reference or a free note. */
+export function parsePlanEntry(
+  value: string | undefined | null,
+): PlanEntry | null {
+  if (!value) return null;
+  if (value.startsWith(NOTE_PREFIX)) {
+    return { type: 'note', text: value.slice(NOTE_PREFIX.length) };
+  }
+  return { type: 'recipe', recipeId: value };
+}
 
 function loadPlan(): Plan {
   if (typeof window === 'undefined') return {};
@@ -56,6 +77,14 @@ function assignSlot(slotKey: string, recipeId: string) {
   emitChange();
 }
 
+function assignNote(slotKey: string, text: string) {
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  planState = { ...planState, [slotKey]: NOTE_PREFIX + trimmed };
+  savePlan(planState);
+  emitChange();
+}
+
 function clearSlot(slotKey: string) {
   if (!(slotKey in planState)) return;
   const next = { ...planState };
@@ -68,6 +97,7 @@ function clearSlot(slotKey: string) {
 interface MealPlanContextValue {
   plan: Plan;
   assignSlot: (slotKey: string, recipeId: string) => void;
+  assignNote: (slotKey: string, text: string) => void;
   clearSlot: (slotKey: string) => void;
 }
 
@@ -81,7 +111,7 @@ export function MealPlanStoreProvider({
   const plan = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   return (
-    <MealPlanContext.Provider value={{ plan, assignSlot, clearSlot }}>
+    <MealPlanContext.Provider value={{ plan, assignSlot, assignNote, clearSlot }}>
       {children}
     </MealPlanContext.Provider>
   );
