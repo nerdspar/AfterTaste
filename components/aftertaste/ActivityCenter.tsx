@@ -91,8 +91,11 @@ export function ActivityCenter() {
       {open && (
         <div
           className={cn(
-            'absolute right-0 top-full mt-2 z-50 w-72',
-            'rounded-xl border border-gray-200 bg-white py-1 shadow-lg',
+            // Mobile: fixed, spanning the width minus margins so it never
+            // runs off-screen. Desktop: anchored under the bell.
+            'fixed left-2 right-2 top-16 w-auto',
+            'sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72',
+            'z-50 rounded-xl border border-gray-200 bg-white py-1 shadow-lg',
             'dark:border-gray-700 dark:bg-slate-900',
             'animate-in fade-in slide-in-from-top-1 duration-150',
           )}
