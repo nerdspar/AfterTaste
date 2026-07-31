@@ -10,6 +10,8 @@ export interface ParsedRecipe {
   calories?: number;
   cuisine?: string;
   category?: string;
+  rating?: number;
+  ratingCount?: number;
   ingredients?: Ingredient[];
   instructions?: Instruction[];
 }
@@ -167,6 +169,18 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
         if (!isNaN(cal)) calories = cal;
       }
 
+      let rating: number | undefined;
+      let ratingCount: number | undefined;
+      const agg = Array.isArray(data.aggregateRating)
+        ? data.aggregateRating[0]
+        : data.aggregateRating;
+      if (agg) {
+        const rv = parseFloat(String(agg.ratingValue));
+        if (!isNaN(rv)) rating = Math.round(rv * 10) / 10;
+        const rc = parseInt(String(agg.ratingCount ?? agg.reviewCount), 10);
+        if (!isNaN(rc)) ratingCount = rc;
+      }
+
       let servingsNum: number | undefined;
       if (data.recipeYield) {
         const y = Array.isArray(data.recipeYield)
@@ -202,6 +216,8 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
               ? data.recipeCategory[0]
               : data.recipeCategory)
           : guessCategory(data.name || '', keywords),
+        rating,
+        ratingCount,
         ingredients: ingredients.length > 0 ? ingredients : undefined,
         instructions: instructions.length > 0 ? instructions : undefined,
       };
