@@ -116,21 +116,47 @@ export function RatingsTab({ recipes }: { recipes: Recipe[] }) {
             </p>
           ) : (
             <div className="space-y-4">
-              <ScoreBar label="Ease" value={data.avgEase} max={5} />
-              <ScoreBar label="Taste" value={data.avgTaste} max={5} />
-              <ScoreBar label="Cleanup" value={data.avgCleanup} max={5} />
+              <Link
+                href="/recipes?sort=ease:desc"
+                title="Sort recipes by ease"
+                className="block hover:opacity-80 transition-opacity"
+              >
+                <ScoreBar label="Ease" value={data.avgEase} max={5} />
+              </Link>
+              <Link
+                href="/recipes?sort=taste:desc"
+                title="Sort recipes by taste"
+                className="block hover:opacity-80 transition-opacity"
+              >
+                <ScoreBar label="Taste" value={data.avgTaste} max={5} />
+              </Link>
+              <Link
+                href="/recipes?sort=cleanup:desc"
+                title="Sort recipes by cleanup"
+                className="block hover:opacity-80 transition-opacity"
+              >
+                <ScoreBar label="Cleanup" value={data.avgCleanup} max={5} />
+              </Link>
             </div>
           )}
-          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-2.5">
-            <div className="flex items-center justify-between text-sm">
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 space-y-1">
+            <Link
+              href="/recipes?sort=cookTimeMinutes:asc"
+              title="Sort recipes by cook time (quickest first)"
+              className="flex items-center justify-between text-sm -mx-1 px-1 h-8 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+            >
               <span className="font-medium text-gray-700 dark:text-gray-300">
                 Avg Cook Time
               </span>
               <span className="font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                 {data.avgCookTime} min
               </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
+            </Link>
+            <Link
+              href="/recipes?sort=cost:asc"
+              title="Sort recipes by cost (lowest first)"
+              className="flex items-center justify-between text-sm -mx-1 px-1 h-8 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+            >
               <span className="font-medium text-gray-700 dark:text-gray-300">
                 Avg Cost
               </span>
@@ -146,15 +172,19 @@ export function RatingsTab({ recipes }: { recipes: Recipe[] }) {
                   '—'
                 )}
               </span>
-            </div>
-            <div className="flex items-center justify-between text-sm">
+            </Link>
+            <Link
+              href="/recipes?sort=cookTimeMinutes:asc"
+              title="Sort recipes by cook time (quickest first)"
+              className="flex items-center justify-between text-sm -mx-1 px-1 h-8 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+            >
               <span className="font-medium text-gray-700 dark:text-gray-300">
                 Quick Meals (≤30 min)
               </span>
               <span className="font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                 {data.quickCount}
               </span>
-            </div>
+            </Link>
           </div>
         </Card>
 

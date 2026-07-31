@@ -50,6 +50,9 @@ function MyRecipesContent() {
   const cuisineParam = searchParams.get('cuisine');
   const sourceParam = searchParams.get('source');
   const ratingParam = searchParams.get('rating');
+  // A `sort` param (`field:direction`, e.g. from the Insights score cards)
+  // pre-selects that sort option.
+  const sortParam = searchParams.get('sort');
 
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const [filters, setFilters] = useState<ActiveFilters>(() => {
@@ -58,7 +61,11 @@ function MyRecipesContent() {
     if (sourceParam) init.source = [sourceParam];
     return init;
   });
-  const [sort, setSort] = useState<SortOption | null>(null);
+  const [sort, setSort] = useState<SortOption | null>(
+    () =>
+      sortOptions.find((o) => `${o.field}:${o.direction}` === sortParam) ??
+      null,
+  );
   // Default to grid on first render (matches SSR), then restore the saved
   // preference on the client to avoid a hydration mismatch.
   const [view, setView] = useState<ViewMode>('grid');
