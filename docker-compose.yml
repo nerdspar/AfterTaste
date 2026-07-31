@@ -1,0 +1,39 @@
+# AfterTaste — self-hosted stack (app + Postgres) for TrueNAS / any Docker host.
+# Set POSTGRES_PASSWORD and AUTH_SECRET in a .env file next to this one:
+#   POSTGRES_PASSWORD=<a-strong-password>
+#   AUTH_SECRET=<output of: openssl rand -base64 32>
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aftertaste
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aftertaste}
+      POSTGRES_DB: aftertaste
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U aftertaste']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://aftertaste:${POSTGRES_PASSWORD:-aftertaste}@db:5432/aftertaste?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      NODE_ENV: production
+    ports:
+      - '3000:3000'
+    volumes:
+      - uploads:/app/uploads
+
+volumes:
+  db-data:
+  uploads:
