@@ -6,7 +6,12 @@
 //   both are undefined, so we also fall back to the legacy execCommand('copy')
 //   path, which works in insecure contexts.
 
-export type ShareResult = 'shared' | 'copied' | 'cancelled' | 'error';
+export type ShareResult =
+  | 'shared'
+  | 'copied'
+  | 'cancelled'
+  | 'manual'
+  | 'error';
 
 export interface ShareInput {
   title?: string;
@@ -94,5 +99,15 @@ export async function shareOrCopy(input: ShareInput): Promise<ShareResult> {
     }
   }
 
-  return (await copyToClipboard(clip)) ? 'copied' : 'error';
+  if (await copyToClipboard(clip)) return 'copied';
+
+  // Last resort — on insecure http (e.g. iOS Safari on a LAN dev URL) neither
+  // the share sheet nor any clipboard API is available. Surface the text in a
+  // prompt so it can be selected and copied by hand instead of dead-ending.
+  if (typeof window !== 'undefined' && typeof window.prompt === 'function') {
+    window.prompt('Copy this to share:', clip);
+    return 'manual';
+  }
+
+  return 'error';
 }
