@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
@@ -22,6 +22,23 @@ interface HeaderBarProps {
 export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Fall back to a shorter placeholder when the box is too narrow to fit the
+  // full one (small phones), so it never truncates to "Search rec".
+  const [placeholder, setPlaceholder] = useState('Search recipes...');
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    const update = () => {
+      // ~190px is the point below which "Search recipes..." starts to clip.
+      setPlaceholder(el.clientWidth < 190 ? 'Search' : 'Search recipes...');
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -47,12 +64,14 @@ export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
         <MenuIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
       </button>
 
-      {/* Search */}
-      <form onSubmit={handleSearch} className="relative flex-1 max-w-md">
+      {/* Search — min-w-0 lets the field shrink instead of pushing the header
+          wider than the viewport on small phones. */}
+      <form onSubmit={handleSearch} className="relative flex-1 min-w-0 max-w-md">
         <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
+          ref={inputRef}
           type="text"
-          placeholder="Search recipes..."
+          placeholder={placeholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className={cn(

@@ -55,8 +55,10 @@ export function AppShell({ children }: AppShellProps) {
           </>
         )}
 
-        {/* Main area */}
-        <div className="flex-1 md:ml-[280px] min-h-screen flex flex-col">
+        {/* Main area — min-w-0 lets this flex child shrink below its content's
+            intrinsic width so wide content (e.g. the meal-planner grid) scrolls
+            inside its own container instead of widening the whole page. */}
+        <div className="flex-1 min-w-0 md:ml-[280px] min-h-screen flex flex-col">
           <HeaderBar onMenuToggle={() => setSidebarOpen(true)} />
 
           <main className="flex-1 px-4 md:px-5 pb-6">
