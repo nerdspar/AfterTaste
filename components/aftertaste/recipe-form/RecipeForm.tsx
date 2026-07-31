@@ -80,6 +80,7 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
   const router = useRouter();
   const { addRecipe, updateRecipe } = useRecipeStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const stepFileInputRef = useRef<HTMLInputElement>(null);
 
   const init = imported ?? {};
 
@@ -122,6 +123,8 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
       ],
   );
   const [imageError, setImageError] = useState('');
+  const [stepUploadIndex, setStepUploadIndex] = useState<number | null>(null);
+  const [stepImageError, setStepImageError] = useState('');
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -147,6 +150,38 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
   function removeImage() {
     setImage('');
     if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function openStepImagePicker(index: number) {
+    setStepImageError('');
+    setStepUploadIndex(index);
+    stepFileInputRef.current?.click();
+  }
+
+  function handleStepImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    const index = stepUploadIndex;
+    e.target.value = '';
+    if (!file || index === null) return;
+
+    if (!file.type.startsWith('image/')) {
+      setStepImageError('Please select an image file.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE) {
+      setStepImageError('Image must be under 2 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      updateInstruction(index, 'videoThumb', reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeStepImage(index: number) {
+    updateInstruction(index, 'videoThumb', '');
   }
 
   function updateIngredient(
@@ -572,10 +607,45 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
                   rows={2}
                   className={cn(inputClasses, 'h-auto py-2.5')}
                 />
+                {/* Per-step photo */}
+                {inst.videoThumb ? (
+                  <div className="relative w-24 h-16 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={inst.videoThumb}
+                      alt="Step preview"
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeStepImage(i)}
+                      aria-label="Remove step photo"
+                      className="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/40 opacity-0 hover:opacity-100 transition-all"
+                    >
+                      <TrashIcon className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => openStepImagePicker(i)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs',
+                      'border border-dashed border-gray-300 text-gray-500',
+                      'hover:border-primary-400 hover:text-primary-500',
+                      'dark:border-gray-600 dark:text-gray-400 dark:hover:border-primary-500',
+                      'transition-colors',
+                    )}
+                  >
+                    <ImageIcon className="w-3.5 h-3.5" />
+                    Add photo
+                  </button>
+                )}
               </div>
               <button
                 type="button"
                 onClick={() => removeInstruction(i)}
+                aria-label="Remove step"
                 className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0 self-start"
               >
                 <TrashIcon className="w-4 h-4 text-red-400" />
@@ -583,6 +653,17 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
             </div>
           ))}
         </div>
+        {/* Shared hidden input for per-step photo uploads */}
+        <input
+          ref={stepFileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleStepImageUpload}
+          className="hidden"
+        />
+        {stepImageError && (
+          <p className="text-xs text-red-500 mt-2">{stepImageError}</p>
+        )}
       </Card>
 
       {/* Actions */}
