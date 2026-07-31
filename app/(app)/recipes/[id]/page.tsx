@@ -5,6 +5,7 @@ import { notFound, useRouter } from 'next/navigation';
 import { Breadcrumbs } from '@/components/aftertaste/Breadcrumbs';
 import { RecipeHero } from '@/components/aftertaste/recipe-detail/RecipeHero';
 import { StatsRow } from '@/components/aftertaste/recipe-detail/StatsRow';
+import { RecipeRatings } from '@/components/aftertaste/recipe-detail/RecipeRatings';
 import { IngredientsPanel } from '@/components/aftertaste/recipe-detail/IngredientsPanel';
 import { CookingInstructions } from '@/components/aftertaste/recipe-detail/CookingInstructions';
 import { AIAssistantPanel } from '@/components/aftertaste/recipe-detail/AIAssistantPanel';
@@ -68,6 +69,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
         <div className="lg:col-span-2 space-y-5">
           <RecipeHero recipe={recipe} />
           <StatsRow recipe={recipe} servings={currentServings} multiplier={multiplier} />
+          <RecipeRatings recipe={recipe} />
           {recipe.instructions.length > 0 && (
             <CookingInstructions instructions={recipe.instructions} />
           )}
