@@ -1,9 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   CrownIcon,
-  LoaderIcon,
   LogOutIcon,
   MailIcon,
   UserPlusIcon,
@@ -21,14 +20,18 @@ import {
   type HouseholdView,
 } from '@/app/(app)/household-actions';
 
-export function HouseholdManager() {
-  const [view, setView] = useState<HouseholdView | null>(null);
-  const [loading, setLoading] = useState(true);
+export function HouseholdManager({
+  initialView,
+}: {
+  initialView: HouseholdView;
+}) {
+  const [view, setView] = useState<HouseholdView>(initialView);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [name, setName] = useState('');
+  const [name, setName] = useState(initialView.name);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
+  // Re-fetch after a mutation (event-triggered, so it's reliable).
   const refresh = useCallback(async () => {
     try {
       const res = await fetch('/api/household', { cache: 'no-store' });
@@ -37,15 +40,9 @@ export function HouseholdManager() {
       setView(v);
       setName(v.name);
     } catch (e) {
-      console.error('[household] load failed', e);
-    } finally {
-      setLoading(false);
+      console.error('[household] refresh failed', e);
     }
   }, []);
-
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
 
   const run = async (fn: () => Promise<{ error?: string } | void>) => {
     setError('');
@@ -74,15 +71,6 @@ export function HouseholdManager() {
       refresh();
     }
   };
-
-  if (loading || !view) {
-    return (
-      <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
-        <LoaderIcon className="w-4 h-4 animate-spin" />
-        Loading household…
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-5">
