@@ -12,9 +12,11 @@ import {
   ShareIcon,
   HeartIcon,
   Trash2Icon,
+  StarIcon,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { recipePersonalRating } from '@/lib/recipe-rating';
 import { RatingStars } from '../RatingStars';
 import { IconButton } from '../IconButton';
 import { useFavorites } from '../FavoritesProvider';
@@ -242,12 +244,16 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
               {recipe.title}
             </h2>
 
-            <RatingStars
-              rating={recipe.rating}
-              count={recipe.ratingCount}
-              size="md"
-              className="mb-3"
-            />
+            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <RatingStars rating={recipePersonalRating(recipe)} size="md" />
+              {recipe.ratingCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500">
+                  <StarIcon className="w-3 h-3 fill-gray-400 text-gray-400 dark:fill-gray-500 dark:text-gray-500" />
+                  Community {recipe.rating.toFixed(1)} ·{' '}
+                  {recipe.ratingCount.toLocaleString()} ratings
+                </span>
+              )}
+            </div>
 
             <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-3">
               {recipe.description}

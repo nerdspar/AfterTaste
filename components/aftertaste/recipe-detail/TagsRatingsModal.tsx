@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { XIcon } from 'lucide-react';
+import { XIcon, StarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../Button';
 import { useRecipeStore } from '../RecipeStoreProvider';
+import { computePersonalRating } from '@/lib/recipe-rating';
 import type { Recipe } from '@/data/sample/recipes';
 
 interface TagsRatingsModalProps {
@@ -91,7 +92,6 @@ export function TagsRatingsModal({
   );
   const [makeAgain, setMakeAgain] = useState(recipe.makeAgain);
   const [remade, setRemade] = useState(recipe.remade);
-  const [rating, setRating] = useState(recipe.rating);
 
   useEffect(() => {
     setEase(recipe.ease);
@@ -101,8 +101,9 @@ export function TagsRatingsModal({
     setCookMinutes(snapCookTime(recipe.cookTimeMinutes));
     setMakeAgain(recipe.makeAgain);
     setRemade(recipe.remade);
-    setRating(recipe.rating);
   }, [recipe]);
+
+  const overallRating = computePersonalRating(taste, ease, cleanup);
 
   useEffect(() => {
     if (open) {
@@ -127,7 +128,6 @@ export function TagsRatingsModal({
         totalTimeMinutes: recipe.prepTimeMinutes + cookMinutes,
         makeAgain,
         remade,
-        rating,
       });
     } catch {
       // Ratings are tiny; a storage write failure here is unexpected. Close
@@ -164,23 +164,20 @@ export function TagsRatingsModal({
         </div>
 
         <div className="space-y-5">
-          {/* Rating */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2">
-              Rating
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min={0}
-                max={5}
-                step={0.1}
-                value={rating}
-                onChange={(e) => setRating(Number(e.target.value))}
-                className="flex-1 accent-amber-400"
-              />
-              <span className="text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums w-8 text-right">
-                {rating.toFixed(1)}
+          {/* Overall rating — auto-calculated from taste, ease & cleanup */}
+          <div className="flex items-center justify-between rounded-xl bg-gray-50 px-3.5 py-3 dark:bg-gray-800/40">
+            <div>
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                Overall Rating
+              </p>
+              <p className="text-[11px] text-gray-400 dark:text-gray-500">
+                Auto-calculated from taste, ease &amp; cleanup
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <StarIcon className="w-5 h-5 fill-amber-400 text-amber-400" />
+              <span className="text-xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">
+                {overallRating.toFixed(1)}
               </span>
             </div>
           </div>

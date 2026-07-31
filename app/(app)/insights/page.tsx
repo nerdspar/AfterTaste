@@ -1,5 +1,6 @@
 import { Card } from '@/components/aftertaste/Card';
 import { recommendedRecipes } from '@/data/sample/recipes';
+import { computePersonalRating } from '@/lib/recipe-rating';
 
 function computeInsights() {
   const recipes = recommendedRecipes;
@@ -9,7 +10,10 @@ function computeInsights() {
     recipes.reduce((sum, r) => sum + r.totalTimeMinutes, 0) / totalRecipes,
   );
   const avgRating = (
-    recipes.reduce((sum, r) => sum + r.rating, 0) / totalRecipes
+    recipes.reduce(
+      (sum, r) => sum + computePersonalRating(r.taste, r.ease, r.cleanup),
+      0,
+    ) / totalRecipes
   ).toFixed(1);
 
   const categoryCounts: Record<string, number> = {};

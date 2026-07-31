@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { HeartIcon, ClockIcon, FlameIcon } from 'lucide-react';
 import { RatingStars } from '../RatingStars';
+import { recipePersonalRating } from '@/lib/recipe-rating';
 import { useFavorites } from '../FavoritesProvider';
 import type { Recipe } from '@/data/sample/recipes';
 
@@ -66,11 +67,7 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
 
       {/* Content */}
       <div className="p-3.5">
-        <RatingStars
-          rating={recipe.rating}
-          count={recipe.ratingCount}
-          className="mb-1.5"
-        />
+        <RatingStars rating={recipePersonalRating(recipe)} className="mb-1.5" />
 
         <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 line-clamp-2 mb-2 leading-snug">
           {recipe.title}

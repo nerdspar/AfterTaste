@@ -1,4 +1,5 @@
 import type { Recipe } from '@/data/sample/recipes';
+import { computePersonalRating } from '@/lib/recipe-rating';
 
 // ---------------------------------------------------------------------------
 // Filter config types – extensible by design.
@@ -32,13 +33,14 @@ export interface FilterConfig {
 
 export interface SortOption {
   label: string;
-  field: keyof Recipe;
+  /** A Recipe field, or the derived personal rating. */
+  field: keyof Recipe | 'personalRating';
   direction: 'asc' | 'desc';
 }
 
 export const sortOptions: SortOption[] = [
-  { label: 'Rating (High to Low)', field: 'rating', direction: 'desc' },
-  { label: 'Rating (Low to High)', field: 'rating', direction: 'asc' },
+  { label: 'Rating (High to Low)', field: 'personalRating', direction: 'desc' },
+  { label: 'Rating (Low to High)', field: 'personalRating', direction: 'asc' },
   { label: 'Cook Time (Quick First)', field: 'cookTimeMinutes', direction: 'asc' },
   { label: 'Cook Time (Longest First)', field: 'cookTimeMinutes', direction: 'desc' },
   { label: 'Calories (Low to High)', field: 'calories', direction: 'asc' },
@@ -275,6 +277,14 @@ export function applySort(recipes: Recipe[], sort: SortOption | null): Recipe[] 
   if (!sort) return recipes;
 
   return [...recipes].sort((a, b) => {
+    if (sort.field === 'personalRating') {
+      const aRating = computePersonalRating(a.taste, a.ease, a.cleanup);
+      const bRating = computePersonalRating(b.taste, b.ease, b.cleanup);
+      return sort.direction === 'asc'
+        ? aRating - bRating
+        : bRating - aRating;
+    }
+
     const aVal = a[sort.field];
     const bVal = b[sort.field];
 
