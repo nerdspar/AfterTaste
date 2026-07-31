@@ -4,23 +4,19 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import {
-  SearchIcon,
-  SettingsIcon,
-  ChevronDownIcon,
-  MenuIcon,
-} from 'lucide-react';
+import { SearchIcon, SettingsIcon, MenuIcon } from 'lucide-react';
 import { ThemeSwitch } from './ThemeSwitch';
 import { IconButton } from './IconButton';
-import { Avatar } from './Avatar';
 import { ActivityCenter } from './ActivityCenter';
+import { AccountMenu, type AccountUser } from './AccountMenu';
 
 interface HeaderBarProps {
   onMenuToggle?: () => void;
   className?: string;
+  user: AccountUser;
 }
 
-export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
+export function HeaderBar({ onMenuToggle, className, user }: HeaderBarProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -101,18 +97,7 @@ export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
           <ThemeSwitch />
         </div>
 
-        {/* User pill */}
-        <button className="flex items-center gap-2 h-9 pl-1 pr-2.5 ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-          <Avatar
-            src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&crop=face"
-            alt="John Doe"
-            size="sm"
-          />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-200 hidden sm:block">
-            John D.
-          </span>
-          <ChevronDownIcon className="w-3.5 h-3.5 text-gray-400 hidden sm:block" />
-        </button>
+        <AccountMenu user={user} />
       </div>
     </header>
   );

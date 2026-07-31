@@ -19,6 +19,7 @@ import {
   UploadIcon,
 } from 'lucide-react';
 import { ImportRecipeModal } from './ImportRecipeModal';
+import { logout } from '@/app/(auth)/actions';
 
 interface NavItem {
   label: string;
@@ -211,10 +212,15 @@ export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
 
       {/* Footer */}
       <div className="px-3 pb-4 pt-3 border-t border-gray-100 dark:border-gray-800 mt-2">
-        <button className="flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/60 transition-colors w-full">
-          <LogOutIcon className="w-[18px] h-[18px] text-gray-400 dark:text-gray-500" />
-          Log out
-        </button>
+        <form action={logout}>
+          <button
+            type="submit"
+            className="flex items-center gap-3 h-10 px-3 rounded-xl text-sm font-medium text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800/60 transition-colors w-full"
+          >
+            <LogOutIcon className="w-[18px] h-[18px] text-gray-400 dark:text-gray-500" />
+            Log out
+          </button>
+        </form>
       </div>
 
       {/* Import modal */}

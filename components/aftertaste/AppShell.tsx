@@ -6,12 +6,14 @@ import { XIcon } from 'lucide-react';
 import { SidebarNav } from './SidebarNav';
 import { HeaderBar } from './HeaderBar';
 import { initInstallCapture } from '@/lib/pwa-install';
+import type { AccountUser } from './AccountMenu';
 
 interface AppShellProps {
   children: React.ReactNode;
+  user: AccountUser;
 }
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, user }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -72,7 +74,7 @@ export function AppShell({ children }: AppShellProps) {
             intrinsic width so wide content (e.g. the meal-planner grid) scrolls
             inside its own container instead of widening the whole page. */}
         <div className="flex-1 min-w-0 md:ml-[280px] min-h-screen flex flex-col">
-          <HeaderBar onMenuToggle={() => setSidebarOpen(true)} />
+          <HeaderBar onMenuToggle={() => setSidebarOpen(true)} user={user} />
 
           <main className="flex-1 px-4 md:px-5 pb-6">
             {children}

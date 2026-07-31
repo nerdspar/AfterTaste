@@ -19,7 +19,9 @@
       "@/data/*": ["data/*"],
       "@/css/*": ["css/*"],
       "@/lib/*": ["lib/*"],
-      "@/app/*": ["app/*"]
+      "@/app/*": ["app/*"],
+      "@/auth": ["auth.ts"],
+      "@/auth.config": ["auth.config.ts"]
     },
     "plugins": [{ "name": "next" }]
   },
