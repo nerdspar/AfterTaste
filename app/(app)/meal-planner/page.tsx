@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/aftertaste/Card';
 import { cn } from '@/lib/utils';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
+import { useMealPlan } from '@/components/aftertaste/MealPlanStoreProvider';
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react';
 import Image from 'next/image';
 
@@ -39,8 +40,8 @@ function MealPlannerContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { recipes, getRecipe } = useRecipeStore();
+  const { plan, assignSlot, clearSlot } = useMealPlan();
   const [weekOffset, setWeekOffset] = useState(0);
-  const [plan, setPlan] = useState<Record<PlanKey, string>>({});
   const [pickingSlot, setPickingSlot] = useState<PlanKey | null>(null);
   const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
 
@@ -59,20 +60,20 @@ function MealPlannerContent() {
 
   const pendingRecipe = pendingRecipeId ? getRecipe(pendingRecipeId) : null;
 
-  const makeKey = (dayIdx: number, meal: string) =>
-    `${weekDates[dayIdx].toISOString().slice(0, 10)}_${meal}`;
-
-  const assignRecipe = (slotKey: string, recipeId: string) => {
-    setPlan((prev) => ({ ...prev, [slotKey]: recipeId }));
-    setPickingSlot(null);
+  const makeKey = (dayIdx: number, meal: string) => {
+    // Use the local calendar date (not toISOString, which is UTC and would
+    // shift the key across the day boundary depending on time zone / time of
+    // day, so the same slot could get different keys).
+    const d = weekDates[dayIdx];
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}_${meal}`;
   };
 
-  const clearSlot = (slotKey: string) => {
-    setPlan((prev) => {
-      const next = { ...prev };
-      delete next[slotKey];
-      return next;
-    });
+  const assignRecipe = (slotKey: string, recipeId: string) => {
+    assignSlot(slotKey, recipeId);
+    setPickingSlot(null);
   };
 
   const handleSlotClick = (slotKey: string) => {
