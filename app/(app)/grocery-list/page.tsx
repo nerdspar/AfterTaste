@@ -3,38 +3,24 @@
 import { useState } from 'react';
 import { Card } from '@/components/aftertaste/Card';
 import { cn } from '@/lib/utils';
-import { groceryItems as initialItems, type GroceryItem } from '@/data/sample/recipes';
+import { useGroceryStore } from '@/components/aftertaste/GroceryStoreProvider';
+import type { GroceryItem } from '@/data/sample/recipes';
 import { PlusIcon, TrashIcon, CheckIcon } from 'lucide-react';
 
 export default function GroceryListPage() {
-  const [items, setItems] = useState<GroceryItem[]>(initialItems);
+  const { items, addItem: addGroceryItem, toggleItem, removeItem } =
+    useGroceryStore();
   const [newName, setNewName] = useState('');
   const [newQty, setNewQty] = useState('');
   const [newCategory, setNewCategory] = useState('Fruits & Vegetables');
 
-  const toggleItem = (id: string) => {
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, checked: !item.checked } : item,
-      ),
-    );
-  };
-
-  const removeItem = (id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
-  };
-
   const addItem = () => {
-    const name = newName.trim();
-    if (!name) return;
-    const item: GroceryItem = {
-      id: `g-${Date.now()}`,
-      name,
-      quantity: newQty.trim() || '1',
-      checked: false,
+    if (!newName.trim()) return;
+    addGroceryItem({
+      name: newName,
+      quantity: newQty,
       category: newCategory,
-    };
-    setItems((prev) => [...prev, item]);
+    });
     setNewName('');
     setNewQty('');
   };

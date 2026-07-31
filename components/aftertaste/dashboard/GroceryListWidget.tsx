@@ -3,21 +3,23 @@
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { CheckIcon } from 'lucide-react';
-import { groceryItems } from '@/data/sample/recipes';
+import { useGroceryStore } from '../GroceryStoreProvider';
 
 export function GroceryListWidget() {
-  const checkedCount = groceryItems.filter((item) => item.checked).length;
+  const { items } = useGroceryStore();
+  const checkedCount = items.filter((item) => item.checked).length;
+  const visibleItems = items.slice(0, 6);
 
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs text-gray-400 dark:text-gray-500">
-          {checkedCount}/{groceryItems.length} items done
+          {checkedCount}/{items.length} items done
         </span>
       </div>
 
       <div className="space-y-2">
-        {groceryItems.map((item) => (
+        {visibleItems.map((item) => (
           <div
             key={item.id}
             className={cn(
