@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/aftertaste/Card';
 import { cn } from '@/lib/utils';
-import { recommendedRecipes } from '@/data/sample/recipes';
+import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react';
 import Image from 'next/image';
 
@@ -34,12 +35,29 @@ const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 type PlanKey = string;
 
-export default function MealPlannerPage() {
+function MealPlannerContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { recipes, getRecipe } = useRecipeStore();
   const [weekOffset, setWeekOffset] = useState(0);
   const [plan, setPlan] = useState<Record<PlanKey, string>>({});
   const [pickingSlot, setPickingSlot] = useState<PlanKey | null>(null);
+  const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
+
+  // Arriving from a recipe's "Add to Meal Plan" enters a mode where clicking a
+  // slot drops that recipe straight in, instead of opening the recipe picker.
+  useEffect(() => {
+    const add = searchParams.get('add');
+    if (add) {
+      setPendingRecipeId(add);
+      setPickingSlot(null);
+      router.replace('/meal-planner', { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  const pendingRecipe = pendingRecipeId ? getRecipe(pendingRecipeId) : null;
 
   const makeKey = (dayIdx: number, meal: string) =>
     `${weekDates[dayIdx].toISOString().slice(0, 10)}_${meal}`;
@@ -57,11 +75,39 @@ export default function MealPlannerPage() {
     });
   };
 
+  const handleSlotClick = (slotKey: string) => {
+    if (pendingRecipeId) {
+      assignRecipe(slotKey, pendingRecipeId);
+      setPendingRecipeId(null);
+    } else {
+      setPickingSlot(pickingSlot === slotKey ? null : slotKey);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-5">
         Meal Planner
       </h1>
+
+      {pendingRecipe && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-primary-300 bg-primary-500/5 px-4 py-2.5 dark:border-primary-500/40 dark:bg-primary-500/10">
+          <p className="text-sm text-gray-700 dark:text-gray-200">
+            Adding{' '}
+            <span className="font-semibold text-gray-900 dark:text-gray-100">
+              {pendingRecipe.title}
+            </span>{' '}
+            — pick a slot
+          </p>
+          <button
+            type="button"
+            onClick={() => setPendingRecipeId(null)}
+            className="text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
 
       <Card>
         <div className="flex items-center justify-between mb-4">
@@ -140,9 +186,7 @@ export default function MealPlannerPage() {
                 {weekDates.map((_, dayIdx) => {
                   const key = makeKey(dayIdx, meal);
                   const recipeId = plan[key];
-                  const recipe = recipeId
-                    ? recommendedRecipes.find((r) => r.id === recipeId)
-                    : null;
+                  const recipe = recipeId ? getRecipe(recipeId) : null;
 
                   if (recipe) {
                     return (
@@ -173,24 +217,26 @@ export default function MealPlannerPage() {
                     );
                   }
 
+                  const slotActive =
+                    pickingSlot === key || pendingRecipeId !== null;
                   return (
                     <button
                       type="button"
                       key={key}
-                      onClick={() =>
-                        setPickingSlot(pickingSlot === key ? null : key)
-                      }
+                      onClick={() => handleSlotClick(key)}
                       className={cn(
                         'h-16 rounded-xl border border-dashed flex items-center justify-center transition-colors',
                         pickingSlot === key
                           ? 'border-primary-500 bg-primary-500/5 dark:bg-primary-500/10'
-                          : 'border-gray-200 dark:border-gray-700/40 bg-gray-50/50 dark:bg-gray-800/20 hover:border-gray-300 dark:hover:border-gray-600',
+                          : pendingRecipeId
+                            ? 'border-primary-300 bg-primary-500/5 hover:border-primary-500 dark:border-primary-500/40 dark:bg-primary-500/10'
+                            : 'border-gray-200 dark:border-gray-700/40 bg-gray-50/50 dark:bg-gray-800/20 hover:border-gray-300 dark:hover:border-gray-600',
                       )}
                     >
                       <span
                         className={cn(
                           'text-xs',
-                          pickingSlot === key
+                          slotActive
                             ? 'text-primary-500'
                             : 'text-gray-300 dark:text-gray-600',
                         )}
@@ -222,7 +268,7 @@ export default function MealPlannerPage() {
             </button>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-            {recommendedRecipes.map((recipe) => (
+            {recipes.map((recipe) => (
               <button
                 type="button"
                 key={recipe.id}
@@ -252,5 +298,13 @@ export default function MealPlannerPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function MealPlannerPage() {
+  return (
+    <Suspense>
+      <MealPlannerContent />
+    </Suspense>
   );
 }

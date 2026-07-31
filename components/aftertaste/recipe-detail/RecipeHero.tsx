@@ -102,7 +102,8 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
       label: 'Add to Meal Plan',
       icon: CalendarPlusIcon,
       action: () => {
-        router.push('/meal-planner');
+        setMenuOpen(false);
+        router.push(`/meal-planner?add=${recipe.id}`);
       },
     },
     {
