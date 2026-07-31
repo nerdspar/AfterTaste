@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import {
   SearchIcon,
-  BellIcon,
   SettingsIcon,
   ChevronDownIcon,
   MenuIcon,
@@ -13,6 +13,7 @@ import {
 import { ThemeSwitch } from './ThemeSwitch';
 import { IconButton } from './IconButton';
 import { Avatar } from './Avatar';
+import { ActivityCenter } from './ActivityCenter';
 
 interface HeaderBarProps {
   onMenuToggle?: () => void;
@@ -88,13 +89,13 @@ export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
 
       {/* Right actions */}
       <div className="flex items-center gap-1">
-        <IconButton aria-label="Notifications">
-          <BellIcon className="w-[18px] h-[18px]" />
-        </IconButton>
+        <ActivityCenter />
 
-        <IconButton aria-label="Settings">
-          <SettingsIcon className="w-[18px] h-[18px]" />
-        </IconButton>
+        <Link href="/settings">
+          <IconButton aria-label="Settings">
+            <SettingsIcon className="w-[18px] h-[18px]" />
+          </IconButton>
+        </Link>
 
         <div className="ml-1">
           <ThemeSwitch />

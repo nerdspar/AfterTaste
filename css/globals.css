@@ -40,11 +40,11 @@
 }
 
 ::selection {
-  background-color: var(--primary-lighter);
+  background-color: rgb(var(--primary-lighter));
   color: black;
 }
 
 .dark ::selection {
-  background-color: var(--primary-darker);
+  background-color: rgb(var(--primary-darker));
   color: white;
 }

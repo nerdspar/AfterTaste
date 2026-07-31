@@ -15,16 +15,18 @@ module.exports = {
         sans: ['var(--font-sans)', ...fontFamily.sans],
       },
       colors: {
+        // Resolved from CSS variables (channel triplets) so the accent color
+        // can be swapped at runtime; see lib/accent.ts.
         primary: {
-          100: customColors.primary.lighter,
-          200: customColors.primary.lighter,
-          300: customColors.primary.light,
-          400: customColors.primary.light,
-          500: customColors.primary.main,
-          600: customColors.primary.main,
-          700: customColors.primary.dark,
-          800: customColors.primary.dark,
-          900: customColors.primary.darker,
+          100: 'rgb(var(--primary-lighter) / <alpha-value>)',
+          200: 'rgb(var(--primary-lighter) / <alpha-value>)',
+          300: 'rgb(var(--primary-light) / <alpha-value>)',
+          400: 'rgb(var(--primary-light) / <alpha-value>)',
+          500: 'rgb(var(--primary-main) / <alpha-value>)',
+          600: 'rgb(var(--primary-main) / <alpha-value>)',
+          700: 'rgb(var(--primary-dark) / <alpha-value>)',
+          800: 'rgb(var(--primary-dark) / <alpha-value>)',
+          900: 'rgb(var(--primary-darker) / <alpha-value>)',
         },
         secondary: {
           100: customColors.secondary.lighter,

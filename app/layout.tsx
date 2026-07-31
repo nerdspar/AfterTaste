@@ -1,22 +1,26 @@
 import { ThemeProvider } from 'next-themes';
-import { Metadata } from 'next';
-import { colors } from '@/data/config/colors.js';
+import { Metadata, Viewport } from 'next';
+import {
+  accentVarsCss,
+  accentInitScript,
+  getPreset,
+  DEFAULT_ACCENT_ID,
+} from '@/lib/accent';
 import '@/css/globals.css';
 
-const colorMap = colors as Record<string, Record<string, string>>;
-const style: string[] = [];
-Object.keys(colorMap).forEach((variant) => {
-  Object.keys(colorMap[variant]).forEach((shade) => {
-    style.push(`--${variant}-${shade}: ${colorMap[variant][shade]}`);
-  });
-});
+const defaultAccentCss = accentVarsCss(getPreset(DEFAULT_ACCENT_ID));
 
 export const metadata: Metadata = {
   title: {
     default: 'AfterTaste',
     template: '%s | AfterTaste',
   },
-  description: 'Recipe management app',
+  description: 'Your personal recipe box.',
+  appleWebApp: { capable: true, title: 'AfterTaste', statusBarStyle: 'default' },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#f97316',
 };
 
 export default function RootLayout({
@@ -27,7 +31,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <head>
-        <style>{`:root, :before, :after { ${style.join(';')} }`}</style>
+        <style>{`:root { ${defaultAccentCss} }`}</style>
+        <script dangerouslySetInnerHTML={{ __html: accentInitScript() }} />
       </head>
       <body className="bg-white text-black antialiased dark:bg-gray-950 dark:text-white min-h-screen">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

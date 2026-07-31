@@ -10,6 +10,7 @@ import {
   LoaderIcon,
   SoupIcon,
   CheckCircle2Icon,
+  ClipboardCheckIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from './Button';
@@ -17,6 +18,7 @@ import { parseRecipeFromText, parseRecipeFromHtml } from '@/lib/recipe-parser';
 import type { ParsedRecipe } from '@/lib/recipe-parser';
 import { useRecipeStore } from './RecipeStoreProvider';
 import { importCroutonFiles } from '@/lib/crouton-import';
+import { usePref, PREF_CLIPBOARD } from '@/lib/prefs';
 
 interface ImportRecipeModalProps {
   open: boolean;
@@ -55,6 +57,8 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
     added: number;
     total: number;
   } | null>(null);
+  const [clipboardDetected, setClipboardDetected] = useState(false);
+  const clipboardPref = usePref(PREF_CLIPBOARD, true);
   const fileRef = useRef<HTMLInputElement>(null);
   const croutonRef = useRef<HTMLInputElement>(null);
 
@@ -63,12 +67,35 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
       document.body.style.overflow = 'hidden';
       setError('');
       setCroutonResult(null);
+      setClipboardDetected(false);
       if (initialTab) setActiveTab(initialTab);
     }
     return () => {
       document.body.style.overflow = '';
     };
   }, [open, initialTab]);
+
+  // Auto-detect a recipe link on the clipboard and prefill the URL field.
+  useEffect(() => {
+    if (!open || !clipboardPref || activeTab !== 'url') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        if (!navigator.clipboard?.readText) return;
+        const text = (await navigator.clipboard.readText())?.trim();
+        const match = text?.match(/^https?:\/\/\S+$/);
+        if (!cancelled && match) {
+          setUrl((prev) => prev || match[0]);
+          setClipboardDetected(true);
+        }
+      } catch {
+        // clipboard permission denied / unavailable — ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, clipboardPref, activeTab]);
 
   async function handleCroutonUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -262,6 +289,12 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
               className={inputClasses}
               autoFocus
             />
+            {clipboardDetected && (
+              <p className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 -mt-1">
+                <ClipboardCheckIcon className="w-3.5 h-3.5" />
+                Pulled a link from your clipboard
+              </p>
+            )}
             <Button
               type="button"
               variant="primary"

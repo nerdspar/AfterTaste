@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { XIcon } from 'lucide-react';
 import { SidebarNav } from './SidebarNav';
 import { HeaderBar } from './HeaderBar';
+import { initInstallCapture } from '@/lib/pwa-install';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -12,6 +13,10 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    initInstallCapture();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0B1220] transition-colors">
