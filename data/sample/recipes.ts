@@ -24,7 +24,7 @@ export interface Recipe {
   ease: number; // 1-5
   taste: number; // 1-5
   cleanup: number; // 1-5
-  makeAgain: boolean;
+  makeAgain: boolean | null; // null = not set
   remade: number; // 0-10+
 }
 

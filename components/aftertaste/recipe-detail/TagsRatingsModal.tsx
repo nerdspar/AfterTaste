@@ -60,7 +60,8 @@ function ScoreSelector({
             <button
               key={score}
               type="button"
-              onClick={() => onChange(score)}
+              // Click the currently-set score again to clear it (undo).
+              onClick={() => onChange(score === value ? 0 : score)}
               className={cn(
                 'w-9 h-9 rounded-lg text-sm font-bold transition-colors',
                 score <= value
@@ -175,10 +176,21 @@ export function TagsRatingsModal({
               </p>
             </div>
             <div className="flex items-center gap-1.5">
-              <StarIcon className="w-5 h-5 fill-amber-400 text-amber-400" />
-              <span className="text-xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">
-                {overallRating.toFixed(1)}
-              </span>
+              {overallRating > 0 ? (
+                <>
+                  <StarIcon className="w-5 h-5 fill-amber-400 text-amber-400" />
+                  <span className="text-xl font-bold text-gray-900 dark:text-gray-100 tabular-nums">
+                    {overallRating.toFixed(1)}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <StarIcon className="w-5 h-5 fill-gray-200 text-gray-200 dark:fill-gray-600 dark:text-gray-600" />
+                  <span className="text-sm font-medium text-gray-400 dark:text-gray-500">
+                    Not rated
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -197,7 +209,7 @@ export function TagsRatingsModal({
                 <button
                   key={opt.value}
                   type="button"
-                  onClick={() => setCost(opt.value)}
+                  onClick={() => setCost(cost === opt.value ? 0 : opt.value)}
                   className={cn(
                     'flex-1 h-10 rounded-lg text-sm font-bold transition-colors',
                     cost === opt.value
@@ -242,10 +254,10 @@ export function TagsRatingsModal({
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => setMakeAgain(true)}
+                onClick={() => setMakeAgain(makeAgain === true ? null : true)}
                 className={cn(
                   'flex-1 h-10 rounded-lg text-sm font-medium transition-colors',
-                  makeAgain
+                  makeAgain === true
                     ? 'bg-emerald-500 text-white'
                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700',
                 )}
@@ -254,10 +266,10 @@ export function TagsRatingsModal({
               </button>
               <button
                 type="button"
-                onClick={() => setMakeAgain(false)}
+                onClick={() => setMakeAgain(makeAgain === false ? null : false)}
                 className={cn(
                   'flex-1 h-10 rounded-lg text-sm font-medium transition-colors',
-                  !makeAgain
+                  makeAgain === false
                     ? 'bg-red-400 text-white'
                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700',
                 )}

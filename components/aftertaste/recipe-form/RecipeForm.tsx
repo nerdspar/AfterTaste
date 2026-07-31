@@ -285,7 +285,7 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
       servings,
       calories,
       difficulty,
-      cost: recipe?.cost ?? 2,
+      cost: recipe?.cost ?? 0,
       isFavorite: recipe?.isFavorite ?? false,
       description: description.trim(),
       ingredients: validIngredients,
@@ -300,10 +300,10 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
       source,
       cuisine: cuisine.trim() || 'American',
       cookingClassType,
-      ease: recipe?.ease ?? 3,
-      taste: recipe?.taste ?? 3,
-      cleanup: recipe?.cleanup ?? 3,
-      makeAgain: recipe?.makeAgain ?? false,
+      ease: recipe?.ease ?? 0,
+      taste: recipe?.taste ?? 0,
+      cleanup: recipe?.cleanup ?? 0,
+      makeAgain: recipe?.makeAgain ?? null,
       remade: recipe?.remade ?? 0,
     };
 
