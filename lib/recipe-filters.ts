@@ -45,6 +45,8 @@ export const sortOptions: SortOption[] = [
   { label: 'Cook Time (Longest First)', field: 'cookTimeMinutes', direction: 'desc' },
   { label: 'Calories (Low to High)', field: 'calories', direction: 'asc' },
   { label: 'Calories (High to Low)', field: 'calories', direction: 'desc' },
+  { label: 'Date Added (Newest First)', field: 'createdAt', direction: 'desc' },
+  { label: 'Date Added (Oldest First)', field: 'createdAt', direction: 'asc' },
   { label: 'Ease (Easiest First)', field: 'ease', direction: 'desc' },
   { label: 'Taste (Best First)', field: 'taste', direction: 'desc' },
   { label: 'Cleanup (Easiest First)', field: 'cleanup', direction: 'desc' },
@@ -277,8 +279,8 @@ export function applySort(recipes: Recipe[], sort: SortOption | null): Recipe[] 
         : bVal.localeCompare(aVal);
     }
 
-    const aNum = Number(aVal);
-    const bNum = Number(bVal);
+    const aNum = Number(aVal) || 0;
+    const bNum = Number(bVal) || 0;
     return sort.direction === 'asc' ? aNum - bNum : bNum - aNum;
   });
 }

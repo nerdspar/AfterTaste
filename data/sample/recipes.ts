@@ -27,6 +27,7 @@ export interface Recipe {
   makeAgain: boolean | null; // null = not set
   remade: number; // 0-10+
   tags?: string[]; // free-form keywords for search/filter
+  createdAt?: number; // epoch ms when the recipe was added
 }
 
 export interface Ingredient {

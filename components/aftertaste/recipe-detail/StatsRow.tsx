@@ -22,6 +22,14 @@ function formatMinutes(mins: number) {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
+// Compact form for the prep/cook subtext (e.g. "15m", "1h 30m").
+function compactMinutes(mins: number) {
+  if (mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
 function StatTile({
   icon: Icon,
   value,
@@ -40,10 +48,10 @@ function StatTile({
     >
       <Icon className="w-4 h-4 text-secondary-500 dark:text-secondary-400 flex-shrink-0" />
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums leading-tight truncate">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 tabular-nums leading-tight break-words">
           {value}
         </p>
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-tight truncate">
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 leading-tight break-words">
           {sub}
         </p>
       </div>
@@ -58,7 +66,7 @@ export function StatsRow({ recipe, servings, multiplier }: StatsRowProps) {
       <StatTile
         icon={ClockIcon}
         value={formatMinutes(recipe.totalTimeMinutes)}
-        sub={`${formatMinutes(recipe.prepTimeMinutes)} prep · ${formatMinutes(recipe.cookTimeMinutes)} cook`}
+        sub={`${compactMinutes(recipe.prepTimeMinutes)} prep · ${compactMinutes(recipe.cookTimeMinutes)} cook`}
       />
       <StatTile icon={GlobeIcon} value={recipe.cuisine} sub="Cuisine" />
       <StatTile icon={BookmarkIcon} value={recipe.source} sub="Source" />

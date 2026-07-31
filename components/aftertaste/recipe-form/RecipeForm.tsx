@@ -14,7 +14,12 @@ import type { ParsedRecipe } from '@/lib/recipe-parser';
 interface RecipeFormProps {
   recipe?: Recipe;
   imported?: ParsedRecipe;
+  /** Seed a brand-new recipe with the content of an existing one (Duplicate). */
+  duplicate?: Recipe;
 }
+
+/** sessionStorage key used to hand a recipe to the "new" page for duplication. */
+export const DUPLICATE_KEY = 'aftertaste-duplicate-recipe';
 
 const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'];
 const SOURCES = [
@@ -66,7 +71,7 @@ function resolveCategory(value: string | undefined, fallback: string): string {
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 10 * 1024 * 1024;
 
-export function RecipeForm({ recipe, imported }: RecipeFormProps) {
+export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   const isEditing = !!recipe;
   const router = useRouter();
   const { addRecipe, updateRecipe } = useRecipeStore();
@@ -74,35 +79,41 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
   const stepFileInputRef = useRef<HTMLInputElement>(null);
 
   const init = imported ?? {};
+  // Editing reads from `recipe`; duplicating seeds the same content fields from
+  // `duplicate` but saves as a brand-new recipe (fresh id, ratings, tags).
+  const base = recipe ?? duplicate;
 
-  const [title, setTitle] = useState(recipe?.title ?? init.title ?? '');
+  const [title, setTitle] = useState(
+    recipe?.title ??
+      (duplicate ? `${duplicate.title} (Copy)` : (init.title ?? '')),
+  );
   const [category, setCategory] = useState(
-    recipe?.category ?? resolveCategory(init.category, 'Dinner'),
+    base?.category ?? resolveCategory(init.category, 'Dinner'),
   );
-  const [cuisine, setCuisine] = useState(recipe?.cuisine ?? init.cuisine ?? '');
+  const [cuisine, setCuisine] = useState(base?.cuisine ?? init.cuisine ?? '');
   const [description, setDescription] = useState(
-    recipe?.description ?? init.description ?? '',
+    base?.description ?? init.description ?? '',
   );
-  const [image, setImage] = useState(recipe?.image ?? init.image ?? '');
+  const [image, setImage] = useState(base?.image ?? init.image ?? '');
   const [servings, setServings] = useState(
-    recipe?.servings ?? init.servings ?? 4,
+    base?.servings ?? init.servings ?? 4,
   );
   const [prepTime, setPrepTime] = useState(
-    recipe?.prepTimeMinutes ?? init.prepTimeMinutes ?? 15,
+    base?.prepTimeMinutes ?? init.prepTimeMinutes ?? 15,
   );
   const [cookTime, setCookTime] = useState(
-    recipe?.cookTimeMinutes ?? init.cookTimeMinutes ?? 30,
+    base?.cookTimeMinutes ?? init.cookTimeMinutes ?? 30,
   );
   const [calories, setCalories] = useState(
-    recipe?.calories ?? init.calories ?? 400,
+    base?.calories ?? init.calories ?? 400,
   );
-  const [source, setSource] = useState(recipe?.source ?? 'Original');
+  const [source, setSource] = useState(base?.source ?? 'Original');
   const [ingredients, setIngredients] = useState<Ingredient[]>(
-    recipe?.ingredients ??
+    base?.ingredients ??
       init.ingredients ?? [{ name: '', quantity: '', image: '' }],
   );
   const [instructions, setInstructions] = useState<Instruction[]>(
-    recipe?.instructions ??
+    base?.instructions ??
       init.instructions ?? [
         { step: '01', title: '', body: '', videoThumb: '' },
       ],
@@ -289,6 +300,7 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
       makeAgain: recipe?.makeAgain ?? null,
       remade: recipe?.remade ?? 0,
       tags: recipe?.tags ?? [],
+      createdAt: recipe?.createdAt ?? Date.now(),
     };
 
     try {
@@ -535,20 +547,9 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
 
       {/* Instructions */}
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
-            Instructions
-          </h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={addInstruction}
-          >
-            <PlusIcon className="w-3.5 h-3.5" />
-            Add Step
-          </Button>
-        </div>
+        <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-4">
+          Instructions
+        </h2>
         <div className="space-y-4">
           {instructions.map((inst, i) => (
             <div
@@ -651,6 +652,20 @@ export function RecipeForm({ recipe, imported }: RecipeFormProps) {
         {stepImageError && (
           <p className="text-xs text-red-500 mt-2">{stepImageError}</p>
         )}
+        <button
+          type="button"
+          onClick={addInstruction}
+          className={cn(
+            'mt-4 w-full h-11 rounded-xl border-2 border-dashed',
+            'flex items-center justify-center gap-1.5 text-sm font-medium',
+            'border-gray-200 text-gray-500 hover:border-primary-400 hover:text-primary-500',
+            'dark:border-gray-700 dark:text-gray-400 dark:hover:border-primary-500',
+            'transition-colors',
+          )}
+        >
+          <PlusIcon className="w-4 h-4" />
+          Add Step
+        </button>
       </Card>
 
       {/* Actions */}

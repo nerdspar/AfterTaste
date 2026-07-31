@@ -85,6 +85,12 @@ export function IngredientsPanel({
     setSelectMode(true);
   }
 
+  function enterSelectModeWith(index: number) {
+    setScaleOpen(false);
+    setSelected(new Set([index]));
+    setSelectMode(true);
+  }
+
   function cancelSelectMode() {
     setSelectMode(false);
     setSelected(new Set());
@@ -321,12 +327,15 @@ export function IngredientsPanel({
               {content}
             </button>
           ) : (
-            <div
+            <button
               key={ing.name}
-              className="flex items-center gap-3 h-11 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+              type="button"
+              onClick={() => enterSelectModeWith(i)}
+              title="Add to grocery list"
+              className="flex w-full items-center gap-3 h-11 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
             >
               {content}
-            </div>
+            </button>
           );
         })}
       </div>

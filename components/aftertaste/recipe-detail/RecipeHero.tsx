@@ -21,6 +21,7 @@ import { RatingStars } from '../RatingStars';
 import { IconButton } from '../IconButton';
 import { useFavorites } from '../FavoritesProvider';
 import { useRecipeStore } from '../RecipeStoreProvider';
+import { DUPLICATE_KEY } from '../recipe-form/RecipeForm';
 import { TagsRatingsModal } from './TagsRatingsModal';
 import { DeleteRecipeDialog } from './DeleteRecipeDialog';
 import type { Recipe } from '@/data/sample/recipes';
@@ -111,7 +112,13 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
     {
       label: 'Duplicate',
       icon: CopyIcon,
-      action: () => showToast('Recipe duplicated (coming soon)'),
+      action: () => {
+        setMenuOpen(false);
+        try {
+          sessionStorage.setItem(DUPLICATE_KEY, JSON.stringify(recipe));
+        } catch {}
+        router.push('/recipes/new?duplicate=1');
+      },
     },
     {
       label: 'Share',

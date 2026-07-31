@@ -10,6 +10,7 @@ import { IngredientsPanel } from '@/components/aftertaste/recipe-detail/Ingredie
 import { CookingInstructions } from '@/components/aftertaste/recipe-detail/CookingInstructions';
 import { AIAssistantPanel } from '@/components/aftertaste/recipe-detail/AIAssistantPanel';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
+import { recordRecipeView } from '@/lib/recently-viewed';
 
 interface RecipeDetailPageProps {
   params: Promise<{ id: string }>;
@@ -27,12 +28,18 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
 
   const recipe = getRecipe(id);
   if (recipe) existedRef.current = true;
+  const recipeId = recipe?.id;
 
   useEffect(() => {
     if (!recipe && existedRef.current) {
       router.replace('/recipes');
     }
   }, [recipe, router]);
+
+  // Track opens so the dashboard can surface "Recently Viewed".
+  useEffect(() => {
+    if (recipeId) recordRecipeView(recipeId);
+  }, [recipeId]);
 
   if (!recipe) {
     // Recipe was deleted while we were viewing it — leaving for the list.

@@ -80,42 +80,48 @@ export default function GroceryListPage() {
               {items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center gap-3 h-11 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors group"
+                  className="flex items-center gap-2 h-11 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors group"
                 >
+                  {/* Whole row toggles the item (single tap on mobile) */}
                   <button
                     type="button"
                     onClick={() => toggleItem(item.id)}
-                    className={cn(
-                      'w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors',
-                      item.checked
-                        ? 'bg-primary-500 border-primary-500'
-                        : 'border-gray-300 dark:border-gray-600 hover:border-primary-400',
-                    )}
+                    className="flex flex-1 items-center gap-3 h-full min-w-0 text-left"
                   >
-                    {item.checked && (
-                      <CheckIcon className="w-3 h-3 text-white" />
-                    )}
+                    <span
+                      className={cn(
+                        'w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                        item.checked
+                          ? 'bg-primary-500 border-primary-500'
+                          : 'border-gray-300 dark:border-gray-600',
+                      )}
+                    >
+                      {item.checked && (
+                        <CheckIcon className="w-3 h-3 text-white" />
+                      )}
+                    </span>
+
+                    <span
+                      className={cn(
+                        'text-sm flex-1 min-w-0 truncate transition-colors',
+                        item.checked
+                          ? 'line-through text-gray-400 dark:text-gray-500'
+                          : 'text-gray-900 dark:text-gray-100 font-medium',
+                      )}
+                    >
+                      {item.name}
+                    </span>
+
+                    <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0">
+                      {item.quantity}
+                    </span>
                   </button>
-
-                  <span
-                    className={cn(
-                      'text-sm flex-1 transition-colors',
-                      item.checked
-                        ? 'line-through text-gray-400 dark:text-gray-500'
-                        : 'text-gray-900 dark:text-gray-100 font-medium',
-                    )}
-                  >
-                    {item.name}
-                  </span>
-
-                  <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
-                    {item.quantity}
-                  </span>
 
                   <button
                     type="button"
                     onClick={() => removeItem(item.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                    aria-label={`Remove ${item.name}`}
+                    className="flex-shrink-0 p-1 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
                   >
                     <TrashIcon className="w-3.5 h-3.5 text-red-400" />
                   </button>

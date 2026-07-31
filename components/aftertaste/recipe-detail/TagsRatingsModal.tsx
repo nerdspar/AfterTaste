@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { XIcon, StarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '../Button';
@@ -83,7 +83,7 @@ export function TagsRatingsModal({
   open,
   onClose,
 }: TagsRatingsModalProps) {
-  const { updateRecipe } = useRecipeStore();
+  const { updateRecipe, recipes } = useRecipeStore();
   const [ease, setEase] = useState(recipe.ease);
   const [taste, setTaste] = useState(recipe.taste);
   const [cleanup, setCleanup] = useState(recipe.cleanup);
@@ -95,6 +95,20 @@ export function TagsRatingsModal({
   const [remade, setRemade] = useState(recipe.remade);
   const [tags, setTags] = useState<string[]>(recipe.tags ?? []);
   const [tagInput, setTagInput] = useState('');
+  const [tagFocused, setTagFocused] = useState(false);
+
+  // All tags used across every recipe, for the suggestion dropdown.
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of recipes) for (const t of r.tags ?? []) set.add(t);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [recipes]);
+
+  const tagSuggestions = allTags.filter(
+    (t) =>
+      !tags.some((x) => x.toLowerCase() === t.toLowerCase()) &&
+      t.toLowerCase().includes(tagInput.trim().toLowerCase()),
+  );
 
   useEffect(() => {
     setEase(recipe.ease);
@@ -108,13 +122,17 @@ export function TagsRatingsModal({
     setTagInput('');
   }, [recipe]);
 
-  function addTag() {
-    const value = tagInput.trim();
+  function addTagValue(raw: string) {
+    const value = raw.trim();
     if (!value) return;
     if (!tags.some((t) => t.toLowerCase() === value.toLowerCase())) {
       setTags([...tags, value]);
     }
     setTagInput('');
+  }
+
+  function addTag() {
+    addTagValue(tagInput);
   }
 
   function removeTag(tag: string) {
@@ -352,24 +370,53 @@ export function TagsRatingsModal({
                 ))}
               </div>
             )}
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addTag();
-                }
-              }}
-              placeholder="Add a tag and press Enter"
-              className={cn(
-                'w-full h-10 px-3 rounded-lg text-sm',
-                'border border-gray-200 bg-white text-gray-900',
-                'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
-                'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
+            <div className="relative">
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onFocus={() => setTagFocused(true)}
+                onBlur={() => setTimeout(() => setTagFocused(false), 120)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addTag();
+                  }
+                }}
+                placeholder="Add a tag or choose an existing one"
+                className={cn(
+                  'w-full h-10 px-3 rounded-lg text-sm',
+                  'border border-gray-200 bg-white text-gray-900',
+                  'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
+                  'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
+                )}
+              />
+              {tagFocused && tagSuggestions.length > 0 && (
+                <div
+                  className={cn(
+                    'absolute left-0 right-0 bottom-full mb-1 z-10 max-h-44 overflow-y-auto',
+                    'rounded-lg border border-gray-200 bg-white py-1 shadow-lg',
+                    'dark:border-gray-700 dark:bg-slate-900',
+                  )}
+                >
+                  {tagSuggestions.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => addTagValue(tag)}
+                      className={cn(
+                        'block w-full px-3 py-1.5 text-left text-sm text-gray-700',
+                        'hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800',
+                        'transition-colors',
+                      )}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               )}
-            />
+            </div>
           </div>
         </div>
 

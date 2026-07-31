@@ -21,6 +21,7 @@ import {
 import { useRecipeStore } from './RecipeStoreProvider';
 import { TagsRatingsModal } from './recipe-detail/TagsRatingsModal';
 import { DeleteRecipeDialog } from './recipe-detail/DeleteRecipeDialog';
+import { DUPLICATE_KEY } from './recipe-form/RecipeForm';
 import type { Recipe } from '@/data/sample/recipes';
 
 const MENU_WIDTH = 208;
@@ -105,7 +106,12 @@ export function RecipeActionsProvider({
     {
       label: 'Duplicate',
       icon: CopyIcon,
-      run: () => setToast('Recipe duplicated (coming soon)'),
+      run: (r) => {
+        try {
+          sessionStorage.setItem(DUPLICATE_KEY, JSON.stringify(r));
+        } catch {}
+        router.push('/recipes/new?duplicate=1');
+      },
     },
     {
       label: 'Share',
