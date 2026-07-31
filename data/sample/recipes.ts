@@ -1018,54 +1018,6 @@ export const recentlyAddedRecipes: Recipe[] = [
   },
 ];
 
-export interface TodayMeal {
-  id: string;
-  mealType: string;
-  title: string;
-  time: string;
-  calories: number;
-  image: string;
-  recipeId?: string;
-}
-
-export const todaysMeals: TodayMeal[] = [
-  {
-    id: 'meal-1',
-    mealType: 'Breakfast',
-    title: 'Fluffy Banana Oat Pancakes',
-    time: '8:00 AM',
-    calories: 420,
-    image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=200&h=200&fit=crop',
-    recipeId: 'fluffy-banana-pancakes',
-  },
-  {
-    id: 'meal-2',
-    mealType: 'Lunch',
-    title: 'Mediterranean Quinoa Bowl',
-    time: '12:30 PM',
-    calories: 520,
-    image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&h=200&fit=crop',
-    recipeId: 'mediterranean-bowl',
-  },
-  {
-    id: 'meal-3',
-    mealType: 'Dinner',
-    title: 'Honey Glazed Grilled Salmon',
-    time: '7:00 PM',
-    calories: 680,
-    image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=200&h=200&fit=crop',
-    recipeId: 'grilled-salmon',
-  },
-  {
-    id: 'meal-4',
-    mealType: 'Snack',
-    title: 'Greek Yogurt with Granola',
-    time: '3:30 PM',
-    calories: 180,
-    image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=200&h=200&fit=crop',
-  },
-];
-
 export interface GroceryItem {
   id: string;
   name: string;
