@@ -1,53 +1,84 @@
 # Deploying AfterTaste
 
-Self-hosted on TrueNAS (or any Docker host). The whole stack — the app and its
-Postgres database — is defined in [`docker-compose.yml`](docker-compose.yml).
-All data lives in one folder on your NAS, so backups are trivial.
+The container image is built automatically by **GitHub Actions** and published
+to **GitHub Container Registry (GHCR)**. TrueNAS just pulls that image and runs
+it alongside Postgres via [`docker-compose.yml`](docker-compose.yml). All data
+lives in one folder on your NAS, so backups are trivial.
 
 There is **no `.env` file** — you paste two secrets straight into
 `docker-compose.yml`.
 
 ---
 
-## 1. Get the code on the NAS
+## How the image is built (nothing to run — this is automatic)
 
-```bash
-git clone <your-repo-url> aftertaste
-cd aftertaste
+[`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml)
+builds and pushes the image on every push to `main` (and on `v*` tags). It uses
+the built-in `GITHUB_TOKEN`, so no secrets to configure. Published image:
+
+```
+ghcr.io/nerdspar/aftertaste:latest      # newest main build
+ghcr.io/nerdspar/aftertaste:sha-abc1234 # per-commit
+ghcr.io/nerdspar/aftertaste:v1.2.3      # per release tag
 ```
 
-(Or copy the project folder over however you like. You need Docker + the
-`docker compose` plugin available on the host.)
+Because the repo is private, the GHCR package is private too — so TrueNAS needs
+a token to pull it (next section). Check **GitHub → your repo → Packages** after
+the first build to confirm it published.
 
-## 2. Generate the two secrets
+> First time: the workflow lives on `main`, so merge this branch to `main` (or
+> run it from the **Actions** tab via "Run workflow") to produce the first image.
+
+---
+
+## 1. Let TrueNAS pull the private image (one-time)
+
+Create a token GitHub can use to read your packages, then log Docker in on the
+NAS.
+
+1. **Create a Personal Access Token (classic):** GitHub → *Settings →
+   Developer settings → Personal access tokens → Tokens (classic) → Generate
+   new token (classic)*. Give it the **`read:packages`** scope. Copy it.
+
+2. **Log in on the TrueNAS host** (via the TrueNAS shell / SSH):
+
+   ```bash
+   docker login ghcr.io -u nerdspar
+   # Password: paste the token (NOT your GitHub password)
+   ```
+
+   This writes `~/.docker/config.json`, and `docker compose pull` will now work.
+
+   *TrueNAS SCALE 24.10+ (Docker-based):* the CLI `docker login` above is the
+   simplest path. If you deploy through the Apps UI instead, add the same
+   registry credentials under **Apps → (gear) → registry / image pull
+   credentials** (`ghcr.io`, username `nerdspar`, password = the token).
+
+> Prefer not to manage a token? You can instead make just the **package**
+> public (repo stays private): GitHub → Packages → `aftertaste` → *Package
+> settings → Change visibility → Public*. Then skip the login step.
+
+## 2. Put docker-compose.yml on the NAS + generate secrets
+
+You only need the `docker-compose.yml` file on the NAS (the image is prebuilt).
+Copy it over, then generate two secrets:
 
 ```bash
-# Database password — hex only, so it's safe inside the connection URL:
-openssl rand -hex 24
-
-# Auth secret — signs login sessions:
-openssl rand -base64 48
+openssl rand -hex 24     # database password (hex = URL-safe)
+openssl rand -base64 48  # auth session secret
 ```
-
-Keep both handy for the next step.
-
-## 3. Paste them into docker-compose.yml
 
 Open `docker-compose.yml` and replace the placeholders:
 
-- `PASTE_DB_PASSWORD_HERE` — appears **twice** (marked `⬅ DB_PASSWORD`). Use the
-  hex password in **both**; they must match.
+- `PASTE_DB_PASSWORD_HERE` — appears **twice** (marked `⬅ DB_PASSWORD`); use the
+  hex password in **both**, they must match.
 - `PASTE_AUTH_SECRET_HERE` — the base64 auth secret (marked `⬅ AUTH_SECRET`).
 
-> Don't commit the file with real secrets in it. If you deploy from a git
-> clone, keep the edited copy on the NAS only (e.g. `git update-index
-> --assume-unchanged docker-compose.yml` after editing).
-
-## 4. Create the storage folder
+## 3. Create the storage folder
 
 The compose file bind-mounts everything under `/mnt/NAS/Data/aftertaste`.
-Create the two subfolders empty, and make the uploads folder writable by the
-app's container user (uid **1001**):
+Create the two subfolders empty and make `uploads` writable by the app's
+container user (uid **1001**):
 
 ```bash
 mkdir -p /mnt/NAS/Data/aftertaste/db /mnt/NAS/Data/aftertaste/uploads
@@ -57,43 +88,42 @@ chown -R 1001:1001 /mnt/NAS/Data/aftertaste/uploads
 - `db/` — the Postgres database (Postgres sets its own ownership on first boot).
 - `uploads/` — recipe & avatar images.
 
-> On TrueNAS you can also create the `aftertaste` dataset in the UI; just make
-> sure `uploads` ends up writable by uid 1001 (adjust the dataset's ACL/owner
-> if the `chown` above is blocked).
+> On TrueNAS you can create the `aftertaste` dataset in the UI instead; just make
+> sure `uploads` ends up writable by uid 1001 (adjust the dataset ACL/owner if
+> the `chown` is blocked).
 
-## 5. Launch
+## 4. Launch
 
 ```bash
-docker compose up -d --build
+docker compose up -d      # pulls ghcr.io/nerdspar/aftertaste + starts Postgres
 ```
 
-The first boot builds the image, starts Postgres, waits for it to be healthy,
-**runs the database migrations automatically**, then starts the app on port
-**3000**.
+Postgres starts, the app waits for it to be healthy, **runs the database
+migrations automatically**, then serves on port **3000**.
 
 Open `http://<nas-ip>:3000`. The **first account you create owns the
-household** — sign up, then invite others from **Settings → Household**
-(they join when they sign up with the invited email).
+household** — sign up, then invite others from **Settings → Household** (they
+join when they sign up with the invited email).
 
 ---
 
 ## HTTPS / custom domain
 
-Point a reverse proxy (TrueNAS built-in, Nginx Proxy Manager, Traefik, Caddy,
-etc.) at `http://<nas-ip>:3000`. The app trusts the proxy's forwarded host, so
-no extra config is needed — just make sure the proxy forwards
+Point a reverse proxy (TrueNAS built-in, Nginx Proxy Manager, Traefik, Caddy…)
+at `http://<nas-ip>:3000`. The app trusts the proxy's forwarded host, so no
+extra config is needed — just make sure the proxy forwards
 `X-Forwarded-Proto: https` so login cookies are marked secure.
 
 ## Updating to a new version
 
+Push to `main` → Actions rebuilds `:latest`. Then on the NAS:
+
 ```bash
-git pull
-docker compose up -d --build
+docker compose pull && docker compose up -d
 ```
 
-Migrations run again on boot (only new ones apply). If you used
-`--assume-unchanged` on the compose file, your pasted secrets stay put across
-pulls.
+New DB migrations (if any) run automatically on boot; your secrets and data are
+untouched.
 
 ## Backups
 
@@ -105,24 +135,28 @@ Everything is in one place:
 └── uploads/   # recipe & avatar image files
 ```
 
-Snapshot that dataset (ZFS snapshots are ideal) or copy the folder while the
-stack is stopped (`docker compose stop`) for a consistent copy. For a
-logical DB dump instead:
+Snapshot that dataset (ZFS snapshots are ideal), or `docker compose stop` and
+copy the folder for a consistent copy. For a logical DB dump instead:
 
 ```bash
 docker compose exec db pg_dump -U aftertaste aftertaste > aftertaste-$(date +%F).sql
 ```
 
-Restore = restore the folder (or `psql < dump.sql` into a fresh DB).
-
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| App restarts / can't reach DB | `docker compose logs app` and `… logs db`. Usually the two DB passwords don't match, or the `db/` folder isn't empty from a previous run with a different password. |
+| `docker compose pull` → denied / not found | Not logged in to GHCR, or the token lacks `read:packages`. Redo the `docker login` in step 1 (or make the package public). |
+| App restarts / can't reach DB | `docker compose logs app` / `… logs db`. Usually the two DB passwords don't match, or `db/` isn't empty from a prior run with a different password. |
 | Image uploads fail / images 404 | `uploads/` isn't writable by uid 1001 — re-run the `chown`, or fix the dataset ACL. |
 | "AUTH_SECRET" error on boot | The `PASTE_AUTH_SECRET_HERE` placeholder wasn't replaced. |
-| Login works but drops on refresh behind HTTPS | Reverse proxy must forward `X-Forwarded-Proto: https`. |
+| Login drops on refresh behind HTTPS | Reverse proxy must forward `X-Forwarded-Proto: https`. |
+
+## Building on the box instead of pulling (optional)
+
+If you'd rather not use the registry, put the whole repo on the NAS, edit
+`docker-compose.yml` to comment out `image:` and uncomment `build: .`, then
+`docker compose up -d --build`.
 
 ## Local development (no Docker)
 

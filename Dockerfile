@@ -18,6 +18,12 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Build-time placeholders only — `next build` never connects to a DB (all data
+# pages are dynamic) and doesn't need the real auth secret. The real values are
+# injected at runtime by docker-compose. This lets CI build without any DB.
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build?schema=public"
+ENV AUTH_SECRET="build-time-placeholder-not-used-at-runtime"
+ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx prisma generate
 RUN npm run build
 

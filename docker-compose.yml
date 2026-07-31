@@ -17,10 +17,11 @@
 #          chown -R 1001:1001 /mnt/NAS/Data/aftertaste/uploads
 #      (Postgres manages ownership of the db folder itself.)
 #
-# ── 4. Launch (from the project directory, on the NAS) ───────────────────
-#          docker compose up -d --build
+# ── 4. Log in to GHCR once (private image) and launch ────────────────────
+#          docker login ghcr.io -u <github-username>   # paste a PAT as password
+#          docker compose up -d                        # pulls the image + starts
 #      App: http://<nas-ip>:3000   — first boot runs DB migrations automatically.
-#      See DEPLOY.md for HTTPS, updates, and backups.
+#      See DEPLOY.md for the GHCR token, HTTPS, updates, and backups.
 # =============================================================================
 
 services:
@@ -40,7 +41,11 @@ services:
       retries: 5
 
   app:
-    build: .
+    # Pull the image built by GitHub Actions (ghcr.io). Requires a one-time
+    # `docker login ghcr.io` on the host — see DEPLOY.md. To build locally on
+    # the box instead, comment out `image:` and uncomment `build: .`.
+    image: ghcr.io/nerdspar/aftertaste:latest
+    # build: .
     restart: unless-stopped
     depends_on:
       db:
