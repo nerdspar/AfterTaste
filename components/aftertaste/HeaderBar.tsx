@@ -8,15 +8,14 @@ import { SearchIcon, SettingsIcon, MenuIcon } from 'lucide-react';
 import { ThemeSwitch } from './ThemeSwitch';
 import { IconButton } from './IconButton';
 import { ActivityCenter } from './ActivityCenter';
-import { AccountMenu, type AccountUser } from './AccountMenu';
+import { AccountMenu } from './AccountMenu';
 
 interface HeaderBarProps {
   onMenuToggle?: () => void;
   className?: string;
-  user: AccountUser;
 }
 
-export function HeaderBar({ onMenuToggle, className, user }: HeaderBarProps) {
+export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -97,7 +96,7 @@ export function HeaderBar({ onMenuToggle, className, user }: HeaderBarProps) {
           <ThemeSwitch />
         </div>
 
-        <AccountMenu user={user} />
+        <AccountMenu />
       </div>
     </header>
   );

@@ -20,12 +20,7 @@ import { cn } from '@/lib/utils';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { ImportRecipeModal } from '@/components/aftertaste/ImportRecipeModal';
 import { exportRecipesJson } from '@/lib/recipe-export';
-import {
-  ACCENT_PRESETS,
-  applyAccent,
-  getSavedAccentId,
-  DEFAULT_ACCENT_ID,
-} from '@/lib/accent';
+import { ACCENT_PRESETS, applyAccent } from '@/lib/accent';
 import {
   usePref,
   setPref,
@@ -33,6 +28,22 @@ import {
   PREF_NOTIFICATIONS,
 } from '@/lib/prefs';
 import { useInstallAvailable, promptInstall } from '@/lib/pwa-install';
+import { useCurrentUser } from '@/components/aftertaste/CurrentUserProvider';
+import {
+  updateUserPrefs,
+  type UserPrefsInput,
+} from '@/app/(app)/user-actions';
+
+const UNIT_OPTIONS = [
+  { key: 'imperial', label: 'Imperial' },
+  { key: 'metric', label: 'Metric' },
+];
+
+function persistPrefs(input: UserPrefsInput) {
+  updateUserPrefs(input).catch((err) =>
+    console.error('[settings] save prefs failed', err),
+  );
+}
 
 function Section({
   title,
@@ -99,8 +110,11 @@ const THEMES = [
 export default function SettingsPage() {
   const { recipes } = useRecipeStore();
   const { theme, setTheme } = useTheme();
+  const user = useCurrentUser();
   const [mounted, setMounted] = useState(false);
-  const [accent, setAccent] = useState(DEFAULT_ACCENT_ID);
+  const [accent, setAccent] = useState(user.accent);
+  const [units, setUnits] = useState(user.units);
+  const [displayName, setDisplayName] = useState(user.displayName);
   const [importOpen, setImportOpen] = useState(false);
 
   const clipboardOn = usePref(PREF_CLIPBOARD, true);
@@ -109,12 +123,28 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true);
-    setAccent(getSavedAccentId());
   }, []);
 
   const selectAccent = (id: string) => {
     setAccent(id);
     applyAccent(id);
+    persistPrefs({ accent: id });
+  };
+
+  const selectTheme = (key: string) => {
+    setTheme(key);
+    persistPrefs({ theme: key });
+  };
+
+  const selectUnits = (key: string) => {
+    setUnits(key);
+    persistPrefs({ units: key });
+  };
+
+  const saveName = () => {
+    const trimmed = displayName.trim();
+    if (trimmed === (user.displayName ?? '')) return;
+    persistPrefs({ displayName: trimmed });
   };
 
   const isStandalone =
@@ -131,6 +161,64 @@ export default function SettingsPage() {
       </h1>
 
       <div className="space-y-6">
+        {/* Profile */}
+        <Section title="Profile">
+          <div className="space-y-5">
+            <div>
+              <label
+                htmlFor="displayName"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Name
+              </label>
+              <input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                onBlur={saveName}
+                placeholder="Your name"
+                className="w-full max-w-xs h-10 px-3 rounded-lg text-sm bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500/50 transition-colors"
+              />
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Email
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {user.email}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Measurement units
+              </p>
+              <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 p-1 w-full max-w-xs">
+                {UNIT_OPTIONS.map((u) => {
+                  const active = units === u.key;
+                  return (
+                    <button
+                      key={u.key}
+                      type="button"
+                      onClick={() => selectUnits(u.key)}
+                      className={cn(
+                        'flex-1 flex items-center justify-center h-8 rounded-md text-xs font-medium transition-colors',
+                        active
+                          ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+                          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400',
+                      )}
+                    >
+                      {u.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </Section>
+
         {/* Appearance */}
         <Section title="Appearance">
           <div className="space-y-5">
@@ -145,7 +233,7 @@ export default function SettingsPage() {
                     <button
                       key={t.key}
                       type="button"
-                      onClick={() => setTheme(t.key)}
+                      onClick={() => selectTheme(t.key)}
                       className={cn(
                         'flex-1 flex items-center justify-center gap-1.5 h-8 rounded-md text-xs font-medium transition-colors',
                         active
@@ -320,20 +408,21 @@ export default function SettingsPage() {
           />
         </Section>
 
-        {/* Account & Household (Phase 1) */}
-        <Section title="Account &amp; Household">
+        {/* Household */}
+        <Section
+          title="Household"
+          description="Recipes, groceries, meal plans, ratings, and favorites are shared with everyone in your household."
+        >
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
               <UsersIcon className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </div>
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                Accounts &amp; household sharing are coming next
+                Invite people to your household
               </p>
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                Sign in to sync across devices and invite people to a shared
-                household — recipes, groceries, meal plans, ratings, and
-                favorites all shared. For now, your data lives on this device.
+                Member management is set up on the household page.
               </p>
             </div>
           </div>

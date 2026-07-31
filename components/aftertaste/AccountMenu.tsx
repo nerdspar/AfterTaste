@@ -5,14 +5,10 @@ import Link from 'next/link';
 import { ChevronDownIcon, LogOutIcon, SettingsIcon } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { logout } from '@/app/(auth)/actions';
+import { useCurrentUser } from './CurrentUserProvider';
 
-export interface AccountUser {
-  name: string;
-  email: string;
-  image: string | null;
-}
-
-export function AccountMenu({ user }: { user: AccountUser }) {
+export function AccountMenu() {
+  const user = useCurrentUser();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const firstName = user.name.split(' ')[0] || user.name;

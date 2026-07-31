@@ -4,8 +4,12 @@ import { createContext, useContext } from 'react';
 
 export interface CurrentUser {
   name: string;
+  displayName: string;
   email: string;
   image: string | null;
+  accent: string;
+  theme: string;
+  units: string;
 }
 
 const CurrentUserContext = createContext<CurrentUser | null>(null);

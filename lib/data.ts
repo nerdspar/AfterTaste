@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { requireSession } from '@/lib/session';
 import type {
@@ -219,5 +220,42 @@ export async function loadHouseholdState(): Promise<HouseholdState> {
     plan: mealsToPlan(meals),
     favorites: recipeList.filter((r) => r.isFavorite).map((r) => r.id),
     recentlyViewed: viewed.map((v) => v.recipeId),
+  };
+}
+
+export interface UserProfile {
+  /** Display name, falling back to the email. Used for greetings/avatars. */
+  name: string;
+  displayName: string;
+  email: string;
+  image: string | null;
+  accent: string;
+  theme: string;
+  units: string;
+}
+
+/** Load the signed-in user's profile + preferences. */
+export async function loadUserProfile(): Promise<UserProfile> {
+  const { userId } = await requireSession();
+  const u = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      displayName: true,
+      email: true,
+      avatarUrl: true,
+      accent: true,
+      theme: true,
+      units: true,
+    },
+  });
+  if (!u) redirect('/login');
+  return {
+    name: u.displayName ?? u.email,
+    displayName: u.displayName ?? '',
+    email: u.email,
+    image: u.avatarUrl,
+    accent: u.accent,
+    theme: u.theme,
+    units: u.units,
   };
 }
