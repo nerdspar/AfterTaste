@@ -7,6 +7,8 @@ import { HeartIcon, ClockIcon, FlameIcon } from 'lucide-react';
 import { RatingStars } from '../RatingStars';
 import { recipePersonalRating } from '@/lib/recipe-rating';
 import { useFavorites } from '../FavoritesProvider';
+import { useRecipeActions } from '../RecipeActionsProvider';
+import { useLongPress } from '@/lib/useLongPress';
 import type { Recipe } from '@/data/sample/recipes';
 
 interface RecipeCardProps {
@@ -17,15 +19,21 @@ interface RecipeCardProps {
 export function RecipeCard({ recipe, className }: RecipeCardProps) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const favorited = isFavorite(recipe.id);
+  const { openMenu } = useRecipeActions();
+  const longPress = useLongPress({
+    onLongPress: ({ clientX, clientY }) => openMenu(recipe, clientX, clientY),
+  });
 
   return (
     <Link
       href={`/recipes/${recipe.id}`}
+      {...longPress}
       className={cn(
         'block rounded-2xl border border-gray-200 bg-white overflow-hidden',
         'dark:border-gray-700/40 dark:bg-slate-900',
         'hover:-translate-y-0.5 transition-all duration-150',
         'group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-500/40',
+        'select-none',
         className,
       )}
     >

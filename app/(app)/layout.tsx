@@ -3,6 +3,7 @@ import { FavoritesProvider } from '@/components/aftertaste/FavoritesProvider';
 import { RecipeStoreProvider } from '@/components/aftertaste/RecipeStoreProvider';
 import { GroceryStoreProvider } from '@/components/aftertaste/GroceryStoreProvider';
 import { MealPlanStoreProvider } from '@/components/aftertaste/MealPlanStoreProvider';
+import { RecipeActionsProvider } from '@/components/aftertaste/RecipeActionsProvider';
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -10,7 +11,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <FavoritesProvider>
         <GroceryStoreProvider>
           <MealPlanStoreProvider>
-            <AppShell>{children}</AppShell>
+            <RecipeActionsProvider>
+              <AppShell>{children}</AppShell>
+            </RecipeActionsProvider>
           </MealPlanStoreProvider>
         </GroceryStoreProvider>
       </FavoritesProvider>
