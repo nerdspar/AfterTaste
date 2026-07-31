@@ -16,6 +16,14 @@ export function AppShell({ children }: AppShellProps) {
 
   useEffect(() => {
     initInstallCapture();
+    // Register the service worker (PWA install + offline). Production only —
+    // a runtime cache fights with dev HMR.
+    if (
+      process.env.NODE_ENV === 'production' &&
+      'serviceWorker' in navigator
+    ) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    }
   }, []);
 
   return (
