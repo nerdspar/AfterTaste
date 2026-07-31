@@ -9,7 +9,6 @@ import {
   BookOpenIcon,
   ShoppingCartIcon,
   CalendarIcon,
-  BarChart3Icon,
   LineChartIcon,
   LogOutIcon,
   PlusIcon,
@@ -41,12 +40,6 @@ const navGroups: NavGroup[] = [
       { label: 'My Recipes', href: '/recipes', icon: BookOpenIcon },
       { label: 'Grocery List', href: '/grocery-list', icon: ShoppingCartIcon },
       { label: 'Meal Planner', href: '/meal-planner', icon: CalendarIcon },
-    ],
-  },
-  {
-    title: 'Analytics',
-    items: [
-      { label: 'Scoring', href: '/scoring', icon: BarChart3Icon },
       { label: 'Insights', href: '/insights', icon: LineChartIcon },
     ],
   },

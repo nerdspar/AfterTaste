@@ -44,8 +44,14 @@ function MyRecipesContent() {
   const { isFavorite } = useFavorites();
   const { recipes: allRecipes } = useRecipeStore();
 
+  // A `cuisine` param (e.g. from the Insights "Top Cuisines" list) pre-applies
+  // that cuisine filter.
+  const cuisineParam = searchParams.get('cuisine');
+
   const [activeTab, setActiveTab] = useState<string>(initialTab);
-  const [filters, setFilters] = useState<ActiveFilters>({});
+  const [filters, setFilters] = useState<ActiveFilters>(
+    cuisineParam ? { cuisine: [cuisineParam] } : {},
+  );
   const [sort, setSort] = useState<SortOption | null>(null);
   // Default to grid on first render (matches SSR), then restore the saved
   // preference on the client to avoid a hydration mismatch.
