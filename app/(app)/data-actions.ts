@@ -8,6 +8,10 @@ import {
   parseSlotValue,
 } from '@/lib/data';
 import { notifyHousehold } from '@/lib/realtime';
+import {
+  persistRecipeImages,
+  persistRecipeUpdateImages,
+} from '@/lib/uploads';
 import type { Recipe, GroceryItem } from '@/data/sample/recipes';
 
 // All mutations are scoped to the session's household. Writes that target an
@@ -21,8 +25,9 @@ import type { Recipe, GroceryItem } from '@/data/sample/recipes';
 
 export async function createRecipeAction(recipe: Recipe): Promise<void> {
   const { householdId, userId } = await requireSession();
+  const persisted = await persistRecipeImages(recipe);
   await prisma.recipe.create({
-    data: recipeToCreateData(recipe, householdId, userId),
+    data: recipeToCreateData(persisted, householdId, userId),
   });
   await notifyHousehold(householdId, 'recipes', userId);
 }
@@ -30,8 +35,9 @@ export async function createRecipeAction(recipe: Recipe): Promise<void> {
 export async function createRecipesAction(recipes: Recipe[]): Promise<void> {
   const { householdId, userId } = await requireSession();
   if (recipes.length === 0) return;
+  const persisted = await Promise.all(recipes.map(persistRecipeImages));
   await prisma.recipe.createMany({
-    data: recipes.map((r) => recipeToCreateData(r, householdId, userId)),
+    data: persisted.map((r) => recipeToCreateData(r, householdId, userId)),
     skipDuplicates: true,
   });
   await notifyHousehold(householdId, 'recipes', userId);
@@ -42,9 +48,10 @@ export async function updateRecipeAction(
   updates: Partial<Recipe>,
 ): Promise<void> {
   const { householdId, userId } = await requireSession();
+  const persisted = await persistRecipeUpdateImages(updates);
   await prisma.recipe.updateMany({
     where: { id, householdId },
-    data: recipeToUpdateData(updates),
+    data: recipeToUpdateData(persisted),
   });
   await notifyHousehold(householdId, 'recipes', userId);
 }

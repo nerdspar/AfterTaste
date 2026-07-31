@@ -28,6 +28,7 @@ services:
     environment:
       DATABASE_URL: postgresql://aftertaste:${POSTGRES_PASSWORD:-aftertaste}@db:5432/aftertaste?schema=public
       AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      UPLOADS_DIR: /app/uploads
       NODE_ENV: production
     ports:
       - '3000:3000'
