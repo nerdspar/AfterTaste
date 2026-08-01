@@ -1,16 +1,37 @@
 'use server';
 
+import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { AuthError } from 'next-auth';
 import { prisma } from '@/lib/db';
 import { signIn, signOut } from '@/auth';
+import { sendPasswordResetEmail } from '@/lib/email';
 
 export interface AuthActionState {
   error?: string;
+  ok?: boolean;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+function hashToken(raw: string): string {
+  return createHash('sha256').update(raw).digest('hex');
+}
+
+// Public origin for links in emails. Prefer an explicit APP_URL; otherwise
+// derive it from the (proxy-forwarded) request headers.
+async function resolveOrigin(): Promise<string> {
+  const configured = process.env.APP_URL?.replace(/\/$/, '');
+  if (configured) return configured;
+  const h = await headers();
+  const proto = h.get('x-forwarded-proto') ?? 'http';
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  return host ? `${proto}://${host}` : 'http://localhost:3000';
+}
 
 export async function login(
   _prev: AuthActionState,
@@ -112,6 +133,89 @@ export async function signup(
     throw error;
   }
   redirect('/dashboard');
+}
+
+export async function requestPasswordReset(
+  _prev: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const email = String(formData.get('email') ?? '')
+    .toLowerCase()
+    .trim();
+  if (!EMAIL_RE.test(email)) {
+    return { error: 'Enter a valid email address.' };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, email: true },
+  });
+
+  // Only send when the account exists, but always return the same response so
+  // the form never discloses whether an email is registered.
+  if (user) {
+    const rawToken = randomBytes(32).toString('hex');
+    // Replace any outstanding tokens so only the newest link works.
+    await prisma.passwordResetToken.deleteMany({
+      where: { userId: user.id, usedAt: null },
+    });
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashToken(rawToken),
+        expiresAt: new Date(Date.now() + RESET_TOKEN_TTL_MS),
+      },
+    });
+    const origin = await resolveOrigin();
+    const resetUrl = `${origin}/reset-password?token=${rawToken}`;
+    try {
+      await sendPasswordResetEmail(user.email, resetUrl);
+    } catch {
+      // Swallow send failures — the generic response still applies and we do
+      // not want to leak that the address exists.
+    }
+  }
+
+  return { ok: true };
+}
+
+export async function resetPassword(
+  _prev: AuthActionState,
+  formData: FormData,
+): Promise<AuthActionState> {
+  const token = String(formData.get('token') ?? '');
+  const password = String(formData.get('password') ?? '');
+  const confirm = String(formData.get('confirm') ?? '');
+
+  if (!token) {
+    return { error: 'This reset link is invalid. Request a new one.' };
+  }
+  if (password.length < 8) {
+    return { error: 'Password must be at least 8 characters.' };
+  }
+  if (password !== confirm) {
+    return { error: 'Passwords do not match.' };
+  }
+
+  const record = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash: hashToken(token) },
+    select: { id: true, userId: true, expiresAt: true, usedAt: true },
+  });
+  if (!record || record.usedAt || record.expiresAt < new Date()) {
+    return { error: 'This reset link is invalid or has expired.' };
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: record.userId },
+      data: { passwordHash },
+    }),
+    // Consume this token and drop any other outstanding ones for the user.
+    prisma.passwordResetToken.deleteMany({ where: { userId: record.userId } }),
+  ]);
+
+  redirect('/login?reset=1');
 }
 
 export async function logout(): Promise<void> {

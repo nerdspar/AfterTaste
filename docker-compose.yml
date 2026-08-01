@@ -11,6 +11,8 @@
 # ── 2. Paste them below ──────────────────────────────────────────────────
 #      • the DB password goes in BOTH spots marked  ⬅ DB_PASSWORD  (must match)
 #      • the auth secret goes in the one spot marked ⬅ AUTH_SECRET
+#      • (optional) for password-reset emails, set APP_URL / RESEND_API_KEY /
+#        EMAIL_FROM at the spots marked ⬅ — see the app `environment:` block.
 #
 # ── 3. Create the (empty) storage folders on your NAS ────────────────────
 #          mkdir -p /mnt/NAS/Data/aftertaste/db /mnt/NAS/Data/aftertaste/uploads
@@ -57,6 +59,15 @@ services:
       AUTH_SECRET: "PASTE_AUTH_SECRET_HERE" # ⬅ AUTH_SECRET
       UPLOADS_DIR: /app/uploads
       NODE_ENV: production
+      # --- Password-reset emails (optional) --------------------------------
+      # Public URL of this app, used to build reset links in emails.
+      APP_URL: "https://aftertaste.example.com" # ⬅ APP_URL (your public URL)
+      # Resend (https://resend.com) API key. Leave blank to disable email
+      # sending — reset links are logged to the container console instead.
+      RESEND_API_KEY: "" # ⬅ RESEND_API_KEY (optional)
+      # Verified sender. The default only delivers to the Resend account owner;
+      # verify a domain in Resend to email other household members.
+      EMAIL_FROM: "AfterTaste <onboarding@resend.dev>" # ⬅ EMAIL_FROM
     ports:
       # host:container — the app listens on 3000 inside the container. Change
       # the LEFT number if that host port is already taken on your NAS.
