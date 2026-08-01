@@ -153,18 +153,23 @@ function splitSlotKey(slotKey: string): { date: string; meal: string } {
   return { date: slotKey.slice(0, 10), meal: slotKey.slice(11) };
 }
 
+// Replace all entries for a slot with the given ordered list (recipe ids or
+// `note:<text>` values). A slot can hold several recipes plus a note now.
 export async function setMealSlotAction(
   slotKey: string,
-  value: string,
+  values: string[],
 ): Promise<void> {
   const { householdId, userId } = await requireSession();
   const { date, meal } = splitSlotKey(slotKey);
-  const { recipeId, note } = parseSlotValue(value);
-  await prisma.mealPlan.upsert({
-    where: { householdId_date_meal: { householdId, date, meal } },
-    create: { householdId, date, meal, recipeId, note },
-    update: { recipeId, note },
-  });
+  await prisma.$transaction([
+    prisma.mealPlan.deleteMany({ where: { householdId, date, meal } }),
+    ...values.map((value, position) => {
+      const { recipeId, note } = parseSlotValue(value);
+      return prisma.mealPlan.create({
+        data: { householdId, date, meal, recipeId, note, position },
+      });
+    }),
+  ]);
   await notifyHousehold(householdId, 'mealplan', userId);
 }
 

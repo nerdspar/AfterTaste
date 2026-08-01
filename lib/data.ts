@@ -76,12 +76,19 @@ export function groceryRowToApp(g: GroceryRow): GroceryItem {
   };
 }
 
-export function mealsToPlan(meals: MealRow[]): Record<string, string> {
-  const plan: Record<string, string> = {};
-  for (const m of meals) {
+export function mealsToPlan(meals: MealRow[]): Record<string, string[]> {
+  const plan: Record<string, string[]> = {};
+  // A slot can hold several entries; order them by position (main first).
+  const sorted = [...meals].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  for (const m of sorted) {
     const key = `${m.date}_${m.meal}`;
-    if (m.recipeId) plan[key] = m.recipeId;
-    else if (m.note != null) plan[key] = NOTE_PREFIX + m.note;
+    const value = m.recipeId
+      ? m.recipeId
+      : m.note != null
+        ? NOTE_PREFIX + m.note
+        : null;
+    if (value == null) continue;
+    (plan[key] ??= []).push(value);
   }
   return plan;
 }
@@ -192,7 +199,7 @@ export function parseSlotValue(value: string): {
 export interface HouseholdState {
   recipes: Recipe[];
   grocery: GroceryItem[];
-  plan: Record<string, string>;
+  plan: Record<string, string[]>;
   favorites: string[];
   recentlyViewed: string[];
 }
@@ -210,7 +217,10 @@ export async function loadHouseholdState(): Promise<HouseholdState> {
       where: { householdId },
       orderBy: { position: 'asc' },
     }),
-    prisma.mealPlan.findMany({ where: { householdId } }),
+    prisma.mealPlan.findMany({
+      where: { householdId },
+      orderBy: { position: 'asc' },
+    }),
     prisma.recentlyViewed.findMany({
       where: { userId },
       orderBy: { viewedAt: 'desc' },

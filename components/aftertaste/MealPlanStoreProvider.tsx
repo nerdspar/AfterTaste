@@ -7,12 +7,12 @@ import {
 } from '@/app/(app)/data-actions';
 
 // A slot value is either a recipe id or a note. Notes are stored with this
-// prefix so the map stays a plain Record<string, string>. Recipe ids are slugs
-// and never contain a colon, so the prefix can't collide with one.
+// prefix. Recipe ids are slugs and never contain a colon, so it can't collide.
 const NOTE_PREFIX = 'note:';
 
-// slotKey (`<YYYY-MM-DD>_<meal>`) -> recipe id or `note:<text>`
-type Plan = Record<string, string>;
+// slotKey (`<YYYY-MM-DD>_<meal>`) -> ordered list of values (recipe ids and/or
+// one `note:<text>`). A slot can hold several recipes plus a note.
+type Plan = Record<string, string[]>;
 
 export type PlanEntry =
   | { type: 'recipe'; recipeId: string }
@@ -29,14 +29,21 @@ export function parsePlanEntry(
   return { type: 'recipe', recipeId: value };
 }
 
+const isNote = (value: string) => value.startsWith(NOTE_PREFIX);
+
 function reportError(op: string, err: unknown) {
   console.error(`[mealplan] ${op} failed`, err);
 }
 
 interface MealPlanContextValue {
   plan: Plan;
-  assignSlot: (slotKey: string, recipeId: string) => void;
-  assignNote: (slotKey: string, text: string) => void;
+  /** Append a recipe to a slot, keeping any existing entries. */
+  addRecipe: (slotKey: string, recipeId: string) => void;
+  /** Set (or, with empty text, remove) the slot's single note. */
+  setNote: (slotKey: string, text: string) => void;
+  /** Remove the entry at a given index within a slot. */
+  removeAt: (slotKey: string, index: number) => void;
+  /** Remove all entries in a slot. */
   clearSlot: (slotKey: string) => void;
   /** Replace the whole plan (used by realtime sync). */
   replacePlan: (plan: Plan) => void;
@@ -53,66 +60,81 @@ export function MealPlanStoreProvider({
 }) {
   const [plan, setPlan] = useState<Plan>(initialPlan);
 
-  const persist = useCallback(
-    (slotKey: string, value: string, prevValue: string | undefined) => {
-      setMealSlotAction(slotKey, value).catch((err) => {
-        reportError('assign', err);
-        setPlan((prev) => {
-          const next = { ...prev };
-          if (prevValue === undefined) delete next[slotKey];
-          else next[slotKey] = prevValue;
+  // Optimistically set a slot to `values`, persist, and revert on failure.
+  const commitSlot = useCallback(
+    (slotKey: string, values: string[]) => {
+      const prev = plan[slotKey];
+      setPlan((p) => {
+        const next = { ...p };
+        if (values.length === 0) delete next[slotKey];
+        else next[slotKey] = values;
+        return next;
+      });
+      const action =
+        values.length === 0
+          ? clearMealSlotAction(slotKey)
+          : setMealSlotAction(slotKey, values);
+      action.catch((err) => {
+        reportError('commitSlot', err);
+        setPlan((p) => {
+          const next = { ...p };
+          if (prev === undefined) delete next[slotKey];
+          else next[slotKey] = prev;
           return next;
         });
       });
     },
-    [],
+    [plan],
   );
 
-  const assignSlot = useCallback(
+  const addRecipe = useCallback(
     (slotKey: string, recipeId: string) => {
-      const prevValue = plan[slotKey];
-      setPlan((prev) => ({ ...prev, [slotKey]: recipeId }));
-      persist(slotKey, recipeId, prevValue);
+      const cur = plan[slotKey] ?? [];
+      // Keep recipes grouped ahead of a trailing note.
+      const recipes = cur.filter((v) => !isNote(v));
+      const notes = cur.filter(isNote);
+      commitSlot(slotKey, [...recipes, recipeId, ...notes]);
     },
-    [plan, persist],
+    [plan, commitSlot],
   );
 
-  const assignNote = useCallback(
+  const setNote = useCallback(
     (slotKey: string, text: string) => {
       const trimmed = text.trim();
-      if (!trimmed) return;
-      const value = NOTE_PREFIX + trimmed;
-      const prevValue = plan[slotKey];
-      setPlan((prev) => ({ ...prev, [slotKey]: value }));
-      persist(slotKey, value, prevValue);
+      const recipes = (plan[slotKey] ?? []).filter((v) => !isNote(v));
+      commitSlot(
+        slotKey,
+        trimmed ? [...recipes, NOTE_PREFIX + trimmed] : recipes,
+      );
     },
-    [plan, persist],
+    [plan, commitSlot],
+  );
+
+  const removeAt = useCallback(
+    (slotKey: string, index: number) => {
+      const cur = plan[slotKey];
+      if (!cur) return;
+      commitSlot(
+        slotKey,
+        cur.filter((_, i) => i !== index),
+      );
+    },
+    [plan, commitSlot],
   );
 
   const clearSlot = useCallback(
     (slotKey: string) => {
       if (!(slotKey in plan)) return;
-      const prevValue = plan[slotKey];
-      setPlan((prev) => {
-        const next = { ...prev };
-        delete next[slotKey];
-        return next;
-      });
-      clearMealSlotAction(slotKey).catch((err) => {
-        reportError('clearSlot', err);
-        if (prevValue !== undefined) {
-          setPlan((prev) => ({ ...prev, [slotKey]: prevValue }));
-        }
-      });
+      commitSlot(slotKey, []);
     },
-    [plan],
+    [plan, commitSlot],
   );
 
   const replacePlan = useCallback((next: Plan) => setPlan(next), []);
 
   return (
     <MealPlanContext.Provider
-      value={{ plan, assignSlot, assignNote, clearSlot, replacePlan }}
+      value={{ plan, addRecipe, setNote, removeAt, clearSlot, replacePlan }}
     >
       {children}
     </MealPlanContext.Provider>

@@ -152,10 +152,13 @@ model MealPlan {
   recipe      Recipe?   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   recipeId    String?
   note        String?
+  // A slot (household+date+meal) can hold several entries now; position orders
+  // them (main first, then sides). No longer unique per slot.
+  position    Int       @default(0)
   createdAt   DateTime  @default(now())
 
-  @@unique([householdId, date, meal])
   @@index([householdId])
+  @@index([householdId, date, meal])
 }
 
 model RecentlyViewed {
