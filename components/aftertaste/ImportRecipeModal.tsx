@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   XIcon,
@@ -112,15 +113,9 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
         );
         return;
       }
-      let added = 0;
-      try {
-        added = addRecipes(recipes);
-      } catch {
-        setError(
-          'Ran out of browser storage while importing. Try fewer recipes at a time.',
-        );
-        return;
-      }
+      // Recipes save to your account in the background (in batches); this is
+      // the number newly added (skipping duplicates already in your box).
+      const added = addRecipes(recipes);
       setCroutonResult({ added, total: recipes.length });
     } catch {
       setError('Could not read that file. Is it a Crouton export?');
@@ -216,9 +211,9 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
     reader.readAsText(file);
   }
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div
@@ -456,7 +451,8 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

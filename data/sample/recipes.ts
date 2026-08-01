@@ -29,12 +29,20 @@ export interface Recipe {
   tags?: string[]; // free-form keywords for search/filter
   createdAt?: number; // epoch ms when the recipe was added
   sourceUrl?: string; // original web link (e.g. from an imported recipe)
+  recipeNotes?: string; // notes/tips that came with the original recipe
+  myNotes?: string; // the household's own notes and tweaks
 }
 
 export interface Ingredient {
   name: string;
   quantity: string;
   image: string;
+  /**
+   * When defined, this item is a SECTION HEADER (its value is the section
+   * title, e.g. "Dough") that groups the ingredients listed after it, rather
+   * than being an ingredient itself. Real ingredients leave this undefined.
+   */
+  section?: string;
 }
 
 export interface Instruction {
@@ -42,6 +50,12 @@ export interface Instruction {
   title: string;
   body: string;
   videoThumb: string;
+  /**
+   * When defined, this item is a SECTION HEADER (its value is the section
+   * title, e.g. "Dough"), not a step — step numbering restarts after it.
+   * Steps leave this undefined.
+   */
+  section?: string;
 }
 
 export interface Chef {

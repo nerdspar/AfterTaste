@@ -8,6 +8,7 @@ import { StatsRow } from '@/components/aftertaste/recipe-detail/StatsRow';
 import { RecipeRatings } from '@/components/aftertaste/recipe-detail/RecipeRatings';
 import { IngredientsPanel } from '@/components/aftertaste/recipe-detail/IngredientsPanel';
 import { CookingInstructions } from '@/components/aftertaste/recipe-detail/CookingInstructions';
+import { RecipeNotes } from '@/components/aftertaste/recipe-detail/RecipeNotes';
 import { AIAssistantPanel } from '@/components/aftertaste/recipe-detail/AIAssistantPanel';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { recordRecipeView } from '@/lib/recently-viewed';
@@ -80,6 +81,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
           {recipe.instructions.length > 0 && (
             <CookingInstructions instructions={recipe.instructions} />
           )}
+          <RecipeNotes recipe={recipe} />
         </div>
 
         {/* Right rail */}

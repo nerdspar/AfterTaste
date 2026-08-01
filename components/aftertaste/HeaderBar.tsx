@@ -2,11 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { SearchIcon, SettingsIcon, MenuIcon } from 'lucide-react';
-import { ThemeSwitch } from './ThemeSwitch';
-import { IconButton } from './IconButton';
+import { SearchIcon, MenuIcon } from 'lucide-react';
 import { ActivityCenter } from './ActivityCenter';
 import { AccountMenu } from './AccountMenu';
 
@@ -85,17 +82,6 @@ export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
       {/* Right actions */}
       <div className="flex items-center gap-1">
         <ActivityCenter />
-
-        <Link href="/settings">
-          <IconButton aria-label="Settings">
-            <SettingsIcon className="w-[18px] h-[18px]" />
-          </IconButton>
-        </Link>
-
-        <div className="ml-1">
-          <ThemeSwitch />
-        </div>
-
         <AccountMenu />
       </div>
     </header>

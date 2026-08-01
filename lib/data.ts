@@ -45,6 +45,8 @@ export function recipeRowToApp(r: RecipeRow): Recipe {
     cost: r.cost,
     isFavorite: r.isFavorite,
     description: r.description,
+    recipeNotes: r.recipeNotes,
+    myNotes: r.myNotes,
     ingredients: (r.ingredients as unknown as Ingredient[]) ?? [],
     instructions: (r.instructions as unknown as Instruction[]) ?? [],
     chef: (r.chef as unknown as Chef | null) ?? EMPTY_CHEF,
@@ -115,6 +117,8 @@ export function recipeToCreateData(
     cuisine: r.cuisine ?? '',
     source: r.source ?? 'Original',
     description: r.description ?? '',
+    recipeNotes: r.recipeNotes ?? '',
+    myNotes: r.myNotes ?? '',
     ingredients: (r.ingredients ?? []) as unknown as Prisma.InputJsonValue,
     instructions: (r.instructions ?? []) as unknown as Prisma.InputJsonValue,
     chef: (r.chef ?? EMPTY_CHEF) as unknown as Prisma.InputJsonValue,
@@ -152,6 +156,8 @@ export function recipeToUpdateData(
   if (u.cuisine !== undefined) data.cuisine = u.cuisine;
   if (u.source !== undefined) data.source = u.source;
   if (u.description !== undefined) data.description = u.description;
+  if (u.recipeNotes !== undefined) data.recipeNotes = u.recipeNotes;
+  if (u.myNotes !== undefined) data.myNotes = u.myNotes;
   if (u.ingredients !== undefined)
     data.ingredients = u.ingredients as unknown as Prisma.InputJsonValue;
   if (u.instructions !== undefined)

@@ -14,6 +14,8 @@ export interface ParsedRecipe {
   ratingCount?: number;
   ingredients?: Ingredient[];
   instructions?: Instruction[];
+  recipeNotes?: string;
+  myNotes?: string;
 }
 
 function stripWaybackPrefix(url: string): string {

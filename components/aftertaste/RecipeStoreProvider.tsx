@@ -65,11 +65,21 @@ export function RecipeStoreProvider({
       }
       if (toAdd.length === 0) return 0;
       setRecipes((prev) => [...toAdd, ...prev]);
-      createRecipesAction(toAdd).catch((err) => {
-        reportError('addRecipes', err);
-        const addedIds = new Set(toAdd.map((r) => r.id));
-        setRecipes((prev) => prev.filter((r) => !addedIds.has(r.id)));
-      });
+      // Persist in small batches, sequentially, so a large import stays under
+      // the server-action body limit and a failing batch only reverts itself.
+      const BATCH = 5;
+      void (async () => {
+        for (let i = 0; i < toAdd.length; i += BATCH) {
+          const batch = toAdd.slice(i, i + BATCH);
+          try {
+            await createRecipesAction(batch);
+          } catch (err) {
+            reportError('addRecipes', err);
+            const ids = new Set(batch.map((r) => r.id));
+            setRecipes((prev) => prev.filter((r) => !ids.has(r.id)));
+          }
+        }
+      })();
       return toAdd.length;
     },
     [recipes],

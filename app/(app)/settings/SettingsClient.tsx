@@ -19,6 +19,7 @@ import {
 import { Card } from '@/components/aftertaste/Card';
 import { Avatar } from '@/components/aftertaste/Avatar';
 import { HouseholdManager } from '@/components/aftertaste/HouseholdManager';
+import { AccountSecurity } from '@/components/aftertaste/AccountSecurity';
 import { cn } from '@/lib/utils';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { ImportRecipeModal } from '@/components/aftertaste/ImportRecipeModal';
@@ -486,6 +487,14 @@ export function SettingsClient({
               ) : null
             }
           />
+        </Section>
+
+        {/* Sign in & security */}
+        <Section
+          title="Sign in &amp; security"
+          description="Update the email and password you use to sign in."
+        >
+          <AccountSecurity />
         </Section>
 
         {/* Household */}

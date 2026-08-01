@@ -67,6 +67,39 @@ function generateId(title: string): string {
   );
 }
 
+/** True when an instruction item is a section header rather than a step. */
+function isSectionHeader(inst: Instruction): boolean {
+  return inst.section !== undefined;
+}
+
+/** True when an ingredient item is a section header rather than an ingredient. */
+function isIngredientSection(ing: Ingredient): boolean {
+  return ing.section !== undefined;
+}
+
+/** Split pasted text into trimmed, de-bulleted, non-empty lines. */
+function splitPastedLines(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*(?:[-*•·—]|\d+[.)])\s*/, '').trim())
+    .filter(Boolean);
+}
+
+const UNIT = String.raw`cups?|tbsp|tsp|tablespoons?|teaspoons?|oz|ounces?|lb|lbs?|pounds?|g|grams?|kg|ml|l|litres?|liters?|cloves?|cans?|pinch(?:es)?|dash(?:es)?|sticks?|slices?|handful|bunch(?:es)?|pieces?`;
+
+/** Light heuristic to split a pasted ingredient line into quantity + name. */
+function parseIngredientLine(line: string): { quantity: string; name: string } {
+  const re = new RegExp(
+    String.raw`^(\d[\d\s/.\-–]*(?:\s?(?:${UNIT}))?)\s+(.+)$`,
+    'i',
+  );
+  const m = line.match(re);
+  if (m && m[1].trim() && m[2].trim()) {
+    return { quantity: m[1].trim(), name: m[2].trim() };
+  }
+  return { quantity: '', name: line };
+}
+
 function resolveCategory(value: string | undefined, fallback: string): string {
   if (!value) return fallback;
   const match = CATEGORIES.find(
@@ -142,6 +175,10 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   const [description, setDescription] = useState(
     base?.description ?? init.description ?? '',
   );
+  const [recipeNotes, setRecipeNotes] = useState(
+    base?.recipeNotes ?? init.recipeNotes ?? '',
+  );
+  const [myNotes, setMyNotes] = useState(base?.myNotes ?? init.myNotes ?? '');
   const [image, setImage] = useState(base?.image ?? init.image ?? '');
   const [servings, setServings] = useState(
     base?.servings ?? init.servings ?? 4,
@@ -249,6 +286,39 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
     setIngredients((prev) => [...prev, { name: '', quantity: '', image: '' }]);
   }
 
+  // A section header groups the ingredients below it (e.g. Dough, Filling).
+  function addIngredientSection() {
+    setIngredients((prev) => [
+      ...prev,
+      { name: '', quantity: '', image: '', section: '' },
+    ]);
+  }
+
+  function updateIngredientSection(index: number, value: string) {
+    setIngredients((prev) =>
+      prev.map((ing, i) => (i === index ? { ...ing, section: value } : ing)),
+    );
+  }
+
+  // Paste a multi-line list into an ingredient field → one row per line.
+  function handleIngredientPaste(
+    index: number,
+    e: React.ClipboardEvent<HTMLInputElement>,
+  ) {
+    const lines = splitPastedLines(e.clipboardData.getData('text'));
+    if (lines.length <= 1) return; // single line pastes normally
+    e.preventDefault();
+    const rows = lines.map((line) => {
+      const { quantity, name } = parseIngredientLine(line);
+      return { name, quantity, image: '' };
+    });
+    setIngredients((prev) => {
+      const next = [...prev];
+      next.splice(index, 1, ...rows);
+      return next;
+    });
+  }
+
   function removeIngredient(index: number) {
     setIngredients((prev) => prev.filter((_, i) => i !== index));
   }
@@ -285,6 +355,43 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
         videoThumb: '',
       },
     ]);
+  }
+
+  // A section header restarts step numbering (e.g. Dough, Filling, Baking).
+  function addSection() {
+    setInstructions((prev) => [
+      ...prev,
+      { step: '', title: '', body: '', videoThumb: '', section: '' },
+    ]);
+  }
+
+  function updateSection(index: number, value: string) {
+    setInstructions((prev) =>
+      prev.map((inst, i) =>
+        i === index ? { ...inst, section: value } : inst,
+      ),
+    );
+  }
+
+  // Paste a multi-line list into a step field → one step per line.
+  function handleStepPaste(
+    index: number,
+    e: React.ClipboardEvent<HTMLTextAreaElement>,
+  ) {
+    const lines = splitPastedLines(e.clipboardData.getData('text'));
+    if (lines.length <= 1) return;
+    e.preventDefault();
+    const rows = lines.map((body) => ({
+      step: '',
+      title: '',
+      body,
+      videoThumb: '',
+    }));
+    setInstructions((prev) => {
+      const next = [...prev];
+      next.splice(index, 1, ...rows);
+      return next;
+    });
   }
 
   function removeInstruction(index: number) {
@@ -325,14 +432,32 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       return `${mins} mins`;
     };
 
-    const validIngredients = ingredients.filter((i) => i.name.trim());
+    const validIngredients = ingredients.filter((ing) =>
+      isIngredientSection(ing) ? !!ing.section?.trim() : !!ing.name.trim(),
+    );
+    let stepN = 0;
     const validInstructions = instructions
-      .filter((i) => i.body.trim())
-      .map((inst, i) => ({
-        ...inst,
-        step: String(i + 1).padStart(2, '0'),
-        title: inst.title || `Step ${i + 1}`,
-      }));
+      .filter((inst) =>
+        isSectionHeader(inst) ? !!inst.section?.trim() : !!inst.body.trim(),
+      )
+      .map((inst) => {
+        if (isSectionHeader(inst)) {
+          stepN = 0;
+          return {
+            step: '',
+            title: '',
+            body: '',
+            videoThumb: '',
+            section: inst.section!.trim(),
+          };
+        }
+        stepN += 1;
+        return {
+          ...inst,
+          step: String(stepN).padStart(2, '0'),
+          title: inst.title || `Step ${stepN}`,
+        };
+      });
 
     const recipeData: Recipe = {
       id: isEditing ? recipe.id : generateId(title),
@@ -353,6 +478,8 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       cost: recipe?.cost ?? 0,
       isFavorite: recipe?.isFavorite ?? false,
       description: description.trim(),
+      recipeNotes: recipeNotes.trim(),
+      myNotes: myNotes.trim(),
       ingredients: validIngredients,
       instructions: validInstructions,
       chef: recipe?.chef ?? {
@@ -571,72 +698,178 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
 
       {/* Ingredients */}
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
-            Ingredients
-          </h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={addIngredient}
-          >
-            <PlusIcon className="w-3.5 h-3.5" />
-            Add
-          </Button>
-        </div>
+        <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">
+          Ingredients
+        </h2>
+        <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">
+          Tip: paste a list into a row to add several at once. Use sections
+          (e.g. Dough, Filling) to group ingredients for multi-part recipes.
+        </p>
         <div className="space-y-2">
-          {ingredients.map((ing, i) => (
-            <div key={i} className="flex items-center gap-2">
+          {ingredients.map((ing, i) => {
+            const reorder = (
               <ReorderControls
                 onUp={() => moveIngredient(i, -1)}
                 onDown={() => moveIngredient(i, 1)}
                 canUp={i > 0}
                 canDown={i < ingredients.length - 1}
               />
-              <input
-                type="text"
-                value={ing.name}
-                onChange={(e) => updateIngredient(i, 'name', e.target.value)}
-                placeholder="Ingredient name"
-                className={cn(inputClasses, 'flex-1 min-w-0')}
-              />
-              <input
-                type="text"
-                value={ing.quantity}
-                onChange={(e) =>
-                  updateIngredient(i, 'quantity', e.target.value)
-                }
-                placeholder="Qty"
-                className={cn(inputClasses, 'w-20 sm:w-28 flex-shrink-0')}
-              />
-              <button
-                type="button"
-                onClick={() => removeIngredient(i)}
-                aria-label="Remove ingredient"
-                className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
-              >
-                <TrashIcon className="w-4 h-4 text-red-400" />
-              </button>
-            </div>
-          ))}
+            );
+
+            if (isIngredientSection(ing)) {
+              return (
+                <div key={i} className="flex items-center gap-2 pt-1">
+                  {reorder}
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 flex-shrink-0">
+                    Section
+                  </span>
+                  <input
+                    type="text"
+                    value={ing.section ?? ''}
+                    onChange={(e) => updateIngredientSection(i, e.target.value)}
+                    placeholder="e.g. Dough"
+                    className={cn(inputClasses, 'flex-1 min-w-0 font-semibold')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeIngredient(i)}
+                    aria-label="Remove section"
+                    className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+                  >
+                    <TrashIcon className="w-4 h-4 text-red-400" />
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div key={i} className="flex items-center gap-2">
+                {reorder}
+                <input
+                  type="text"
+                  value={ing.name}
+                  onChange={(e) => updateIngredient(i, 'name', e.target.value)}
+                  onPaste={(e) => handleIngredientPaste(i, e)}
+                  placeholder="Ingredient name"
+                  className={cn(inputClasses, 'flex-1 min-w-0')}
+                />
+                <input
+                  type="text"
+                  value={ing.quantity}
+                  onChange={(e) =>
+                    updateIngredient(i, 'quantity', e.target.value)
+                  }
+                  placeholder="Qty"
+                  className={cn(inputClasses, 'w-20 sm:w-28 flex-shrink-0')}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeIngredient(i)}
+                  aria-label="Remove ingredient"
+                  className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+                >
+                  <TrashIcon className="w-4 h-4 text-red-400" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={addIngredient}
+            className={cn(
+              'flex-1 h-11 rounded-xl border-2 border-dashed',
+              'flex items-center justify-center gap-1.5 text-sm font-medium',
+              'border-gray-200 text-gray-500 hover:border-primary-400 hover:text-primary-500',
+              'dark:border-gray-700 dark:text-gray-400 dark:hover:border-primary-500',
+              'transition-colors',
+            )}
+          >
+            <PlusIcon className="w-4 h-4" />
+            Add Ingredient
+          </button>
+          <button
+            type="button"
+            onClick={addIngredientSection}
+            title="Start a new ingredient section (e.g. Dough, Filling)"
+            className={cn(
+              'h-11 px-4 rounded-xl border-2 border-dashed',
+              'flex items-center justify-center gap-1.5 text-sm font-medium',
+              'border-gray-200 text-gray-500 hover:border-primary-400 hover:text-primary-500',
+              'dark:border-gray-700 dark:text-gray-400 dark:hover:border-primary-500',
+              'transition-colors',
+            )}
+          >
+            <PlusIcon className="w-4 h-4" />
+            Add section
+          </button>
         </div>
       </Card>
 
       {/* Instructions */}
       <Card>
-        <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-4">
+        <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">
           Instructions
         </h2>
+        <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">
+          Tip: paste a numbered list into a step to add several at once. Use
+          sections (e.g. Dough, Filling) to restart the step count.
+        </p>
         <div className="space-y-4">
-          {instructions.map((inst, i) => (
-            <div
-              key={i}
-              className="flex gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30"
-            >
-              <span className="text-xs font-bold text-primary-500 tabular-nums pt-2.5 flex-shrink-0">
-                {String(i + 1).padStart(2, '0')}
-              </span>
+          {(() => {
+            let stepCount = 0;
+            return instructions.map((inst, i) => {
+              const reorderControls = (
+                <div className="flex flex-col items-center gap-1 self-start flex-shrink-0">
+                  <ReorderControls
+                    onUp={() => moveInstruction(i, -1)}
+                    onDown={() => moveInstruction(i, 1)}
+                    canUp={i > 0}
+                    canDown={i < instructions.length - 1}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeInstruction(i)}
+                    aria-label={
+                      isSectionHeader(inst) ? 'Remove section' : 'Remove step'
+                    }
+                    className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                  >
+                    <TrashIcon className="w-4 h-4 text-red-400" />
+                  </button>
+                </div>
+              );
+
+              if (isSectionHeader(inst)) {
+                stepCount = 0;
+                return (
+                  <div key={i} className="flex items-center gap-2 pt-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 flex-shrink-0">
+                      Section
+                    </span>
+                    <input
+                      type="text"
+                      value={inst.section ?? ''}
+                      onChange={(e) => updateSection(i, e.target.value)}
+                      placeholder="e.g. Dough"
+                      className={cn(inputClasses, 'flex-1 min-w-0 font-semibold')}
+                    />
+                    {reorderControls}
+                  </div>
+                );
+              }
+
+              stepCount += 1;
+              const displayNum = stepCount;
+              return (
+                <div
+                  key={i}
+                  className="flex gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/30"
+                >
+                  <span className="text-xs font-bold text-primary-500 tabular-nums pt-2.5 flex-shrink-0">
+                    {String(displayNum).padStart(2, '0')}
+                  </span>
               <div className="flex-1 space-y-2">
                 <input
                   type="text"
@@ -652,6 +885,7 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
                   onChange={(e) =>
                     updateInstruction(i, 'body', e.target.value)
                   }
+                  onPaste={(e) => handleStepPaste(i, e)}
                   placeholder="Describe this step..."
                   rows={2}
                   className={cn(inputClasses, 'h-auto py-2.5')}
@@ -708,24 +942,11 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
                   </button>
                 )}
               </div>
-              <div className="flex flex-col items-center gap-1 self-start flex-shrink-0">
-                <ReorderControls
-                  onUp={() => moveInstruction(i, -1)}
-                  onDown={() => moveInstruction(i, 1)}
-                  canUp={i > 0}
-                  canDown={i < instructions.length - 1}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeInstruction(i)}
-                  aria-label="Remove step"
-                  className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                >
-                  <TrashIcon className="w-4 h-4 text-red-400" />
-                </button>
-              </div>
-            </div>
-          ))}
+                  {reorderControls}
+                </div>
+              );
+            });
+          })()}
         </div>
         {/* Shared hidden input for per-step photo/video uploads */}
         <input
@@ -738,20 +959,75 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
         {stepImageError && (
           <p className="text-xs text-red-500 mt-2">{stepImageError}</p>
         )}
-        <button
-          type="button"
-          onClick={addInstruction}
-          className={cn(
-            'mt-4 w-full h-11 rounded-xl border-2 border-dashed',
-            'flex items-center justify-center gap-1.5 text-sm font-medium',
-            'border-gray-200 text-gray-500 hover:border-primary-400 hover:text-primary-500',
-            'dark:border-gray-700 dark:text-gray-400 dark:hover:border-primary-500',
-            'transition-colors',
-          )}
-        >
-          <PlusIcon className="w-4 h-4" />
-          Add Step
-        </button>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={addInstruction}
+            className={cn(
+              'flex-1 h-11 rounded-xl border-2 border-dashed',
+              'flex items-center justify-center gap-1.5 text-sm font-medium',
+              'border-gray-200 text-gray-500 hover:border-primary-400 hover:text-primary-500',
+              'dark:border-gray-700 dark:text-gray-400 dark:hover:border-primary-500',
+              'transition-colors',
+            )}
+          >
+            <PlusIcon className="w-4 h-4" />
+            Add Step
+          </button>
+          <button
+            type="button"
+            onClick={addSection}
+            title="Start a new numbered section (e.g. Dough, Filling)"
+            className={cn(
+              'h-11 px-4 rounded-xl border-2 border-dashed',
+              'flex items-center justify-center gap-1.5 text-sm font-medium',
+              'border-gray-200 text-gray-500 hover:border-primary-400 hover:text-primary-500',
+              'dark:border-gray-700 dark:text-gray-400 dark:hover:border-primary-500',
+              'transition-colors',
+            )}
+          >
+            <PlusIcon className="w-4 h-4" />
+            Add section
+          </button>
+        </div>
+      </Card>
+
+      {/* Notes */}
+      <Card>
+        <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">
+          Notes
+        </h2>
+        <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">
+          Keep the recipe&apos;s original tips separate from your own tweaks.
+        </p>
+        <div className="space-y-4">
+          <div>
+            <label className={labelClasses}>Recipe Notes</label>
+            <p className="-mt-1 mb-1.5 text-xs text-gray-400 dark:text-gray-500">
+              Tips or context that came with the original recipe.
+            </p>
+            <textarea
+              value={recipeNotes}
+              onChange={(e) => setRecipeNotes(e.target.value)}
+              placeholder="e.g. Dough can be made a day ahead and chilled overnight."
+              rows={3}
+              className={cn(inputClasses, 'h-auto py-2.5')}
+            />
+          </div>
+          <div>
+            <label className={labelClasses}>My Notes</label>
+            <p className="-mt-1 mb-1.5 text-xs text-gray-400 dark:text-gray-500">
+              Your own tweaks, substitutions, and results.
+            </p>
+            <textarea
+              value={myNotes}
+              onChange={(e) => setMyNotes(e.target.value)}
+              placeholder="e.g. Used maple instead of honey — better. Doubled the garlic."
+              rows={3}
+              className={cn(inputClasses, 'h-auto py-2.5')}
+            />
+          </div>
+        </div>
       </Card>
 
       {/* Actions */}

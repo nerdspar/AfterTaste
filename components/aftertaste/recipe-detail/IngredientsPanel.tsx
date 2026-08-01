@@ -13,6 +13,11 @@ import type { Ingredient } from '@/data/sample/recipes';
 
 type ScaleMode = 'amount' | 'serving';
 
+/** True when an item is a section header (a divider) rather than an ingredient. */
+function isIngredientSection(ing: Ingredient): boolean {
+  return ing.section !== undefined;
+}
+
 interface IngredientsPanelProps {
   ingredients: Ingredient[];
   baseServings: number;
@@ -25,7 +30,9 @@ interface IngredientsPanelProps {
 }
 
 function scaleQuantity(quantity: string, multiplier: number): string {
-  return quantity.replace(/[\d.\/]+/g, (match) => {
+  // Match a fraction (1/2) or a plain number (2, 0.5) — never a lone "/", which
+  // otherwise turns e.g. "20g/ 1 1/2 tbsp" into "20gNaN …".
+  return quantity.replace(/\d+\/\d+|\d+(?:\.\d+)?/g, (match) => {
     if (match.includes('/')) {
       const [num, den] = match.split('/');
       const val = (Number(num) / Number(den)) * multiplier;
@@ -75,7 +82,15 @@ export function IngredientsPanel({
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [feedback, setFeedback] = useState<string | null>(null);
 
-  const allSelected = selected.size === ingredients.length;
+  // Section headers are not selectable — grocery actions apply to real
+  // ingredients only.
+  const realIngredientIndices = ingredients
+    .map((ing, i) => (isIngredientSection(ing) ? -1 : i))
+    .filter((i) => i >= 0);
+
+  const allSelected =
+    realIngredientIndices.length > 0 &&
+    selected.size === realIngredientIndices.length;
 
   useEffect(() => {
     if (!feedback) return;
@@ -85,7 +100,7 @@ export function IngredientsPanel({
 
   function enterSelectMode() {
     setScaleOpen(false);
-    setSelected(new Set(ingredients.map((_, i) => i)));
+    setSelected(new Set(realIngredientIndices));
     setSelectMode(true);
   }
 
@@ -111,14 +126,16 @@ export function IngredientsPanel({
 
   function toggleAll() {
     setSelected((prev) =>
-      prev.size === ingredients.length
+      prev.size === realIngredientIndices.length
         ? new Set()
-        : new Set(ingredients.map((_, i) => i)),
+        : new Set(realIngredientIndices),
     );
   }
 
   function confirmAdd() {
-    const chosen = ingredients.filter((_, i) => selected.has(i));
+    const chosen = ingredients.filter(
+      (ing, i) => selected.has(i) && !isIngredientSection(ing),
+    );
     const added = addItems(
       chosen.map((ing) => ({
         name: ing.name,
@@ -294,13 +311,24 @@ export function IngredientsPanel({
       {/* Ingredient rows */}
       <div className="space-y-1">
         {ingredients.map((ing, i) => {
+          if (isIngredientSection(ing)) {
+            return (
+              <p
+                key={i}
+                className="pt-3 first:pt-0 px-1 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400"
+              >
+                {ing.section}
+              </p>
+            );
+          }
+
           const isSelected = selected.has(i);
           const content = (
             <>
               {selectMode ? (
                 <span
                   className={cn(
-                    'w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                    'w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors',
                     isSelected
                       ? 'bg-primary-500 border-primary-500'
                       : 'border-gray-300 dark:border-gray-600',
@@ -311,13 +339,15 @@ export function IngredientsPanel({
               ) : (
                 <IngredientIcon
                   name={ing.name}
-                  className="w-7 h-7 flex-shrink-0 border border-gray-100 dark:border-gray-700"
+                  className="w-7 h-7 mt-0.5 flex-shrink-0 border border-gray-100 dark:border-gray-700"
                 />
               )}
-              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1 text-left">
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1 min-w-0 text-left leading-snug">
                 {ing.name}
               </span>
-              <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
+              {/* Reserve the quantity column even when empty so the name always
+                  stops at the same right margin. */}
+              <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0 mt-0.5 pl-2 text-right min-w-[3rem]">
                 {scaleQuantity(ing.quantity, multiplier)}
               </span>
             </>
@@ -325,20 +355,20 @@ export function IngredientsPanel({
 
           return selectMode ? (
             <button
-              key={ing.name}
+              key={i}
               type="button"
               onClick={() => toggleSelected(i)}
-              className="flex w-full items-center gap-3 h-11 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+              className="flex w-full items-start gap-3 py-2 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
             >
               {content}
             </button>
           ) : (
             <button
-              key={ing.name}
+              key={i}
               type="button"
               onClick={() => enterSelectModeWith(i)}
               title="Add to grocery list"
-              className="flex w-full items-center gap-3 h-11 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
+              className="flex w-full items-start gap-3 py-2 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
             >
               {content}
             </button>
