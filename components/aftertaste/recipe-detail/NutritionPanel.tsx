@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { CheckIcon, PlusIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Recipe } from '@/data/sample/recipes';
+import { addFoodLogEntry } from '@/app/(app)/food-log-actions';
 
 interface NutritionPanelProps {
   recipe: Recipe;
@@ -48,6 +50,38 @@ function MacroValue({
 
 export function NutritionPanel({ recipe, servings }: NutritionPanelProps) {
   const [view, setView] = useState<'serving' | 'total'>('serving');
+  const [logState, setLogState] = useState<'idle' | 'saving' | 'done'>('idle');
+
+  // Log one serving of this recipe to today's diary (meal inferred by time).
+  async function logToday() {
+    setLogState('saving');
+    const now = new Date();
+    const dateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const h = now.getHours();
+    const meal =
+      h < 11 ? 'Breakfast' : h < 15 ? 'Lunch' : h < 21 ? 'Dinner' : 'Snack';
+    try {
+      await addFoodLogEntry({
+        date: dateKey,
+        meal,
+        recipeId: recipe.id,
+        name: recipe.title,
+        servings: 1,
+        calories: recipe.calories,
+        proteinG: recipe.proteinG ?? null,
+        carbsG: recipe.carbsG ?? null,
+        fatG: recipe.fatG ?? null,
+        fiberG: recipe.fiberG ?? null,
+        sugarG: recipe.sugarG ?? null,
+        sodiumMg: recipe.sodiumMg ?? null,
+      });
+      setLogState('done');
+      setTimeout(() => setLogState('idle'), 2500);
+    } catch {
+      setLogState('idle');
+    }
+  }
+
   const factor = view === 'total' ? Math.max(servings, 1) : 1;
   const scale = (v: number | undefined) =>
     v == null ? undefined : Math.round(v * factor);
@@ -160,6 +194,31 @@ export function NutritionPanel({ recipe, servings }: NutritionPanelProps) {
           <MacroValue label="Sodium" value={sodium} unit="mg" />
         </div>
       )}
+
+      {/* Log one serving to today's food diary */}
+      <button
+        type="button"
+        onClick={logToday}
+        disabled={logState !== 'idle'}
+        className={cn(
+          'mt-4 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border text-xs font-medium transition-colors',
+          logState === 'done'
+            ? 'border-emerald-200 text-emerald-600 dark:border-emerald-500/30 dark:text-emerald-400'
+            : 'border-gray-200 text-gray-600 hover:border-primary-400 hover:text-primary-600 dark:border-gray-700 dark:text-gray-300 dark:hover:text-primary-400',
+        )}
+      >
+        {logState === 'done' ? (
+          <>
+            <CheckIcon className="h-3.5 w-3.5" />
+            Added to today&apos;s log
+          </>
+        ) : (
+          <>
+            <PlusIcon className="h-3.5 w-3.5" />
+            Add a serving to today&apos;s log
+          </>
+        )}
+      </button>
     </div>
   );
 }

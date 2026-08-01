@@ -24,6 +24,12 @@ model User {
   theme        String  @default("system")
   units        String  @default("imperial")
 
+  // Personal daily nutrition goals (per user, not household). Null = unset.
+  calorieGoal  Int?
+  proteinGoalG Int?
+  carbsGoalG   Int?
+  fatGoalG     Int?
+
   household   Household? @relation("HouseholdMembers", fields: [householdId], references: [id])
   householdId String?
 
@@ -32,8 +38,41 @@ model User {
   recentlyViewed  RecentlyViewed[]
   sentInvites     HouseholdInvite[]    @relation("InviteSender")
   passwordResets  PasswordResetToken[]
+  foodLog         FoodLogEntry[]
 
   createdAt DateTime @default(now())
+}
+
+// A personal food-log entry: what a single user ate on a given day. Decoupled
+// from the shared meal plan. Macros are snapshotted at log time so later edits
+// to the source recipe don't rewrite history.
+model FoodLogEntry {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  date String // local YYYY-MM-DD
+  meal String // Breakfast | Lunch | Dinner | Snack
+
+  // Optional link back to a recipe; kept even if the recipe is later deleted.
+  recipe   Recipe? @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  recipeId String?
+
+  name     String // display name (recipe title or a quick-add food)
+  servings Float  @default(1) // portions eaten
+
+  // Per-serving macro snapshot.
+  calories Int  @default(0)
+  proteinG Int?
+  carbsG   Int?
+  fatG     Int?
+  fiberG   Int?
+  sugarG   Int?
+  sodiumMg Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
 }
 
 // Single-use, time-limited token backing the "forgot password" flow. Only the
@@ -129,6 +168,7 @@ model Recipe {
   groceryItems   GroceryItem[]
   mealPlan       MealPlan[]
   recentlyViewed RecentlyViewed[]
+  foodLogEntries FoodLogEntry[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

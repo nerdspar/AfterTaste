@@ -272,6 +272,15 @@ export interface UserProfile {
   accent: string;
   theme: string;
   units: string;
+  goals: NutritionGoals;
+}
+
+/** Personal daily nutrition targets. Null = not set. */
+export interface NutritionGoals {
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
 }
 
 /** Load the signed-in user's profile + preferences. */
@@ -286,6 +295,10 @@ export async function loadUserProfile(): Promise<UserProfile> {
       accent: true,
       theme: true,
       units: true,
+      calorieGoal: true,
+      proteinGoalG: true,
+      carbsGoalG: true,
+      fatGoalG: true,
     },
   });
   if (!u) redirect('/login');
@@ -298,5 +311,11 @@ export async function loadUserProfile(): Promise<UserProfile> {
     accent: u.accent,
     theme: u.theme,
     units: u.units,
+    goals: {
+      calories: u.calorieGoal,
+      protein: u.proteinGoalG,
+      carbs: u.carbsGoalG,
+      fat: u.fatGoalG,
+    },
   };
 }

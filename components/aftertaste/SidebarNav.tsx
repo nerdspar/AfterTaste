@@ -17,9 +17,11 @@ import {
   GlobeIcon,
   FileTextIcon,
   UploadIcon,
+  UtensilsIcon,
 } from 'lucide-react';
 import { ImportRecipeModal } from './ImportRecipeModal';
 import { logout } from '@/app/(auth)/actions';
+import { usePref, PREF_NUTRITION } from '@/lib/prefs';
 
 interface NavItem {
   label: string;
@@ -53,6 +55,19 @@ interface SidebarNavProps {
 
 export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
   const pathname = usePathname();
+  const nutritionOn = usePref(PREF_NUTRITION, false);
+  // Food Log only appears once nutrition tracking is enabled (Settings).
+  const groups: NavGroup[] = navGroups.map((g) =>
+    g.title === 'Main Menu' && nutritionOn
+      ? {
+          ...g,
+          items: [
+            ...g.items,
+            { label: 'Food Log', href: '/food-log', icon: UtensilsIcon },
+          ],
+        }
+      : g,
+  );
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [importModal, setImportModal] = useState<'url' | 'text' | 'file' | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -160,7 +175,7 @@ export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
 
       {/* Navigation Groups */}
       <nav className="flex-1 overflow-y-auto px-3 space-y-5">
-        {navGroups.map((group) => (
+        {groups.map((group) => (
           <div key={group.title}>
             <p className="px-3 mb-1.5 text-[11px] font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
               {group.title}

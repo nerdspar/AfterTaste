@@ -2,6 +2,13 @@
 
 import { createContext, useContext } from 'react';
 
+export interface NutritionGoals {
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+}
+
 export interface CurrentUser {
   id: string;
   name: string;
@@ -11,6 +18,7 @@ export interface CurrentUser {
   accent: string;
   theme: string;
   units: string;
+  goals: NutritionGoals;
 }
 
 const CurrentUserContext = createContext<CurrentUser | null>(null);

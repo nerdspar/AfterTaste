@@ -133,6 +133,12 @@ export function SettingsClient({
   const [avatarError, setAvatarError] = useState('');
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [goals, setGoals] = useState({
+    calorie: user.goals.calories?.toString() ?? '',
+    protein: user.goals.protein?.toString() ?? '',
+    carbs: user.goals.carbs?.toString() ?? '',
+    fat: user.goals.fat?.toString() ?? '',
+  });
 
   const clipboardOn = usePref(PREF_CLIPBOARD, true);
   const notificationsOn = usePref(PREF_NOTIFICATIONS, true);
@@ -143,6 +149,21 @@ export function SettingsClient({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Persist a nutrition goal on blur. Blank clears it (null).
+  const saveGoal = (
+    field: 'calorieGoal' | 'proteinGoal' | 'carbsGoal' | 'fatGoal',
+    raw: string,
+  ) => {
+    const trimmed = raw.trim();
+    if (trimmed === '') {
+      persistPrefs({ [field]: null });
+      return;
+    }
+    const value = Number(trimmed);
+    if (Number.isNaN(value) || value < 0) return;
+    persistPrefs({ [field]: Math.round(value) });
+  };
 
   const selectAccent = (id: string) => {
     setAccent(id);
@@ -463,6 +484,45 @@ export function SettingsClient({
               />
             }
           />
+          {nutritionOn && (
+            <div className="border-t border-gray-100 px-4 py-4 dark:border-gray-800">
+              <p className="mb-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+                Daily goals
+              </p>
+              <p className="mb-3 text-xs text-gray-400 dark:text-gray-500">
+                Your personal targets for the food log. Leave blank for no goal.
+              </p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {(
+                  [
+                    { key: 'calorie', field: 'calorieGoal', label: 'Calories' },
+                    { key: 'protein', field: 'proteinGoal', label: 'Protein (g)' },
+                    { key: 'carbs', field: 'carbsGoal', label: 'Carbs (g)' },
+                    { key: 'fat', field: 'fatGoal', label: 'Fat (g)' },
+                  ] as const
+                ).map((g) => (
+                  <label
+                    key={g.key}
+                    className="text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    {g.label}
+                    <input
+                      type="number"
+                      min={0}
+                      inputMode="numeric"
+                      value={goals[g.key]}
+                      placeholder="—"
+                      onChange={(e) =>
+                        setGoals((prev) => ({ ...prev, [g.key]: e.target.value }))
+                      }
+                      onBlur={(e) => saveGoal(g.field, e.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/30 dark:border-gray-700 dark:bg-slate-800 dark:text-gray-100"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </Section>
 
         {/* Cooking */}
