@@ -16,7 +16,6 @@ import {
   StickyNoteIcon,
   XIcon,
   LayersIcon,
-  PlusIcon,
   CheckIcon,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -60,7 +59,6 @@ function MealPlannerContent() {
   const { plan, addRecipe, setNote, removeAt } = useMealPlan();
   const [weekOffset, setWeekOffset] = useState(0);
   const [pickingSlot, setPickingSlot] = useState<PlanKey | null>(null);
-  const [fannedSlot, setFannedSlot] = useState<PlanKey | null>(null);
   const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
   const [pickerQuery, setPickerQuery] = useState('');
   const [noteText, setNoteText] = useState('');
@@ -110,29 +108,22 @@ function MealPlannerContent() {
       entry: parsePlanEntry(value),
     }));
 
-  // The picker modal is where you add a recipe (or note) to a slot.
-  const openPicker = (slotKey: string) => {
+  // One modal per slot: shows what's planned + lets you add/remove recipes and
+  // a note, all in one place.
+  const openSlot = (slotKey: string) => {
     setPickingSlot(slotKey);
-    setFannedSlot(null);
     setPickerQuery('');
     const note = slotEntries(slotKey).find((e) => e.entry?.type === 'note');
     setNoteText(note?.entry?.type === 'note' ? note.entry.text : '');
   };
 
-  const closePicker = () => {
+  const closeSlot = () => {
     setPickingSlot(null);
     setPickerQuery('');
     setNoteText('');
   };
 
-  const openFan = (slotKey: string) => {
-    setFannedSlot(slotKey);
-    setPickingSlot(null);
-  };
-  const closeFan = () => setFannedSlot(null);
-
-  // In the picker, tapping a recipe toggles it in/out of the slot. Adding keeps
-  // the picker open so a main + sides can be added in one go.
+  // In the picker grid, tapping a recipe toggles it in/out of the slot.
   const toggleRecipe = (slotKey: string, recipeId: string) => {
     const idx = (plan[slotKey] ?? []).indexOf(recipeId);
     if (idx >= 0) removeAt(slotKey, idx);
@@ -150,20 +141,10 @@ function MealPlannerContent() {
       setPendingRecipeId(null);
       return;
     }
-    // Filled slot → fan its recipes out in place; empty slot → open the picker.
-    if ((plan[slotKey]?.length ?? 0) > 0) {
-      setFannedSlot((cur) => (cur === slotKey ? null : slotKey));
-    } else {
-      openPicker(slotKey);
-    }
+    openSlot(slotKey);
   };
 
-  // If the fanned slot becomes empty (last recipe removed), close the fan.
-  useEffect(() => {
-    if (fannedSlot && !plan[fannedSlot]?.length) setFannedSlot(null);
-  }, [fannedSlot, plan]);
-
-  // Lock background scroll while the picker modal is open so it doesn't drag
+  // Lock background scroll while the slot modal is open so it doesn't drag
   // behind the modal.
   useEffect(() => {
     if (!pickingSlot) return;
@@ -333,9 +314,9 @@ function MealPlannerContent() {
                     );
                   }
 
-                  // Filled slot — the tile fans its recipes out in place.
+                  // Filled slot — tap opens the slot modal.
                   const primary = recipeEntries[0]?.recipe;
-                  const isFanned = fannedSlot === key;
+                  const isOpen = pickingSlot === key;
                   return (
                     <div key={key} className="relative">
                       <button
@@ -347,7 +328,7 @@ function MealPlannerContent() {
                           primary
                             ? 'border-gray-200 dark:border-gray-700/40 bg-white dark:bg-gray-800/40'
                             : 'border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10 p-1.5',
-                          isFanned && 'ring-2 ring-primary-500',
+                          isOpen && 'ring-2 ring-primary-500',
                           count > 1 &&
                             'shadow-[3px_3px_0_0_#e5e7eb] dark:shadow-[3px_3px_0_0_#1e293b]',
                         )}
@@ -388,100 +369,6 @@ function MealPlannerContent() {
                           </span>
                         )}
                       </button>
-
-                      {/* Fan-out: recipes spread from the tile; tap one to open
-                          it, or the + to add another. */}
-                      {isFanned && (
-                        <>
-                          <button
-                            type="button"
-                            aria-label="Close"
-                            onClick={closeFan}
-                            className="fixed inset-0 z-40 cursor-default"
-                          />
-                          <div className="absolute left-1/2 top-1 z-50 w-40 -translate-x-1/2 space-y-1 rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl duration-200 animate-in fade-in zoom-in-95 dark:border-gray-700 dark:bg-slate-900">
-                            {recipeEntries.map(({ index, recipe }, i) => (
-                              <div
-                                key={index}
-                                className="relative animate-in fade-in slide-in-from-top-1"
-                                style={{
-                                  animationDelay: `${i * 45}ms`,
-                                  animationFillMode: 'backwards',
-                                }}
-                              >
-                                <Link
-                                  href={`/recipes/${recipe.id}`}
-                                  onClick={closeFan}
-                                  className="flex items-center gap-2 rounded-lg p-1 pr-6 hover:bg-gray-50 dark:hover:bg-gray-800/60"
-                                >
-                                  <span className="relative w-8 h-8 rounded-md overflow-hidden flex-shrink-0">
-                                    {hasRecipePhoto(recipe.image) ? (
-                                      <Image
-                                        src={recipe.image}
-                                        alt=""
-                                        fill
-                                        className="object-cover"
-                                        sizes="32px"
-                                      />
-                                    ) : (
-                                      <RecipePlaceholder className="absolute inset-0 w-full h-full" />
-                                    )}
-                                  </span>
-                                  <span className="min-w-0 text-[11px] font-medium leading-tight text-gray-900 dark:text-gray-100 line-clamp-2">
-                                    {recipe.title}
-                                  </span>
-                                </Link>
-                                <button
-                                  type="button"
-                                  onClick={() => removeAt(key, index)}
-                                  aria-label={`Remove ${recipe.title}`}
-                                  className="absolute top-1/2 right-1 -translate-y-1/2 rounded p-1 text-gray-400 hover:text-red-500"
-                                >
-                                  <XIcon className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ))}
-
-                            {noteEntry?.entry?.type === 'note' && (
-                              <div
-                                className="relative animate-in fade-in slide-in-from-top-1"
-                                style={{
-                                  animationDelay: `${recipeEntries.length * 45}ms`,
-                                  animationFillMode: 'backwards',
-                                }}
-                              >
-                                <div className="flex items-center gap-2 rounded-lg bg-amber-50 p-1 pr-6 dark:bg-amber-500/10">
-                                  <StickyNoteIcon className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                                  <span className="min-w-0 text-[11px] leading-tight text-gray-800 dark:text-gray-100 line-clamp-2">
-                                    {noteEntry.entry.text}
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => removeAt(key, noteEntry.index)}
-                                  aria-label="Remove note"
-                                  className="absolute top-1/2 right-1 -translate-y-1/2 rounded p-1 text-gray-400 hover:text-red-500"
-                                >
-                                  <XIcon className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            )}
-
-                            <button
-                              type="button"
-                              onClick={() => openPicker(key)}
-                              style={{
-                                animationDelay: `${count * 45}ms`,
-                                animationFillMode: 'backwards',
-                              }}
-                              className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 py-1.5 text-[11px] font-medium text-gray-500 animate-in fade-in slide-in-from-top-1 hover:border-primary-400 hover:text-primary-500 dark:border-gray-600 dark:text-gray-400"
-                            >
-                              <PlusIcon className="w-3.5 h-3.5" />
-                              Add
-                            </button>
-                          </div>
-                        </>
-                      )}
                     </div>
                   );
                 })}
@@ -497,22 +384,85 @@ function MealPlannerContent() {
           <button
             type="button"
             aria-label="Close"
-            onClick={closePicker}
+            onClick={closeSlot}
             className="absolute inset-0 bg-black/40 animate-in fade-in"
           />
           <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-y-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-xl animate-in fade-in slide-in-from-bottom-4 dark:border-gray-700 dark:bg-slate-900 sm:max-w-lg sm:rounded-2xl sm:zoom-in-95">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                Add to {slotLabel(pickingSlot)}
+                {slotLabel(pickingSlot)}
               </h3>
               <button
                 type="button"
-                onClick={closePicker}
+                onClick={closeSlot}
                 className="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
               >
                 Done
               </button>
             </div>
+
+            {/* What's already in this slot — open or remove each */}
+            {(() => {
+              const entries = slotEntries(pickingSlot);
+              const rEntries = entries.flatMap((e) => {
+                if (e.entry?.type !== 'recipe') return [];
+                const r = getRecipe(e.entry.recipeId);
+                return r ? [{ index: e.index, recipe: r }] : [];
+              });
+              const nEntry = entries.find((e) => e.entry?.type === 'note');
+              if (rEntries.length === 0 && !nEntry) return null;
+              return (
+                <div className="mb-4 space-y-1.5">
+                  {rEntries.map(({ index, recipe }) => (
+                    <div
+                      key={index}
+                      className="flex items-center gap-3 rounded-lg border border-gray-200 p-1.5 dark:border-gray-700/40"
+                    >
+                      <Link
+                        href={`/recipes/${recipe.id}`}
+                        onClick={closeSlot}
+                        className="flex min-w-0 flex-1 items-center gap-3"
+                      >
+                        <span className="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-md">
+                          {hasRecipePhoto(recipe.image) ? (
+                            <Image src={recipe.image} alt="" fill className="object-cover" sizes="44px" />
+                          ) : (
+                            <RecipePlaceholder className="absolute inset-0 h-full w-full" />
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {recipe.title}
+                        </span>
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => removeAt(pickingSlot, index)}
+                        aria-label={`Remove ${recipe.title}`}
+                        className="flex-shrink-0 rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                      >
+                        <XIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {nEntry?.entry?.type === 'note' && (
+                    <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-2 dark:border-amber-500/30 dark:bg-amber-500/10">
+                      <StickyNoteIcon className="h-5 w-5 flex-shrink-0 text-amber-500" />
+                      <p className="min-w-0 flex-1 truncate text-sm text-gray-800 dark:text-gray-100">
+                        {nEntry.entry.text}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => removeAt(pickingSlot, nEntry.index)}
+                        aria-label="Remove note"
+                        className="flex-shrink-0 rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                      >
+                        <XIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
           {/* Custom note (e.g. eating out) */}
           <div className="mb-4">
