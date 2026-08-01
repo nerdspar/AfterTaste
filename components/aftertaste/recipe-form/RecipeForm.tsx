@@ -193,6 +193,9 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
     base?.calories ?? init.calories ?? 400,
   );
   const [source, setSource] = useState(base?.source ?? 'Original');
+  const [sourceUrl, setSourceUrl] = useState(
+    base?.sourceUrl ?? init.sourceUrl ?? '',
+  );
   const [ingredients, setIngredients] = useState<Ingredient[]>(
     base?.ingredients ??
       init.ingredients ?? [{ name: '', quantity: '', image: '' }],
@@ -488,6 +491,7 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
         rating: 5.0,
       },
       source,
+      sourceUrl: sourceUrl.trim() || undefined,
       cuisine: cuisine.trim() || 'American',
       cookingClassType: recipe?.cookingClassType ?? 'Cozy Comfort Food',
       ease: recipe?.ease ?? 0,
@@ -646,6 +650,21 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
                 ))}
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className={labelClasses}>Source URL (optional)</label>
+            <input
+              type="url"
+              value={sourceUrl}
+              onChange={(e) => setSourceUrl(e.target.value)}
+              placeholder="https://example.com/original-recipe"
+              className={inputClasses}
+            />
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              Link to the original recipe. Filled in automatically when you
+              import from a URL.
+            </p>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

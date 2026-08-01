@@ -12,6 +12,8 @@ import { RecipeNotes } from '@/components/aftertaste/recipe-detail/RecipeNotes';
 import { AIAssistantPanel } from '@/components/aftertaste/recipe-detail/AIAssistantPanel';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { recordRecipeView } from '@/lib/recently-viewed';
+import { useKeepAwake } from '@/lib/keep-awake';
+import { usePref, PREF_KEEP_AWAKE } from '@/lib/prefs';
 
 interface RecipeDetailPageProps {
   params: Promise<{ id: string }>;
@@ -21,6 +23,8 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const { id } = use(params);
   const { getRecipe } = useRecipeStore();
   const router = useRouter();
+  // Optionally keep the screen awake while viewing a recipe (Settings).
+  useKeepAwake(usePref(PREF_KEEP_AWAKE, false));
   const [scaleMode, setScaleMode] = useState<'amount' | 'serving'>('amount');
   const [scaleValue, setScaleValue] = useState(1);
   // Tracks whether this recipe was ever present, so we can tell a freshly

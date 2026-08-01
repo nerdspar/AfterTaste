@@ -16,6 +16,7 @@ export interface ParsedRecipe {
   instructions?: Instruction[];
   recipeNotes?: string;
   myNotes?: string;
+  sourceUrl?: string;
 }
 
 function stripWaybackPrefix(url: string): string {
@@ -33,6 +34,30 @@ function parseISO8601Duration(duration: string): number {
   const hours = parseInt(match[1] || '0', 10);
   const minutes = parseInt(match[2] || '0', 10);
   return hours * 60 + minutes;
+}
+
+// Parse free-text durations like "10 minutes", "1 hour 30 min", "1 hr", "45m".
+function parseMinutesFromText(value: string): number | undefined {
+  let total = 0;
+  let matched = false;
+  const hr = value.match(/(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|hr|h)\b/i);
+  if (hr) {
+    total += Math.round(parseFloat(hr[1]) * 60);
+    matched = true;
+  }
+  const min = value.match(/(\d+)\s*(?:minutes?|mins?|min|m)\b/i);
+  if (min) {
+    total += parseInt(min[1], 10);
+    matched = true;
+  }
+  if (!matched) {
+    const bare = value.trim().match(/^(\d+)$/);
+    if (bare) {
+      total = parseInt(bare[1], 10);
+      matched = true;
+    }
+  }
+  return matched ? total : undefined;
 }
 
 function guessCategory(title: string, keywords: string[] = []): string {
@@ -276,6 +301,10 @@ export function parseRecipeFromText(text: string): ParsedRecipe {
   const instructionLines: string[] = [];
   let inIngredients = false;
   let inInstructions = false;
+  let servings: number | undefined;
+  let prepTimeMinutes: number | undefined;
+  let cookTimeMinutes: number | undefined;
+  let description = '';
 
   for (const line of lines.slice(1)) {
     const lower = line.toLowerCase();
@@ -292,6 +321,35 @@ export function parseRecipeFromText(text: string): ParsedRecipe {
       continue;
     }
 
+    // Metadata labels only apply in the header, before the ingredient/step
+    // bodies (a step may legitimately mention "cook 5 minutes").
+    if (!inIngredients && !inInstructions) {
+      const servingsMatch = line.match(
+        /^(?:servings?|serves|yields?|makes)\b[:\s]+(.+)$/i,
+      );
+      if (servingsMatch) {
+        if (servings === undefined) {
+          const n = parseInt(servingsMatch[1], 10);
+          if (!isNaN(n)) servings = n;
+        }
+        continue;
+      }
+      const prepMatch = line.match(/^prep(?:\s*time)?\b[:\s]+(.+)$/i);
+      if (prepMatch) {
+        if (prepTimeMinutes === undefined)
+          prepTimeMinutes = parseMinutesFromText(prepMatch[1]);
+        continue;
+      }
+      const cookMatch = line.match(/^cook(?:ing)?(?:\s*time)?\b[:\s]+(.+)$/i);
+      if (cookMatch) {
+        if (cookTimeMinutes === undefined)
+          cookTimeMinutes = parseMinutesFromText(cookMatch[1]);
+        continue;
+      }
+      // "Total Time" isn't stored, but shouldn't leak into the description.
+      if (/^total\s*time\b[:\s]/i.test(line)) continue;
+    }
+
     if (inIngredients) {
       ingredientLines.push(line.replace(/^[-•*]\s+/, ''));
     } else if (inInstructions) {
@@ -302,6 +360,9 @@ export function parseRecipeFromText(text: string): ParsedRecipe {
       instructionLines.push(line.replace(/^\d+[.)]\s+/, ''));
     } else if (lower.includes('cup') || lower.includes('tbsp') || lower.includes('tsp') || lower.includes('oz')) {
       ingredientLines.push(line);
+    } else if (!description) {
+      // First prose line before any section becomes the description.
+      description = line;
     }
   }
 
@@ -321,18 +382,13 @@ export function parseRecipeFromText(text: string): ParsedRecipe {
     videoThumb: '',
   }));
 
-  let description = '';
-  if (!inIngredients && !inInstructions && lines.length > 1) {
-    const descLine = lines[1];
-    if (!ingredientPatterns.test(descLine) && !/^\d+[.)]/.test(descLine)) {
-      description = descLine;
-    }
-  }
-
   return {
     title,
     description: description || undefined,
     category: guessCategory(title),
+    servings,
+    prepTimeMinutes,
+    cookTimeMinutes,
     ingredients: ingredients.length > 0 ? ingredients : undefined,
     instructions: instructions.length > 0 ? instructions : undefined,
   };

@@ -16,6 +16,7 @@ import {
   Trash2Icon,
   StarIcon,
   GlobeIcon,
+  ExternalLinkIcon,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -282,6 +283,18 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
             <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-3">
               {recipe.description}
             </p>
+
+            {recipe.sourceUrl && (
+              <a
+                href={recipe.sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 h-8 text-xs font-medium text-gray-600 transition-colors hover:border-primary-400 hover:text-primary-600 dark:border-gray-700 dark:text-gray-300 dark:hover:text-primary-400"
+              >
+                <ExternalLinkIcon className="w-3.5 h-3.5" />
+                View original recipe
+              </a>
+            )}
           </div>
         </div>
 

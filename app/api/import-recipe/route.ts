@@ -124,7 +124,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ recipe });
+    // Remember where it came from so the recipe can link back to the original.
+    return NextResponse.json({ recipe: { ...recipe, sourceUrl: url } });
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Failed to import recipe';

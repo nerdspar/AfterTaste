@@ -7,6 +7,7 @@ import { useSyncExternalStore } from 'react';
 
 export const PREF_CLIPBOARD = 'aftertaste-pref-clipboard';
 export const PREF_NOTIFICATIONS = 'aftertaste-pref-notifications';
+export const PREF_KEEP_AWAKE = 'aftertaste-pref-keep-awake';
 
 const listeners = new Set<() => void>();
 

@@ -15,6 +15,7 @@ import {
   BellIcon,
   Share2Icon,
   CameraIcon,
+  CoffeeIcon,
 } from 'lucide-react';
 import { Card } from '@/components/aftertaste/Card';
 import { Avatar } from '@/components/aftertaste/Avatar';
@@ -30,6 +31,7 @@ import {
   setPref,
   PREF_CLIPBOARD,
   PREF_NOTIFICATIONS,
+  PREF_KEEP_AWAKE,
 } from '@/lib/prefs';
 import { useInstallAvailable, promptInstall } from '@/lib/pwa-install';
 import { useCurrentUser } from '@/components/aftertaste/CurrentUserProvider';
@@ -132,6 +134,7 @@ export function SettingsClient({
 
   const clipboardOn = usePref(PREF_CLIPBOARD, true);
   const notificationsOn = usePref(PREF_NOTIFICATIONS, true);
+  const keepAwakeOn = usePref(PREF_KEEP_AWAKE, false);
   const installAvailable = useInstallAvailable();
 
   useEffect(() => {
@@ -441,6 +444,22 @@ export function SettingsClient({
               </p>
             </div>
           </div>
+        </Section>
+
+        {/* Cooking */}
+        <Section title="Cooking">
+          <SettingRow
+            icon={CoffeeIcon}
+            title="Keep screen awake in a recipe"
+            subtitle="Stop your phone from sleeping while a recipe is open"
+            action={
+              <Toggle
+                checked={keepAwakeOn}
+                onChange={(v) => setPref(PREF_KEEP_AWAKE, v)}
+                label="Keep screen awake in a recipe"
+              />
+            }
+          />
         </Section>
 
         {/* Notifications */}
