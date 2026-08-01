@@ -72,6 +72,11 @@ function isSectionHeader(inst: Instruction): boolean {
   return inst.section !== undefined;
 }
 
+/** True when an ingredient item is a section header rather than an ingredient. */
+function isIngredientSection(ing: Ingredient): boolean {
+  return ing.section !== undefined;
+}
+
 /** Split pasted text into trimmed, de-bulleted, non-empty lines. */
 function splitPastedLines(text: string): string[] {
   return text
@@ -281,6 +286,20 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
     setIngredients((prev) => [...prev, { name: '', quantity: '', image: '' }]);
   }
 
+  // A section header groups the ingredients below it (e.g. Dough, Filling).
+  function addIngredientSection() {
+    setIngredients((prev) => [
+      ...prev,
+      { name: '', quantity: '', image: '', section: '' },
+    ]);
+  }
+
+  function updateIngredientSection(index: number, value: string) {
+    setIngredients((prev) =>
+      prev.map((ing, i) => (i === index ? { ...ing, section: value } : ing)),
+    );
+  }
+
   // Paste a multi-line list into an ingredient field → one row per line.
   function handleIngredientPaste(
     index: number,
@@ -413,7 +432,9 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       return `${mins} mins`;
     };
 
-    const validIngredients = ingredients.filter((i) => i.name.trim());
+    const validIngredients = ingredients.filter((ing) =>
+      isIngredientSection(ing) ? !!ing.section?.trim() : !!ing.name.trim(),
+    );
     let stepN = 0;
     const validInstructions = instructions
       .filter((inst) =>
@@ -677,59 +698,112 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
 
       {/* Ingredients */}
       <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
-            Ingredients
-          </h2>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={addIngredient}
-          >
-            <PlusIcon className="w-3.5 h-3.5" />
-            Add
-          </Button>
-        </div>
-        <p className="-mt-2 mb-3 text-xs text-gray-400 dark:text-gray-500">
-          Tip: paste a list into a row to add several ingredients at once.
+        <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">
+          Ingredients
+        </h2>
+        <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">
+          Tip: paste a list into a row to add several at once. Use sections
+          (e.g. Dough, Filling) to group ingredients for multi-part recipes.
         </p>
         <div className="space-y-2">
-          {ingredients.map((ing, i) => (
-            <div key={i} className="flex items-center gap-2">
+          {ingredients.map((ing, i) => {
+            const reorder = (
               <ReorderControls
                 onUp={() => moveIngredient(i, -1)}
                 onDown={() => moveIngredient(i, 1)}
                 canUp={i > 0}
                 canDown={i < ingredients.length - 1}
               />
-              <input
-                type="text"
-                value={ing.name}
-                onChange={(e) => updateIngredient(i, 'name', e.target.value)}
-                onPaste={(e) => handleIngredientPaste(i, e)}
-                placeholder="Ingredient name"
-                className={cn(inputClasses, 'flex-1 min-w-0')}
-              />
-              <input
-                type="text"
-                value={ing.quantity}
-                onChange={(e) =>
-                  updateIngredient(i, 'quantity', e.target.value)
-                }
-                placeholder="Qty"
-                className={cn(inputClasses, 'w-20 sm:w-28 flex-shrink-0')}
-              />
-              <button
-                type="button"
-                onClick={() => removeIngredient(i)}
-                aria-label="Remove ingredient"
-                className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
-              >
-                <TrashIcon className="w-4 h-4 text-red-400" />
-              </button>
-            </div>
-          ))}
+            );
+
+            if (isIngredientSection(ing)) {
+              return (
+                <div key={i} className="flex items-center gap-2 pt-1">
+                  {reorder}
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500 flex-shrink-0">
+                    Section
+                  </span>
+                  <input
+                    type="text"
+                    value={ing.section ?? ''}
+                    onChange={(e) => updateIngredientSection(i, e.target.value)}
+                    placeholder="e.g. Dough"
+                    className={cn(inputClasses, 'flex-1 min-w-0 font-semibold')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeIngredient(i)}
+                    aria-label="Remove section"
+                    className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+                  >
+                    <TrashIcon className="w-4 h-4 text-red-400" />
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div key={i} className="flex items-center gap-2">
+                {reorder}
+                <input
+                  type="text"
+                  value={ing.name}
+                  onChange={(e) => updateIngredient(i, 'name', e.target.value)}
+                  onPaste={(e) => handleIngredientPaste(i, e)}
+                  placeholder="Ingredient name"
+                  className={cn(inputClasses, 'flex-1 min-w-0')}
+                />
+                <input
+                  type="text"
+                  value={ing.quantity}
+                  onChange={(e) =>
+                    updateIngredient(i, 'quantity', e.target.value)
+                  }
+                  placeholder="Qty"
+                  className={cn(inputClasses, 'w-20 sm:w-28 flex-shrink-0')}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeIngredient(i)}
+                  aria-label="Remove ingredient"
+                  className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+                >
+                  <TrashIcon className="w-4 h-4 text-red-400" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={addIngredient}
+            className={cn(
+              'flex-1 h-11 rounded-xl border-2 border-dashed',
+              'flex items-center justify-center gap-1.5 text-sm font-medium',
+              'border-gray-200 text-gray-500 hover:border-primary-400 hover:text-primary-500',
+              'dark:border-gray-700 dark:text-gray-400 dark:hover:border-primary-500',
+              'transition-colors',
+            )}
+          >
+            <PlusIcon className="w-4 h-4" />
+            Add Ingredient
+          </button>
+          <button
+            type="button"
+            onClick={addIngredientSection}
+            title="Start a new ingredient section (e.g. Dough, Filling)"
+            className={cn(
+              'h-11 px-4 rounded-xl border-2 border-dashed',
+              'flex items-center justify-center gap-1.5 text-sm font-medium',
+              'border-gray-200 text-gray-500 hover:border-primary-400 hover:text-primary-500',
+              'dark:border-gray-700 dark:text-gray-400 dark:hover:border-primary-500',
+              'transition-colors',
+            )}
+          >
+            <PlusIcon className="w-4 h-4" />
+            Add section
+          </button>
         </div>
       </Card>
 

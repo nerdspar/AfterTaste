@@ -37,6 +37,12 @@ export interface Ingredient {
   name: string;
   quantity: string;
   image: string;
+  /**
+   * When defined, this item is a SECTION HEADER (its value is the section
+   * title, e.g. "Dough") that groups the ingredients listed after it, rather
+   * than being an ingredient itself. Real ingredients leave this undefined.
+   */
+  section?: string;
 }
 
 export interface Instruction {
