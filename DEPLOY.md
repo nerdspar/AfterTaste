@@ -99,9 +99,10 @@ docker compose up -d      # pulls ghcr.io/nerdspar/aftertaste + starts Postgres
 ```
 
 Postgres starts, the app waits for it to be healthy, **runs the database
-migrations automatically**, then serves on port **3000**.
+migrations automatically**, then serves on the host port from the compose file
+(**8300** by default — change the left side of `8300:3000` if it's taken).
 
-Open `http://<nas-ip>:3000`. The **first account you create owns the
+Open `http://<nas-ip>:8300`. The **first account you create owns the
 household** — sign up, then invite others from **Settings → Household** (they
 join when they sign up with the invited email).
 
@@ -110,7 +111,7 @@ join when they sign up with the invited email).
 ## HTTPS / custom domain
 
 Point a reverse proxy (TrueNAS built-in, Nginx Proxy Manager, Traefik, Caddy…)
-at `http://<nas-ip>:3000`. The app trusts the proxy's forwarded host, so no
+at `http://<nas-ip>:8300`. The app trusts the proxy's forwarded host, so no
 extra config is needed — just make sure the proxy forwards
 `X-Forwarded-Proto: https` so login cookies are marked secure.
 
