@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Logo } from './Logo';
 import {
   LayoutDashboardIcon,
   BookOpenIcon,
@@ -13,7 +14,6 @@ import {
   LogOutIcon,
   PlusIcon,
   ChevronDownIcon,
-  UtensilsCrossedIcon,
   GlobeIcon,
   FileTextIcon,
   UploadIcon,
@@ -86,9 +86,7 @@ export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
         onClick={onNavigate}
         className="flex items-center gap-2.5 px-4 pt-5 pb-6"
       >
-        <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center">
-          <UtensilsCrossedIcon className="w-4.5 h-4.5 text-white" />
-        </div>
+        <Logo className="w-8 h-8" />
         <span className="text-lg font-bold text-gray-900 dark:text-gray-50">
           <span className="text-primary-500">After</span>Taste
         </span>

@@ -2,6 +2,8 @@
 
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { RecipePlaceholder } from '../RecipePlaceholder';
+import { hasRecipePhoto } from '@/lib/recipe-image';
 import Link from 'next/link';
 import {
   HeartIcon,
@@ -46,13 +48,17 @@ export function RecipeListItem({ recipe, className }: RecipeListItemProps) {
     >
       {/* Thumbnail */}
       <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
-        <Image
-          src={recipe.image}
-          alt={recipe.title}
-          fill
-          className="object-cover dark:brightness-90"
-          sizes="64px"
-        />
+        {hasRecipePhoto(recipe.image) ? (
+          <Image
+            src={recipe.image}
+            alt={recipe.title}
+            fill
+            className="object-cover dark:brightness-90"
+            sizes="64px"
+          />
+        ) : (
+          <RecipePlaceholder className="absolute inset-0 w-full h-full" />
+        )}
       </div>
 
       {/* Content */}

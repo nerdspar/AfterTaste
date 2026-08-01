@@ -463,9 +463,7 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       id: isEditing ? recipe.id : generateId(title),
       title: title.trim(),
       category,
-      image:
-        image ||
-        'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=600&h=400&fit=crop',
+      image: image.trim(),
       rating: recipe?.rating ?? init.rating ?? 0,
       ratingCount: recipe?.ratingCount ?? init.ratingCount ?? 0,
       cookTime: formatTime(cookTime),

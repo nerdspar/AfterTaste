@@ -36,8 +36,6 @@ export interface CroutonRecipe {
   uuid?: string; // stable per-recipe id, used to dedupe re-imports
 }
 
-const FALLBACK_IMAGE =
-  'https://images.unsplash.com/photo-1495521821757-a1efb6729352?w=600&h=400&fit=crop';
 const FALLBACK_AVATAR =
   'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=80&h=80&fit=crop&crop=face';
 
@@ -196,10 +194,11 @@ async function croutonToRecipe(
     })
     .filter((s) => (s.section !== undefined ? !!s.section : !!s.body));
 
+  // Leave image empty when the recipe has no photo — the UI shows the brand
+  // tile placeholder in that case.
   let image = '';
   if (json.images?.[0]) image = await downscaleImage(json.images[0]);
   if (!image && json.sourceImage) image = await downscaleImage(json.sourceImage);
-  if (!image) image = FALLBACK_IMAGE;
 
   return {
     id: slugId(title, json.uuid, idx),

@@ -2,6 +2,8 @@
 
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { RecipePlaceholder } from '../RecipePlaceholder';
+import { hasRecipePhoto } from '@/lib/recipe-image';
 import Link from 'next/link';
 import { ClockIcon, FlameIcon, StickyNoteIcon } from 'lucide-react';
 import { useMealPlan, parsePlanEntry } from '../MealPlanStoreProvider';
@@ -93,13 +95,17 @@ export function TodaysMeals() {
             >
               {/* Image */}
               <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
-                <Image
-                  src={recipe.image}
-                  alt={recipe.title}
-                  fill
-                  className="object-cover"
-                  sizes="56px"
-                />
+                {hasRecipePhoto(recipe.image) ? (
+                  <Image
+                    src={recipe.image}
+                    alt={recipe.title}
+                    fill
+                    className="object-cover"
+                    sizes="56px"
+                  />
+                ) : (
+                  <RecipePlaceholder className="absolute inset-0 w-full h-full" />
+                )}
               </div>
 
               {/* Content */}

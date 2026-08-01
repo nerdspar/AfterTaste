@@ -2,6 +2,8 @@
 
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import { RecipePlaceholder } from '../RecipePlaceholder';
+import { hasRecipePhoto } from '@/lib/recipe-image';
 import Link from 'next/link';
 import { HeartIcon, ClockIcon, FlameIcon, UsersIcon } from 'lucide-react';
 import { RatingStars } from '../RatingStars';
@@ -40,13 +42,17 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
     >
       {/* Image */}
       <div className="relative h-36">
-        <Image
-          src={recipe.image}
-          alt={recipe.title}
-          fill
-          className="object-cover dark:brightness-90"
-          sizes="(max-width: 768px) 100vw, 300px"
-        />
+        {hasRecipePhoto(recipe.image) ? (
+          <Image
+            src={recipe.image}
+            alt={recipe.title}
+            fill
+            className="object-cover dark:brightness-90"
+            sizes="(max-width: 768px) 100vw, 300px"
+          />
+        ) : (
+          <RecipePlaceholder className="absolute inset-0 w-full h-full" />
+        )}
 
         {/* Favorite button */}
         <button

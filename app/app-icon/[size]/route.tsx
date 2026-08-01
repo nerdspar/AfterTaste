@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { DISC_DATA_URI, TILE_LIGHT } from '@/lib/brand';
 
 // Generated PNG app icons for the web manifest (e.g. /app-icon/192).
 export async function GET(
@@ -16,14 +17,16 @@ export async function GET(
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#f97316',
-          color: 'white',
-          fontSize: s * 0.62,
-          fontWeight: 800,
-          fontFamily: 'sans-serif',
+          background: TILE_LIGHT,
         }}
       >
-        A
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          width={Math.round(s * 0.594)}
+          height={Math.round(s * 0.594)}
+          src={DISC_DATA_URI}
+          alt=""
+        />
       </div>
     ),
     { width: s, height: s },
