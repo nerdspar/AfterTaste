@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { RecipePlaceholder } from '../RecipePlaceholder';
+import { hasRecipePhoto } from '@/lib/recipe-image';
 import { useRouter } from 'next/navigation';
 import {
   EllipsisVerticalIcon,
@@ -153,14 +155,18 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
         <div className="flex flex-col md:flex-row gap-4">
           {/* Image */}
           <div className="relative w-full md:w-72 h-48 md:h-52 rounded-2xl overflow-hidden flex-shrink-0">
-            <Image
-              src={recipe.image}
-              alt={recipe.title}
-              fill
-              className="object-cover dark:brightness-90"
-              sizes="(max-width: 768px) 100vw, 288px"
-              priority
-            />
+            {hasRecipePhoto(recipe.image) ? (
+              <Image
+                src={recipe.image}
+                alt={recipe.title}
+                fill
+                className="object-cover dark:brightness-90"
+                sizes="(max-width: 768px) 100vw, 288px"
+                priority
+              />
+            ) : (
+              <RecipePlaceholder className="absolute inset-0 w-full h-full" />
+            )}
           </div>
 
           {/* Info */}

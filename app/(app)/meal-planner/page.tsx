@@ -17,6 +17,8 @@ import {
   XIcon,
 } from 'lucide-react';
 import Image from 'next/image';
+import { RecipePlaceholder } from '@/components/aftertaste/RecipePlaceholder';
+import { hasRecipePhoto } from '@/lib/recipe-image';
 import Link from 'next/link';
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'] as const;
@@ -271,13 +273,17 @@ function MealPlannerContent() {
                           aria-label={`Open ${recipe.title}`}
                           className="block relative h-full w-full"
                         >
-                          <Image
-                            src={recipe.image}
-                            alt={recipe.title}
-                            fill
-                            className="object-cover opacity-40 transition-opacity group-hover:opacity-60"
-                            sizes="80px"
-                          />
+                          {hasRecipePhoto(recipe.image) ? (
+                            <Image
+                              src={recipe.image}
+                              alt={recipe.title}
+                              fill
+                              className="object-cover opacity-40 transition-opacity group-hover:opacity-60"
+                              sizes="80px"
+                            />
+                          ) : (
+                            <RecipePlaceholder className="absolute inset-0 w-full h-full opacity-40 transition-opacity group-hover:opacity-60" />
+                          )}
                           <div className="relative p-1.5 h-full flex flex-col justify-end">
                             <p className="text-[9px] font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
                               {recipe.title.split(' ').slice(0, 3).join(' ')}
@@ -415,13 +421,17 @@ function MealPlannerContent() {
                   className="rounded-xl border border-gray-200 dark:border-gray-700/40 overflow-hidden hover:ring-2 hover:ring-primary-500/40 transition-all text-left"
                 >
                   <div className="relative h-16">
-                    <Image
-                      src={recipe.image}
-                      alt={recipe.title}
-                      fill
-                      className="object-cover"
-                      sizes="120px"
-                    />
+                    {hasRecipePhoto(recipe.image) ? (
+                      <Image
+                        src={recipe.image}
+                        alt={recipe.title}
+                        fill
+                        className="object-cover"
+                        sizes="120px"
+                      />
+                    ) : (
+                      <RecipePlaceholder className="absolute inset-0 w-full h-full" />
+                    )}
                   </div>
                   <div className="p-1.5">
                     <p className="text-[10px] font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
