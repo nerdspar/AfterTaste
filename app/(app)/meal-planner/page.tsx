@@ -17,6 +17,7 @@ import {
   XIcon,
   LayersIcon,
   PlusIcon,
+  CheckIcon,
 } from 'lucide-react';
 import Image from 'next/image';
 import { RecipePlaceholder } from '@/components/aftertaste/RecipePlaceholder';
@@ -130,10 +131,12 @@ function MealPlannerContent() {
   };
   const closeFan = () => setFannedSlot(null);
 
-  // Adding a recipe appends it and keeps the picker open so a main + sides can
-  // be added in one go.
-  const addToSlot = (slotKey: string, recipeId: string) => {
-    addRecipe(slotKey, recipeId);
+  // In the picker, tapping a recipe toggles it in/out of the slot. Adding keeps
+  // the picker open so a main + sides can be added in one go.
+  const toggleRecipe = (slotKey: string, recipeId: string) => {
+    const idx = (plan[slotKey] ?? []).indexOf(recipeId);
+    if (idx >= 0) removeAt(slotKey, idx);
+    else addRecipe(slotKey, recipeId);
   };
 
   const saveNote = () => {
@@ -159,6 +162,17 @@ function MealPlannerContent() {
   useEffect(() => {
     if (fannedSlot && !plan[fannedSlot]?.length) setFannedSlot(null);
   }, [fannedSlot, plan]);
+
+  // Lock background scroll while the picker modal is open so it doesn't drag
+  // behind the modal.
+  useEffect(() => {
+    if (!pickingSlot) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [pickingSlot]);
 
   // "Sat, Aug 1 · Dinner" from a `<YYYY-MM-DD>_<meal>` slot key.
   const slotLabel = (slotKey: string) => {
@@ -560,36 +574,53 @@ function MealPlannerContent() {
 
           {filteredRecipes.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-              {filteredRecipes.map((recipe) => (
-                <button
-                  type="button"
-                  key={recipe.id}
-                  onClick={() => addToSlot(pickingSlot, recipe.id)}
-                  className="rounded-xl border border-gray-200 dark:border-gray-700/40 overflow-hidden hover:ring-2 hover:ring-primary-500/40 transition-all text-left"
-                >
-                  <div className="relative h-16">
-                    {hasRecipePhoto(recipe.image) ? (
-                      <Image
-                        src={recipe.image}
-                        alt={recipe.title}
-                        fill
-                        className="object-cover"
-                        sizes="120px"
-                      />
-                    ) : (
-                      <RecipePlaceholder className="absolute inset-0 w-full h-full" />
+              {filteredRecipes.map((recipe) => {
+                const selected = (plan[pickingSlot] ?? []).includes(recipe.id);
+                return (
+                  <button
+                    type="button"
+                    key={recipe.id}
+                    onClick={() => toggleRecipe(pickingSlot, recipe.id)}
+                    aria-pressed={selected}
+                    className={cn(
+                      'overflow-hidden rounded-xl border text-left transition-all',
+                      selected
+                        ? 'border-primary-500 ring-2 ring-primary-500'
+                        : 'border-gray-200 dark:border-gray-700/40 hover:ring-2 hover:ring-primary-500/40',
                     )}
-                  </div>
-                  <div className="p-1.5">
-                    <p className="text-[10px] font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
-                      {recipe.title}
-                    </p>
-                    <p className="text-[9px] text-gray-400 mt-0.5">
-                      {recipe.cookTime} · {recipe.calories} kcal
-                    </p>
-                  </div>
-                </button>
-              ))}
+                  >
+                    <div className="relative h-16">
+                      {hasRecipePhoto(recipe.image) ? (
+                        <Image
+                          src={recipe.image}
+                          alt={recipe.title}
+                          fill
+                          className="object-cover"
+                          sizes="120px"
+                        />
+                      ) : (
+                        <RecipePlaceholder className="absolute inset-0 w-full h-full" />
+                      )}
+                      {selected && (
+                        <>
+                          <div className="absolute inset-0 bg-primary-500/25" />
+                          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary-500 text-white shadow">
+                            <CheckIcon className="w-3 h-3" />
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <div className="p-1.5">
+                      <p className="text-[10px] font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
+                        {recipe.title}
+                      </p>
+                      <p className="text-[9px] text-gray-400 mt-0.5">
+                        {recipe.cookTime} · {recipe.calories} kcal
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-6">

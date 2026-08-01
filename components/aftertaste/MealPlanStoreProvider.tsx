@@ -90,6 +90,7 @@ export function MealPlanStoreProvider({
   const addRecipe = useCallback(
     (slotKey: string, recipeId: string) => {
       const cur = plan[slotKey] ?? [];
+      if (cur.includes(recipeId)) return; // no duplicate recipes in a slot
       // Keep recipes grouped ahead of a trailing note.
       const recipes = cur.filter((v) => !isNote(v));
       const notes = cur.filter(isNote);
