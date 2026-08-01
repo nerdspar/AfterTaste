@@ -162,24 +162,23 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
     navigateWithData(parsed);
   }
 
-  async function handlePdfUpload(file: File) {
+  // PDFs and Word docs need server-side text extraction; post the raw file
+  // to the matching route and import whatever recipe it parses out.
+  async function handleServerFileImport(file: File, endpoint: string) {
     setLoading(true);
     setError('');
     try {
       const form = new FormData();
       form.append('file', file);
-      const res = await fetch('/api/import-recipe/pdf', {
-        method: 'POST',
-        body: form,
-      });
+      const res = await fetch(endpoint, { method: 'POST', body: form });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Could not read that PDF.');
+        setError(data.error || 'Could not read that file.');
         return;
       }
       navigateWithData(data.recipe as ParsedRecipe);
     } catch {
-      setError('Something went wrong reading that PDF. Please try again.');
+      setError('Something went wrong reading that file. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -190,11 +189,27 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
     if (!file) return;
     setError('');
 
+    const name = file.name.toLowerCase();
+
+    if (file.type === 'application/pdf' || name.endsWith('.pdf')) {
+      void handleServerFileImport(file, '/api/import-recipe/pdf');
+      return;
+    }
+
     if (
-      file.type === 'application/pdf' ||
-      file.name.toLowerCase().endsWith('.pdf')
+      name.endsWith('.docx') ||
+      file.type ===
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ) {
-      void handlePdfUpload(file);
+      void handleServerFileImport(file, '/api/import-recipe/docx');
+      return;
+    }
+
+    // Old binary Word format — mammoth can't read it; steer to a better export.
+    if (name.endsWith('.doc') || file.type === 'application/msword') {
+      setError(
+        "Old .doc files aren't supported. Save it as .docx or PDF and try again.",
+      );
       return;
     }
 
@@ -375,13 +390,13 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
           <div className="space-y-4">
             <p className="text-xs text-gray-500 dark:text-gray-400">
               Upload a recipe file. Supports <code>.pdf</code>,{' '}
-              <code>.txt</code> (plain text) and <code>.json</code> (structured
-              data).
+              <code>.docx</code>, <code>.txt</code> (plain text) and{' '}
+              <code>.json</code> (structured data).
             </p>
             <input
               ref={fileRef}
               type="file"
-              accept=".pdf,application/pdf,.txt,.json,.text"
+              accept=".pdf,application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt,.json,.text"
               onChange={handleFileUpload}
               className="hidden"
             />
@@ -410,7 +425,7 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
                     Click to choose a file
                   </span>
                   <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                    .pdf, .txt or .json
+                    .pdf, .docx, .txt or .json
                   </span>
                 </>
               )}
