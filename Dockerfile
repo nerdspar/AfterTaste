@@ -42,10 +42,12 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Prisma client + engine + CLI + schema (so `migrate deploy` runs on boot)
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+# Full node_modules + schema so `prisma migrate deploy` has its ENTIRE dependency
+# tree at runtime. The Prisma CLI pulls in @prisma/config → effect/c12/… , so
+# cherry-picking only the prisma folders (as before) crashes with
+# "Cannot find module 'effect'". This overlays the standalone's pruned
+# node_modules with the complete set (same versions, so the app still runs).
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 
