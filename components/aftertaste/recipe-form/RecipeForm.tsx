@@ -40,6 +40,30 @@ const SOURCES = [
   'AI Generated',
 ];
 
+const CUISINES = [
+  'American',
+  'Italian',
+  'Mexican',
+  'Chinese',
+  'Japanese',
+  'Thai',
+  'Indian',
+  'French',
+  'Mediterranean',
+  'Greek',
+  'Spanish',
+  'Korean',
+  'Vietnamese',
+  'Middle Eastern',
+  'Caribbean',
+  'Cajun/Creole',
+  'German',
+  'British',
+  'Southern',
+  'Fusion',
+  'Other',
+];
+
 const inputClasses = cn(
   'w-full h-10 px-3 rounded-lg text-sm',
   'border border-gray-200 bg-white',
@@ -193,25 +217,31 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   const [cookTime, setCookTime] = useState(
     base?.cookTimeMinutes ?? init.cookTimeMinutes ?? 30,
   );
-  const [calories, setCalories] = useState(
-    base?.calories ?? init.calories ?? 400,
+  // Nutrition is ENTERED as whole-recipe totals (what the user cooks), but
+  // STORED per serving. Convert stored/imported per-serving values to whole
+  // once, using the serving count at load time, so the whole totals stay put
+  // even if servings is edited afterwards.
+  const initialServings = base?.servings ?? init.servings ?? 4;
+  const toWhole = (perServing: number | null | undefined): number | '' =>
+    perServing == null ? '' : Math.round(perServing * initialServings);
+  const [calories, setCalories] = useState<number | ''>(
+    toWhole(base?.calories ?? init.calories ?? 400),
   );
-  // Extended macros (per serving). Blank = unknown, so they're `number | ''`.
   const [proteinG, setProteinG] = useState<number | ''>(
-    base?.proteinG ?? init.proteinG ?? '',
+    toWhole(base?.proteinG ?? init.proteinG),
   );
   const [carbsG, setCarbsG] = useState<number | ''>(
-    base?.carbsG ?? init.carbsG ?? '',
+    toWhole(base?.carbsG ?? init.carbsG),
   );
-  const [fatG, setFatG] = useState<number | ''>(base?.fatG ?? init.fatG ?? '');
+  const [fatG, setFatG] = useState<number | ''>(toWhole(base?.fatG ?? init.fatG));
   const [fiberG, setFiberG] = useState<number | ''>(
-    base?.fiberG ?? init.fiberG ?? '',
+    toWhole(base?.fiberG ?? init.fiberG),
   );
   const [sugarG, setSugarG] = useState<number | ''>(
-    base?.sugarG ?? init.sugarG ?? '',
+    toWhole(base?.sugarG ?? init.sugarG),
   );
   const [sodiumMg, setSodiumMg] = useState<number | ''>(
-    base?.sodiumMg ?? init.sodiumMg ?? '',
+    toWhole(base?.sodiumMg ?? init.sodiumMg),
   );
   const [nutritionSource, setNutritionSource] = useState<
     'manual' | 'imported' | 'estimated' | undefined
@@ -224,6 +254,11 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       setter(raw === '' ? '' : Number(raw));
       setNutritionSource('manual');
     };
+  // Whole-recipe total -> per-serving value stored on the recipe.
+  const perServing = (whole: number | ''): number | undefined =>
+    whole === ''
+      ? undefined
+      : Math.max(0, Math.round(Number(whole) / Math.max(1, servings)));
   const [source, setSource] = useState(base?.source ?? 'Original');
   const [sourceUrl, setSourceUrl] = useState(
     base?.sourceUrl ?? init.sourceUrl ?? '',
@@ -506,13 +541,14 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       prepTimeMinutes: prepTime,
       totalTimeMinutes: totalTime,
       servings,
-      calories,
-      proteinG: proteinG === '' ? undefined : proteinG,
-      carbsG: carbsG === '' ? undefined : carbsG,
-      fatG: fatG === '' ? undefined : fatG,
-      fiberG: fiberG === '' ? undefined : fiberG,
-      sugarG: sugarG === '' ? undefined : sugarG,
-      sodiumMg: sodiumMg === '' ? undefined : sodiumMg,
+      // Whole-recipe inputs are divided back to per-serving for storage.
+      calories: perServing(calories) ?? 0,
+      proteinG: perServing(proteinG),
+      carbsG: perServing(carbsG),
+      fatG: perServing(fatG),
+      fiberG: perServing(fiberG),
+      sugarG: perServing(sugarG),
+      sodiumMg: perServing(sodiumMg),
       // There's always at least calories, so nutrition is never fully empty.
       nutritionSource: nutritionSource ?? 'manual',
       difficulty: recipe?.difficulty ?? 'Medium',
@@ -668,13 +704,21 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
             </div>
             <div>
               <label className={labelClasses}>Cuisine</label>
-              <input
-                type="text"
-                value={cuisine}
+              <select
+                value={cuisine || 'American'}
                 onChange={(e) => setCuisine(e.target.value)}
-                placeholder="e.g. Italian"
-                className={inputClasses}
-              />
+                className={cn(selectClasses, 'w-full')}
+              >
+                {/* Keep an imported/legacy value that isn't in the list. */}
+                {cuisine && !CUISINES.includes(cuisine) && (
+                  <option value={cuisine}>{cuisine}</option>
+                )}
+                {CUISINES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className={labelClasses}>Source</label>
@@ -739,28 +783,27 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
               />
             </div>
             <div>
-              <label className={labelClasses}>Calories</label>
+              <label className={labelClasses}>Calories (total)</label>
               <input
                 type="number"
                 value={calories}
-                onChange={(e) => {
-                  setCalories(Number(e.target.value));
-                  setNutritionSource('manual');
-                }}
+                onChange={onMacroChange(setCalories)}
                 min={0}
+                placeholder="—"
                 className={inputClasses}
               />
             </div>
           </div>
 
-          {/* Nutrition (per serving) — powers the recipe panel + food log */}
+          {/* Nutrition (whole recipe) — stored per serving; powers the panel
+              + food log. Enter totals for the whole batch you make. */}
           {nutritionOn && (
           <div>
             <div className="mb-2 flex items-center justify-between">
               <label className={labelClasses}>
                 Nutrition{' '}
                 <span className="font-normal text-gray-400 dark:text-gray-500">
-                  (per serving)
+                  (whole recipe)
                 </span>
               </label>
               {nutritionSource === 'imported' && (
@@ -769,6 +812,13 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
                 </span>
               )}
             </div>
+            <p className="mb-2 text-xs text-gray-400 dark:text-gray-500">
+              Totals for the whole recipe. We divide by {servings} serving
+              {servings === 1 ? '' : 's'}
+              {calories !== '' &&
+                ` → ${Math.round(Number(calories) / Math.max(1, servings))} kcal each`}
+              .
+            </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <div>
                 <label className={labelClasses}>Protein (g)</label>

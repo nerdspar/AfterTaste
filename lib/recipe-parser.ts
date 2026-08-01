@@ -26,6 +26,75 @@ export interface ParsedRecipe {
   sourceUrl?: string;
 }
 
+// Recipe sites often embed HTML entities inside their JSON-LD/meta text
+// (e.g. "it&#39;s fast" or "salt &amp; pepper"). Decode them so imported
+// recipes read cleanly. Runs server-side, so it can't rely on the DOM.
+const NAMED_ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+  rsquo: '’',
+  lsquo: '‘',
+  rdquo: '”',
+  ldquo: '“',
+  mdash: '—',
+  ndash: '–',
+  hellip: '…',
+  deg: '°',
+  frac12: '½',
+  frac14: '¼',
+  frac34: '¾',
+};
+
+function decodeEntities(input: string): string {
+  if (!input || input.indexOf('&') === -1) return input;
+  return input.replace(/&(#x?[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]*);/g, (m, body) => {
+    if (body[0] === '#') {
+      const code =
+        body[1] === 'x' || body[1] === 'X'
+          ? parseInt(body.slice(2), 16)
+          : parseInt(body.slice(1), 10);
+      if (Number.isNaN(code) || code <= 0 || code > 0x10ffff) return m;
+      try {
+        return String.fromCodePoint(code);
+      } catch {
+        return m;
+      }
+    }
+    const named = NAMED_ENTITIES[body];
+    return named ?? m;
+  });
+}
+
+/** Decode HTML entities across every user-facing string in a parsed recipe. */
+function decodeParsed(r: ParsedRecipe): ParsedRecipe {
+  const d = (s?: string) => (s == null ? s : decodeEntities(s));
+  return {
+    ...r,
+    title: d(r.title),
+    description: d(r.description),
+    cuisine: d(r.cuisine),
+    category: d(r.category),
+    recipeNotes: d(r.recipeNotes),
+    myNotes: d(r.myNotes),
+    ingredients: r.ingredients?.map((i) => ({
+      ...i,
+      name: decodeEntities(i.name),
+      quantity: decodeEntities(i.quantity),
+      section: i.section == null ? i.section : decodeEntities(i.section),
+    })),
+    instructions: r.instructions?.map((s) => ({
+      ...s,
+      title: decodeEntities(s.title),
+      body: decodeEntities(s.body),
+      section: s.section == null ? s.section : decodeEntities(s.section),
+    })),
+  };
+}
+
 function stripWaybackPrefix(url: string): string {
   // Archived pages rewrite asset URLs through web.archive.org; recover the
   // original so imported images don't depend on the Wayback Machine.
@@ -421,7 +490,7 @@ export function parseRecipeFromText(text: string): ParsedRecipe {
     videoThumb: '',
   }));
 
-  return {
+  return decodeParsed({
     title,
     description: description || undefined,
     category: guessCategory(title),
@@ -430,9 +499,10 @@ export function parseRecipeFromText(text: string): ParsedRecipe {
     cookTimeMinutes,
     ingredients: ingredients.length > 0 ? ingredients : undefined,
     instructions: instructions.length > 0 ? instructions : undefined,
-  };
+  });
 }
 
 export function parseRecipeFromHtml(html: string): ParsedRecipe | null {
-  return parseRecipeFromJsonLd(html) ?? parseRecipeFromMeta(html);
+  const parsed = parseRecipeFromJsonLd(html) ?? parseRecipeFromMeta(html);
+  return parsed ? decodeParsed(parsed) : null;
 }

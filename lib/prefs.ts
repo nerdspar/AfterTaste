@@ -39,11 +39,13 @@ export function setPref(key: string, value: boolean): void {
 }
 
 export function usePref(key: string, fallback: boolean): boolean {
-  // Start from `fallback` so server and first client render agree (no hydration
-  // mismatch), then read the real localStorage value on mount and subscribe to
-  // live changes. useSyncExternalStore proved unreliable here: on a full page
-  // load it kept returning the fallback until some unrelated re-render.
-  const [value, setValue] = useState(fallback);
+  // Read localStorage in the initializer so EVERY mount (including remounts on
+  // data-heavy pages like the recipe editor) starts from the real value, not
+  // the fallback. On the server localStorage is absent, so it returns the
+  // fallback there; the effect re-reads on the client and subscribes to live
+  // changes. (An effect-only flip raced with remounts and sometimes never
+  // applied; useSyncExternalStore had the same problem.)
+  const [value, setValue] = useState(() => getPref(key, fallback));
   useEffect(() => {
     const read = () => setValue(getPref(key, fallback));
     read();

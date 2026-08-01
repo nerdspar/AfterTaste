@@ -18,6 +18,11 @@ import { usePref, PREF_NUTRITION } from '@/lib/prefs';
 import { useCurrentUser } from '@/components/aftertaste/CurrentUserProvider';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import {
+  useMealPlan,
+  parsePlanEntry,
+} from '@/components/aftertaste/MealPlanStoreProvider';
+import type { Recipe } from '@/data/sample/recipes';
+import {
   loadFoodLog,
   addFoodLogEntry,
   updateFoodLogEntry,
@@ -190,18 +195,40 @@ function DailySummary({
 
 // ---- add-food modal ---------------------------------------------------------
 
+// Fractions of the whole recipe, for the "by portion" amount mode.
+const PORTIONS = [
+  { label: '⅛', v: 1 / 8 },
+  { label: '¼', v: 1 / 4 },
+  { label: '⅓', v: 1 / 3 },
+  { label: '½', v: 1 / 2 },
+  { label: '⅔', v: 2 / 3 },
+  { label: '¾', v: 3 / 4 },
+  { label: 'Whole', v: 1 },
+];
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
 function AddFoodModal({
   meal,
+  planned,
   onClose,
   onAdd,
 }: {
   meal: Meal;
+  planned: Recipe[];
   onClose: () => void;
   onAdd: (input: Omit<AddFoodLogInput, 'date'>) => void;
 }) {
   const { recipes } = useRecipeStore();
   const [tab, setTab] = useState<'recipe' | 'quick'>('recipe');
   const [query, setQuery] = useState('');
+  // A picked recipe opens the amount step.
+  const [selected, setSelected] = useState<Recipe | null>(null);
+  const [amtMode, setAmtMode] = useState<'servings' | 'portion'>('servings');
+  const [amtServings, setAmtServings] = useState<number | ''>(1);
+  const [fraction, setFraction] = useState(1);
   // Quick-add fields.
   const [name, setName] = useState('');
   const [calories, setCalories] = useState<number | ''>('');
@@ -234,6 +261,60 @@ function AddFoodModal({
     onClose();
   }
 
+  // Servings actually eaten, from whichever amount mode is active.
+  const finalServings =
+    amtMode === 'portion' && selected
+      ? round2(selected.servings * fraction)
+      : amtServings === '' || amtServings <= 0
+        ? 1
+        : Number(amtServings);
+
+  function addSelected() {
+    if (!selected) return;
+    onAdd({
+      meal,
+      recipeId: selected.id,
+      name: selected.title,
+      servings: finalServings,
+      calories: selected.calories,
+      proteinG: selected.proteinG ?? null,
+      carbsG: selected.carbsG ?? null,
+      fatG: selected.fatG ?? null,
+      fiberG: selected.fiberG ?? null,
+      sugarG: selected.sugarG ?? null,
+      sodiumMg: selected.sodiumMg ?? null,
+    });
+    onClose();
+  }
+
+  const chip = (active: boolean) =>
+    cn(
+      'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
+      active
+        ? 'bg-primary-500 text-white'
+        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300',
+    );
+
+  const RecipeRow = ({ r }: { r: Recipe }) => (
+    <button
+      type="button"
+      onClick={() => {
+        setSelected(r);
+        setAmtMode('servings');
+        setAmtServings(1);
+        setFraction(1);
+      }}
+      className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/60"
+    >
+      <span className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+        {r.title}
+      </span>
+      <span className="flex-shrink-0 text-xs tabular-nums text-gray-400">
+        {r.calories} kcal
+      </span>
+    </button>
+  );
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
@@ -245,7 +326,7 @@ function AddFoodModal({
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
           <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
-            Add to {meal}
+            {selected ? selected.title : `Add to ${meal}`}
           </h2>
           <button
             type="button"
@@ -257,76 +338,174 @@ function AddFoodModal({
           </button>
         </div>
 
-        <div className="flex gap-1 border-b border-gray-100 px-4 pt-2 dark:border-gray-800">
-          {(['recipe', 'quick'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={cn(
-                'rounded-t-lg px-3 py-2 text-sm font-medium',
-                tab === t
-                  ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
-                  : 'text-gray-500 hover:text-gray-700 dark:text-gray-400',
-              )}
-            >
-              {t === 'recipe' ? 'Your recipes' : 'Quick add'}
-            </button>
-          ))}
-        </div>
-
-        {tab === 'recipe' ? (
-          <div className="flex min-h-0 flex-col p-4">
-            <div className="relative mb-3">
-              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                autoFocus
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search your recipes…"
-                className={cn(inputCls, 'pl-9')}
-              />
+        {selected ? (
+          /* Amount step — how much of the recipe did you eat? */
+          <div className="space-y-4 p-4">
+            <div className="flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-700">
+              {(['servings', 'portion'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setAmtMode(m)}
+                  className={cn(
+                    'flex-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+                    amtMode === m
+                      ? 'bg-primary-500 text-white'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400',
+                  )}
+                >
+                  {m === 'servings' ? 'By serving' : 'By portion'}
+                </button>
+              ))}
             </div>
-            <div className="-mx-1 min-h-0 flex-1 overflow-y-auto">
-              {matches.length === 0 ? (
-                <p className="px-1 py-6 text-center text-sm text-gray-400">
-                  No recipes match.
-                </p>
-              ) : (
-                matches.map((r) => (
+
+            {amtMode === 'servings' ? (
+              <div>
+                <label className="text-xs text-gray-500 dark:text-gray-400">
+                  Servings eaten
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.25}
+                  value={amtServings}
+                  onChange={(e) =>
+                    setAmtServings(
+                      e.target.value === '' ? '' : Number(e.target.value),
+                    )
+                  }
+                  className={cn(inputCls, 'mt-1')}
+                />
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {[0.5, 1, 2].map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setAmtServings(s)}
+                      className={chip(amtServings === s)}
+                    >
+                      {s}
+                    </button>
+                  ))}
                   <button
-                    key={r.id}
                     type="button"
-                    onClick={() => {
-                      onAdd({
-                        meal,
-                        recipeId: r.id,
-                        name: r.title,
-                        servings: 1,
-                        calories: r.calories,
-                        proteinG: r.proteinG ?? null,
-                        carbsG: r.carbsG ?? null,
-                        fatG: r.fatG ?? null,
-                        fiberG: r.fiberG ?? null,
-                        sugarG: r.sugarG ?? null,
-                        sodiumMg: r.sodiumMg ?? null,
-                      });
-                      onClose();
-                    }}
-                    className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                    onClick={() => setAmtServings(selected.servings)}
+                    className={chip(amtServings === selected.servings)}
                   >
-                    <span className="truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-                      {r.title}
-                    </span>
-                    <span className="flex-shrink-0 text-xs tabular-nums text-gray-400">
-                      {r.calories} kcal
-                    </span>
+                    Whole ({selected.servings})
                   </button>
-                ))
-              )}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <label className="text-xs text-gray-500 dark:text-gray-400">
+                  Portion of the whole recipe (makes {selected.servings})
+                </label>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {PORTIONS.map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => setFraction(p.v)}
+                      className={chip(fraction === p.v)}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Live preview of what will be logged */}
+            <div className="rounded-lg bg-gray-50 px-3 py-2.5 text-sm dark:bg-gray-800/50">
+              <span className="font-semibold text-gray-900 dark:text-gray-100">
+                {Math.round(selected.calories * finalServings)} kcal
+              </span>
+              <span className="text-gray-400">
+                {selected.proteinG != null &&
+                  ` · ${Math.round(selected.proteinG * finalServings)}p`}
+                {selected.carbsG != null &&
+                  ` · ${Math.round(selected.carbsG * finalServings)}c`}
+                {selected.fatG != null &&
+                  ` · ${Math.round(selected.fatG * finalServings)}f`}
+                {`  (${finalServings} serving${finalServings === 1 ? '' : 's'})`}
+              </span>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="h-10 flex-1 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={addSelected}
+                className="h-10 flex-[2] rounded-lg bg-primary-500 text-sm font-medium text-white hover:bg-primary-600"
+              >
+                Add to {meal}
+              </button>
             </div>
           </div>
         ) : (
+          <>
+            <div className="flex gap-1 border-b border-gray-100 px-4 pt-2 dark:border-gray-800">
+              {(['recipe', 'quick'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTab(t)}
+                  className={cn(
+                    'rounded-t-lg px-3 py-2 text-sm font-medium',
+                    tab === t
+                      ? 'border-b-2 border-primary-500 text-primary-600 dark:text-primary-400'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400',
+                  )}
+                >
+                  {t === 'recipe' ? 'Your recipes' : 'Quick add'}
+                </button>
+              ))}
+            </div>
+
+            {tab === 'recipe' ? (
+              <div className="flex min-h-0 flex-col p-4">
+                <div className="relative mb-3">
+                  <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                  <input
+                    autoFocus
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search your recipes…"
+                    className={cn(inputCls, 'pl-9')}
+                  />
+                </div>
+                <div className="-mx-1 min-h-0 flex-1 overflow-y-auto">
+                  {/* Recommended: what's planned for this day */}
+                  {!query.trim() && planned.length > 0 && (
+                    <div className="mb-2">
+                      <p className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                        On your meal plan today
+                      </p>
+                      {planned.map((r) => (
+                        <RecipeRow key={`plan-${r.id}`} r={r} />
+                      ))}
+                      <p className="mt-2 px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                        All recipes
+                      </p>
+                    </div>
+                  )}
+                  {matches.length === 0 ? (
+                    <p className="px-1 py-6 text-center text-sm text-gray-400">
+                      No recipes match.
+                    </p>
+                  ) : (
+                    matches.map((r) => <RecipeRow key={r.id} r={r} />)
+                  )}
+                </div>
+              </div>
+            ) : (
           <div className="space-y-3 p-4">
             <input
               autoFocus
@@ -398,6 +577,8 @@ function AddFoodModal({
               Add food
             </button>
           </div>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -510,6 +691,8 @@ function MealSection({
 export function FoodLogClient() {
   const nutritionOn = usePref(PREF_NUTRITION, false);
   const { goals } = useCurrentUser();
+  const { plan } = useMealPlan();
+  const { getRecipe } = useRecipeStore();
 
   // Client-only prefs read as their fallback until mount; gate the whole page
   // on a mounted flag so we never flash the "off" screen before we know.
@@ -521,6 +704,25 @@ export function FoodLogClient() {
   const [entries, setEntries] = useState<FoodLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [addMeal, setAddMeal] = useState<Meal | null>(null);
+
+  // Recipes planned for this day (any meal), recommended first when adding.
+  const plannedRecipes = useMemo(() => {
+    const seen = new Set<string>();
+    const out: Recipe[] = [];
+    for (const meal of MEALS) {
+      for (const value of plan[`${date}_${meal}`] ?? []) {
+        const entry = parsePlanEntry(value);
+        if (!entry || entry.type !== 'recipe' || seen.has(entry.recipeId))
+          continue;
+        const r = getRecipe(entry.recipeId);
+        if (r) {
+          seen.add(entry.recipeId);
+          out.push(r);
+        }
+      }
+    }
+    return out;
+  }, [plan, date, getRecipe]);
 
   useEffect(() => {
     let cancelled = false;
@@ -651,6 +853,7 @@ export function FoodLogClient() {
       {addMeal && (
         <AddFoodModal
           meal={addMeal}
+          planned={plannedRecipes}
           onClose={() => setAddMeal(null)}
           onAdd={handleAdd}
         />
