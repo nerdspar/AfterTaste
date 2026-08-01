@@ -64,6 +64,20 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
     { label: recipe.title },
   ];
 
+  const ingredientsPanel =
+    recipe.ingredients.length > 0 ? (
+      <IngredientsPanel
+        ingredients={recipe.ingredients}
+        baseServings={recipe.servings}
+        scaleMode={scaleMode}
+        scaleValue={scaleValue}
+        onScaleModeChange={setScaleMode}
+        onScaleValueChange={setScaleValue}
+        recipeId={recipe.id}
+        recipeTitle={recipe.title}
+      />
+    ) : null;
+
   return (
     <div className="max-w-7xl mx-auto">
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
@@ -78,6 +92,11 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
           <RecipeHero recipe={recipe} />
           <StatsRow recipe={recipe} servings={currentServings} multiplier={multiplier} />
           <RecipeRatings recipe={recipe} />
+          {/* On mobile/single-column, ingredients sit above the instructions;
+              on desktop they move to the right rail instead. */}
+          {ingredientsPanel && (
+            <div className="lg:hidden">{ingredientsPanel}</div>
+          )}
           {recipe.instructions.length > 0 && (
             <CookingInstructions instructions={recipe.instructions} />
           )}
@@ -86,17 +105,8 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
 
         {/* Right rail */}
         <div className="space-y-5">
-          {recipe.ingredients.length > 0 && (
-            <IngredientsPanel
-              ingredients={recipe.ingredients}
-              baseServings={recipe.servings}
-              scaleMode={scaleMode}
-              scaleValue={scaleValue}
-              onScaleModeChange={setScaleMode}
-              onScaleValueChange={setScaleValue}
-              recipeId={recipe.id}
-              recipeTitle={recipe.title}
-            />
+          {ingredientsPanel && (
+            <div className="hidden lg:block">{ingredientsPanel}</div>
           )}
           <AIAssistantPanel />
         </div>
