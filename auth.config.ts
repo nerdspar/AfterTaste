@@ -14,13 +14,20 @@ export const authConfig = {
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
-      const isAuthRoute =
-        nextUrl.pathname.startsWith('/login') ||
-        nextUrl.pathname.startsWith('/signup');
+      const path = nextUrl.pathname;
+      const isSignInPage =
+        path.startsWith('/login') || path.startsWith('/signup');
+      const isPublicAuthRoute =
+        isSignInPage ||
+        path.startsWith('/forgot-password') ||
+        path.startsWith('/reset-password');
 
-      if (isAuthRoute) {
-        // Signed-in users have no business on the auth pages.
-        if (isLoggedIn) return Response.redirect(new URL('/dashboard', nextUrl));
+      if (isPublicAuthRoute) {
+        // Bounce signed-in users off the sign-in/up pages, but still let them
+        // open the password-reset pages (e.g. from an email link).
+        if (isLoggedIn && isSignInPage) {
+          return Response.redirect(new URL('/dashboard', nextUrl));
+        }
         return true;
       }
       // Everything else requires a session.

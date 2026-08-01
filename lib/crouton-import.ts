@@ -32,6 +32,7 @@ export interface CroutonRecipe {
   webLink?: string;
   tags?: string[];
   neutritionalInfo?: string;
+  notes?: string; // free-form recipe notes from the source
 }
 
 const FALLBACK_IMAGE =
@@ -175,16 +176,18 @@ async function croutonToRecipe(
     }))
     .filter((i) => i.name);
 
+  // Crouton marks section headers with `isSection`; keep them as our section
+  // dividers (which restart step numbering) instead of dropping them.
   const instructions: Instruction[] = (json.steps ?? [])
-    .filter((s) => !s.isSection)
+    .slice()
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-    .map((s, i) => ({
-      step: String(i + 1).padStart(2, '0'),
-      title: '',
-      body: (s.step ?? '').trim(),
-      videoThumb: '',
-    }))
-    .filter((i) => i.body);
+    .map((s): Instruction => {
+      const text = (s.step ?? '').trim();
+      return s.isSection
+        ? { step: '', title: '', body: '', videoThumb: '', section: text }
+        : { step: '', title: '', body: text, videoThumb: '' };
+    })
+    .filter((s) => (s.section !== undefined ? !!s.section : !!s.body));
 
   let image = '';
   if (json.images?.[0]) image = await downscaleImage(json.images[0]);
@@ -208,6 +211,8 @@ async function croutonToRecipe(
     cost: 0,
     isFavorite: false,
     description: '',
+    recipeNotes: (json.notes ?? '').trim(),
+    myNotes: '',
     ingredients,
     instructions,
     chef: {

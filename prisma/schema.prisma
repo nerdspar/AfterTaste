@@ -27,12 +27,27 @@ model User {
   household   Household? @relation("HouseholdMembers", fields: [householdId], references: [id])
   householdId String?
 
-  ownedHouseholds Household[]       @relation("HouseholdOwner")
-  createdRecipes  Recipe[]          @relation("RecipeCreator")
+  ownedHouseholds Household[]          @relation("HouseholdOwner")
+  createdRecipes  Recipe[]             @relation("RecipeCreator")
   recentlyViewed  RecentlyViewed[]
-  sentInvites     HouseholdInvite[] @relation("InviteSender")
+  sentInvites     HouseholdInvite[]    @relation("InviteSender")
+  passwordResets  PasswordResetToken[]
 
   createdAt DateTime @default(now())
+}
+
+// Single-use, time-limited token backing the "forgot password" flow. Only the
+// SHA-256 hash of the token is stored; the raw token lives only in the email.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Household {

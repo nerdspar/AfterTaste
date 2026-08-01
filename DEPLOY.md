@@ -115,6 +115,26 @@ at `http://<nas-ip>:8300`. The app trusts the proxy's forwarded host, so no
 extra config is needed — just make sure the proxy forwards
 `X-Forwarded-Proto: https` so login cookies are marked secure.
 
+## Password-reset emails (optional)
+
+The "Forgot password?" flow emails a reset link via [Resend](https://resend.com).
+It's optional — everything else works without it, and until it's configured the
+reset link is written to the container logs (`docker compose logs app`) instead
+of being emailed.
+
+To turn it on, set these in the app `environment:` block of `docker-compose.yml`:
+
+- `APP_URL` — the app's public URL (e.g. `https://aftertaste.example.com`), used
+  to build the link in the email.
+- `RESEND_API_KEY` — from your Resend dashboard.
+- `EMAIL_FROM` — the sender, e.g. `AfterTaste <no-reply@yourdomain.com>`.
+
+The default `EMAIL_FROM` (`onboarding@resend.dev`) is Resend's shared test
+sender and **only delivers to the email that owns the Resend account**. To send
+reset emails to other household members, verify a domain in Resend (free tier
+allows one) and set `EMAIL_FROM` to an address on it. Reset links expire after
+1 hour and are single-use.
+
 ## Updating to a new version
 
 Push to `main` → Actions rebuilds `:latest`. Then on the NAS:
