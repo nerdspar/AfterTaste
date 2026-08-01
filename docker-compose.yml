@@ -20,7 +20,8 @@
 # ── 4. Log in to GHCR once (private image) and launch ────────────────────
 #          docker login ghcr.io -u <github-username>   # paste a PAT as password
 #          docker compose up -d                        # pulls the image + starts
-#      App: http://<nas-ip>:3000   — first boot runs DB migrations automatically.
+#      App: http://<nas-ip>:8300  (change the host port below if 8300 is taken)
+#      First boot runs DB migrations automatically.
 #      See DEPLOY.md for the GHCR token, HTTPS, updates, and backups.
 # =============================================================================
 
@@ -57,6 +58,8 @@ services:
       UPLOADS_DIR: /app/uploads
       NODE_ENV: production
     ports:
-      - '3000:3000'
+      # host:container — the app listens on 3000 inside the container. Change
+      # the LEFT number if that host port is already taken on your NAS.
+      - '8300:3000'
     volumes:
       - /mnt/NAS/Data/aftertaste/uploads:/app/uploads
