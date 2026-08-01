@@ -2,6 +2,8 @@
 
 import { prisma } from '@/lib/db';
 import { requireSession } from '@/lib/session';
+import { sendHouseholdInviteEmail } from '@/lib/email';
+import { resolveOrigin } from '@/lib/url';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -152,6 +154,31 @@ export async function inviteMember(
   await prisma.householdInvite.create({
     data: { householdId, email, invitedById: userId, status: 'pending' },
   });
+
+  // Email the invitee a sign-up link (best effort — the invite is recorded
+  // regardless, and they can still be pointed to the app manually).
+  try {
+    const [household, inviter] = await Promise.all([
+      prisma.household.findUnique({
+        where: { id: householdId },
+        select: { name: true },
+      }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        select: { displayName: true, email: true },
+      }),
+    ]);
+    const origin = await resolveOrigin();
+    await sendHouseholdInviteEmail({
+      to: email,
+      inviteUrl: `${origin}/signup?email=${encodeURIComponent(email)}`,
+      householdName: household?.name ?? 'a household',
+      inviterName: inviter?.displayName || inviter?.email || 'A household member',
+    });
+  } catch {
+    // Ignore send failures — the pending invite still works via manual signup.
+  }
+
   return {};
 }
 
