@@ -283,12 +283,14 @@ function MealPlannerContent() {
                               src={recipe.image}
                               alt={recipe.title}
                               fill
-                              className="object-cover opacity-40 transition-opacity group-hover:opacity-60"
+                              className="object-cover opacity-80 transition-opacity group-hover:opacity-100"
                               sizes="80px"
                             />
                           ) : (
-                            <RecipePlaceholder className="absolute inset-0 w-full h-full opacity-40 transition-opacity group-hover:opacity-60" />
+                            <RecipePlaceholder className="absolute inset-0 w-full h-full opacity-80 transition-opacity group-hover:opacity-100" />
                           )}
+                          {/* Scrim keeps the title legible over the fuller tile. */}
+                          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-white/85 to-transparent dark:from-black/70 pointer-events-none" />
                           <div className="relative p-1.5 h-full flex flex-col justify-end">
                             <p className="text-[9px] font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
                               {recipe.title.split(' ').slice(0, 3).join(' ')}
