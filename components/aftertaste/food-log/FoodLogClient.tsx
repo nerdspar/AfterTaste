@@ -9,7 +9,6 @@ import {
   XIcon,
   SearchIcon,
   Trash2Icon,
-  MinusIcon,
   LoaderIcon,
   SaladIcon,
   ScanLineIcon,
@@ -173,6 +172,20 @@ function DailySummary({
           </div>
         )}
       </div>
+      {/* Prominent calorie progress bar (macros get their own below). */}
+      {calGoal != null && calGoal > 0 && (
+        <div className="mb-4 h-2.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+          <div
+            className={cn(
+              'h-full rounded-full transition-all',
+              totals.calories > calGoal ? 'bg-rose-500' : 'bg-primary-500',
+            )}
+            style={{
+              width: `${Math.min(100, Math.round((totals.calories / calGoal) * 100))}%`,
+            }}
+          />
+        </div>
+      )}
       <div className="grid grid-cols-3 gap-3">
         <GoalStat
           label="Protein"
@@ -828,20 +841,197 @@ function AddFoodModal({
   );
 }
 
+// ---- edit an existing entry -------------------------------------------------
+
+function amountChip(active: boolean): string {
+  return cn(
+    'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors',
+    active
+      ? 'bg-primary-500 text-white'
+      : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300',
+  );
+}
+
+function EditEntrySheet({
+  entry,
+  recipe,
+  onClose,
+  onSave,
+  onRemove,
+}: {
+  entry: FoodLogEntry;
+  recipe?: Recipe; // resolved from entry.recipeId — enables portion mode
+  onClose: () => void;
+  onSave: (servings: number) => void;
+  onRemove: () => void;
+}) {
+  const canPortion = !!recipe && recipe.servings > 0;
+  const [amtMode, setAmtMode] = useState<'servings' | 'portion'>('servings');
+  const [servings, setServings] = useState<number | ''>(entry.servings);
+  const [fraction, setFraction] = useState(1);
+
+  const finalServings =
+    amtMode === 'portion' && recipe
+      ? round2(recipe.servings * fraction)
+      : servings === '' || servings <= 0
+        ? entry.servings
+        : Number(servings);
+
+  const preview = (v: number | null) =>
+    v == null ? null : Math.round(v * finalServings);
+
+  const inputCls =
+    'w-full h-10 px-3 rounded-lg border border-gray-200 bg-white text-sm text-gray-900 dark:border-gray-700 dark:bg-slate-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500/30';
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg overflow-hidden rounded-t-2xl bg-white shadow-xl dark:bg-slate-900 sm:rounded-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
+          <h2 className="truncate text-base font-bold text-gray-900 dark:text-gray-100">
+            {entry.name}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
+            aria-label="Close"
+          >
+            <XIcon className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="space-y-4 p-4">
+          {canPortion && (
+            <div className="flex rounded-lg border border-gray-200 p-0.5 dark:border-gray-700">
+              {(['servings', 'portion'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setAmtMode(m)}
+                  className={cn(
+                    'flex-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+                    amtMode === m
+                      ? 'bg-primary-500 text-white'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400',
+                  )}
+                >
+                  {m === 'servings' ? 'By serving' : 'By portion'}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {amtMode === 'servings' || !recipe ? (
+            <div>
+              <label className="text-xs text-gray-500 dark:text-gray-400">
+                Servings
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={0.25}
+                value={servings}
+                onChange={(e) =>
+                  setServings(
+                    e.target.value === '' ? '' : Number(e.target.value),
+                  )
+                }
+                className={cn(inputCls, 'mt-1')}
+              />
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {[0.5, 1, 2].map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setServings(s)}
+                    className={amountChip(servings === s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+                {canPortion && (
+                  <button
+                    type="button"
+                    onClick={() => setServings(recipe.servings)}
+                    className={amountChip(servings === recipe.servings)}
+                  >
+                    Whole ({recipe.servings})
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <label className="text-xs text-gray-500 dark:text-gray-400">
+                Portion of the whole recipe (makes {recipe.servings})
+              </label>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {PORTIONS.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => setFraction(p.v)}
+                    className={amountChip(fraction === p.v)}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="rounded-lg bg-gray-50 px-3 py-2.5 text-sm dark:bg-gray-800/50">
+            <span className="font-semibold text-gray-900 dark:text-gray-100">
+              {Math.round(entry.calories * finalServings)} kcal
+            </span>
+            <span className="text-gray-400">
+              {entry.proteinG != null && ` · ${preview(entry.proteinG)}p`}
+              {entry.carbsG != null && ` · ${preview(entry.carbsG)}c`}
+              {entry.fatG != null && ` · ${preview(entry.fatG)}f`}
+              {`  (${finalServings} serving${finalServings === 1 ? '' : 's'})`}
+            </span>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onRemove}
+              className="flex h-10 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-sm font-medium text-rose-500 hover:bg-rose-50 dark:border-gray-700 dark:hover:bg-rose-500/10"
+            >
+              <Trash2Icon className="h-4 w-4" />
+              Remove
+            </button>
+            <button
+              type="button"
+              onClick={() => onSave(finalServings)}
+              className="h-10 flex-1 rounded-lg bg-primary-500 text-sm font-medium text-white hover:bg-primary-600"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---- meal section -----------------------------------------------------------
 
 function MealSection({
   meal,
   entries,
   onAdd,
-  onRemove,
-  onServings,
+  onEdit,
 }: {
   meal: Meal;
   entries: FoodLogEntry[];
   onAdd: () => void;
-  onRemove: (id: string) => void;
-  onServings: (id: string, servings: number) => void;
+  onEdit: (entry: FoodLogEntry) => void;
 }) {
   const mealCals = entries.reduce(
     (s, e) => s + scaled(e.calories, e.servings),
@@ -872,9 +1062,11 @@ function MealSection({
       {entries.length > 0 && (
         <div className="border-t border-gray-100 dark:border-gray-800">
           {entries.map((e) => (
-            <div
+            <button
               key={e.id}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm"
+              type="button"
+              onClick={() => onEdit(e)}
+              className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800/40"
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium text-gray-900 dark:text-gray-100">
@@ -890,38 +1082,13 @@ function MealSection({
                     ` · ${Math.round(scaled(e.fatG, e.servings))}f`}
                 </p>
               </div>
-              <div className="flex flex-shrink-0 items-center gap-1">
-                <button
-                  type="button"
-                  aria-label="Fewer servings"
-                  onClick={() =>
-                    onServings(e.id, Math.max(0.5, e.servings - 0.5))
-                  }
-                  className="rounded p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                  <MinusIcon className="h-3.5 w-3.5" />
-                </button>
-                <span className="w-8 text-center text-xs tabular-nums text-gray-600 dark:text-gray-300">
-                  {e.servings}
+              {e.servings !== 1 && (
+                <span className="flex-shrink-0 text-xs tabular-nums text-gray-400">
+                  {e.servings}×
                 </span>
-                <button
-                  type="button"
-                  aria-label="More servings"
-                  onClick={() => onServings(e.id, e.servings + 0.5)}
-                  className="rounded p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-                >
-                  <PlusIcon className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Remove"
-                  onClick={() => onRemove(e.id)}
-                  className="ml-1 rounded p-1 text-gray-300 hover:bg-rose-50 hover:text-rose-500 dark:text-gray-600 dark:hover:bg-rose-500/10"
-                >
-                  <Trash2Icon className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
+              )}
+              <ChevronRightIcon className="h-4 w-4 flex-shrink-0 text-gray-300 dark:text-gray-600" />
+            </button>
           ))}
         </div>
       )}
@@ -947,6 +1114,7 @@ export function FoodLogClient() {
   const [entries, setEntries] = useState<FoodLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [addMeal, setAddMeal] = useState<Meal | null>(null);
+  const [editing, setEditing] = useState<FoodLogEntry | null>(null);
 
   // Recipes planned for this day (any meal), recommended first when adding.
   const plannedRecipes = useMemo(() => {
@@ -1086,8 +1254,7 @@ export function FoodLogClient() {
               meal={meal}
               entries={entries.filter((e) => e.meal === meal)}
               onAdd={() => setAddMeal(meal)}
-              onRemove={handleRemove}
-              onServings={handleServings}
+              onEdit={setEditing}
             />
           ))}
         </div>
@@ -1099,6 +1266,22 @@ export function FoodLogClient() {
           planned={plannedRecipes}
           onClose={() => setAddMeal(null)}
           onAdd={handleAdd}
+        />
+      )}
+
+      {editing && (
+        <EditEntrySheet
+          entry={editing}
+          recipe={editing.recipeId ? getRecipe(editing.recipeId) : undefined}
+          onClose={() => setEditing(null)}
+          onSave={(servings) => {
+            void handleServings(editing.id, servings);
+            setEditing(null);
+          }}
+          onRemove={() => {
+            void handleRemove(editing.id);
+            setEditing(null);
+          }}
         />
       )}
     </div>

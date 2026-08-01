@@ -90,19 +90,19 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
       <Breadcrumbs items={breadcrumbs} className="mb-5" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Main content */}
+        {/* Center column — the wide area gets the ingredients + instructions. */}
         <div className="lg:col-span-2 space-y-5">
           <RecipeHero recipe={recipe} />
           <StatsRow recipe={recipe} servings={currentServings} />
-          {nutritionOn && (
-            <NutritionPanel recipe={recipe} servings={currentServings} />
-          )}
-          <RecipeRatings recipe={recipe} />
-          {/* On mobile/single-column, ingredients sit above the instructions;
-              on desktop they move to the right rail instead. */}
-          {ingredientsPanel && (
-            <div className="lg:hidden">{ingredientsPanel}</div>
-          )}
+          {/* On mobile these sit up here near the stats; on desktop they move
+              to the right rail so ingredients can fill the wide center column. */}
+          <div className="space-y-5 lg:hidden">
+            {nutritionOn && (
+              <NutritionPanel recipe={recipe} servings={currentServings} />
+            )}
+            <RecipeRatings recipe={recipe} />
+          </div>
+          {ingredientsPanel}
           {recipe.instructions.length > 0 && (
             <CookingInstructions instructions={recipe.instructions} />
           )}
@@ -111,9 +111,12 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
 
         {/* Right rail */}
         <div className="space-y-5">
-          {ingredientsPanel && (
-            <div className="hidden lg:block">{ingredientsPanel}</div>
-          )}
+          <div className="hidden space-y-5 lg:block">
+            {nutritionOn && (
+              <NutritionPanel recipe={recipe} servings={currentServings} />
+            )}
+            <RecipeRatings recipe={recipe} />
+          </div>
           <AIAssistantPanel />
         </div>
       </div>

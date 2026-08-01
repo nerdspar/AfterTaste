@@ -308,20 +308,25 @@ export function IngredientsPanel({
         </div>
       </div>
 
-      {/* Ingredient rows */}
-      <div className="space-y-1">
-        {ingredients.map((ing, i) => {
+      {/* Ingredient rows. Group by section header (keeping each item's original
+          index for selection). Two or more sections lay out as side-by-side
+          columns; a single/no section flows its items across two columns. */}
+      {(() => {
+        const groups: {
+          header: string | null;
+          items: { ing: Ingredient; i: number }[];
+        }[] = [];
+        ingredients.forEach((ing, i) => {
           if (isIngredientSection(ing)) {
-            return (
-              <p
-                key={i}
-                className="pt-3 first:pt-0 px-1 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-              >
-                {ing.section}
-              </p>
-            );
+            groups.push({ header: ing.section ?? '', items: [] });
+          } else {
+            if (groups.length === 0) groups.push({ header: null, items: [] });
+            groups[groups.length - 1].items.push({ ing, i });
           }
+        });
+        const sectionCount = groups.filter((g) => g.header).length;
 
+        const renderRow = ({ ing, i }: { ing: Ingredient; i: number }) => {
           const isSelected = selected.has(i);
           const content = (
             <>
@@ -345,36 +350,61 @@ export function IngredientsPanel({
               <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1 min-w-0 text-left leading-snug">
                 {ing.name}
               </span>
-              {/* Reserve the quantity column even when empty so the name always
-                  stops at the same right margin. */}
               <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0 mt-0.5 pl-2 text-right min-w-[3rem]">
                 {scaleQuantity(ing.quantity, multiplier)}
               </span>
             </>
           );
-
-          return selectMode ? (
+          return (
             <button
               key={i}
               type="button"
-              onClick={() => toggleSelected(i)}
-              className="flex w-full items-start gap-3 py-2 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
-            >
-              {content}
-            </button>
-          ) : (
-            <button
-              key={i}
-              type="button"
-              onClick={() => enterSelectModeWith(i)}
-              title="Add to grocery list"
+              onClick={() =>
+                selectMode ? toggleSelected(i) : enterSelectModeWith(i)
+              }
+              title={selectMode ? undefined : 'Add to grocery list'}
               className="flex w-full items-start gap-3 py-2 px-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/40 transition-colors"
             >
               {content}
             </button>
           );
-        })}
-      </div>
+        };
+
+        const sectionHeader = (text: string) => (
+          <p className="mb-1 px-1 text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            {text}
+          </p>
+        );
+
+        // Multiple sections → each section is its own column.
+        if (sectionCount >= 2) {
+          return (
+            <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+              {groups.map((g, gi) => (
+                <div key={gi}>
+                  {g.header && sectionHeader(g.header)}
+                  <div className="space-y-1">{g.items.map(renderRow)}</div>
+                </div>
+              ))}
+            </div>
+          );
+        }
+
+        // Single (or no) section → flow the items across two columns.
+        const only = groups[0];
+        return (
+          <div>
+            {only?.header && sectionHeader(only.header)}
+            <div className="sm:columns-2 sm:gap-x-6">
+              {(only?.items ?? []).map((it) => (
+                <div key={it.i} className="break-inside-avoid">
+                  {renderRow(it)}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Add to grocery list footer */}
       {selectMode && (
