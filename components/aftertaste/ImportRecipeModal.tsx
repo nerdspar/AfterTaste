@@ -162,10 +162,41 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
     navigateWithData(parsed);
   }
 
+  async function handlePdfUpload(file: File) {
+    setLoading(true);
+    setError('');
+    try {
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/import-recipe/pdf', {
+        method: 'POST',
+        body: form,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Could not read that PDF.');
+        return;
+      }
+      navigateWithData(data.recipe as ParsedRecipe);
+    } catch {
+      setError('Something went wrong reading that PDF. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setError('');
+
+    if (
+      file.type === 'application/pdf' ||
+      file.name.toLowerCase().endsWith('.pdf')
+    ) {
+      void handlePdfUpload(file);
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = () => {
@@ -343,32 +374,46 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
         {activeTab === 'file' && (
           <div className="space-y-4">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Upload a recipe file. Supports <code>.txt</code> (plain text) and{' '}
-              <code>.json</code> (structured data).
+              Upload a recipe file. Supports <code>.pdf</code>,{' '}
+              <code>.txt</code> (plain text) and <code>.json</code> (structured
+              data).
             </p>
             <input
               ref={fileRef}
               type="file"
-              accept=".txt,.json,.text"
+              accept=".pdf,application/pdf,.txt,.json,.text"
               onChange={handleFileUpload}
               className="hidden"
             />
             <button
               type="button"
+              disabled={loading}
               onClick={() => fileRef.current?.click()}
               className={cn(
                 'w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors',
                 'border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-500',
                 'bg-gray-50/50 dark:bg-gray-800/20',
+                'disabled:opacity-60 disabled:cursor-not-allowed',
               )}
             >
-              <UploadIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                Click to choose a file
-              </span>
-              <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                .txt or .json
-              </span>
+              {loading ? (
+                <>
+                  <LoaderIcon className="w-6 h-6 text-gray-400 dark:text-gray-500 animate-spin" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Reading your file…
+                  </span>
+                </>
+              ) : (
+                <>
+                  <UploadIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Click to choose a file
+                  </span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                    .pdf, .txt or .json
+                  </span>
+                </>
+              )}
             </button>
           </div>
         )}
