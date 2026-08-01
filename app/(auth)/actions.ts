@@ -3,11 +3,11 @@
 import { createHash, randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
 import { AuthError } from 'next-auth';
 import { prisma } from '@/lib/db';
 import { signIn, signOut } from '@/auth';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { resolveOrigin } from '@/lib/url';
 
 export interface AuthActionState {
   error?: string;
@@ -20,17 +20,6 @@ const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function hashToken(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');
-}
-
-// Public origin for links in emails. Prefer an explicit APP_URL; otherwise
-// derive it from the (proxy-forwarded) request headers.
-async function resolveOrigin(): Promise<string> {
-  const configured = process.env.APP_URL?.replace(/\/$/, '');
-  if (configured) return configured;
-  const h = await headers();
-  const proto = h.get('x-forwarded-proto') ?? 'http';
-  const host = h.get('x-forwarded-host') ?? h.get('host');
-  return host ? `${proto}://${host}` : 'http://localhost:3000';
 }
 
 export async function login(

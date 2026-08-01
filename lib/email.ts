@@ -71,3 +71,66 @@ export async function sendPasswordResetEmail(
     throw new Error('Failed to send email');
   }
 }
+
+/**
+ * Send a household invitation email with a link to sign up (pre-filled with the
+ * invited address). Falls back to logging the link when Resend is unconfigured.
+ */
+export async function sendHouseholdInviteEmail(opts: {
+  to: string;
+  inviteUrl: string;
+  householdName: string;
+  inviterName: string;
+}): Promise<void> {
+  const { to, inviteUrl, householdName, inviterName } = opts;
+  const subject = `${inviterName} invited you to ${householdName} on AfterTaste`;
+  const text = [
+    `${inviterName} invited you to join "${householdName}" on AfterTaste — a`,
+    'shared recipe box.',
+    '',
+    `Create your account here: ${inviteUrl}`,
+    '',
+    `Sign up with this email address (${to}) and you'll join the household`,
+    'automatically.',
+  ].join('\n');
+
+  const html = `
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:480px;margin:0 auto;color:#1f2937">
+      <h2 style="font-size:18px;margin:0 0 12px">You're invited to ${householdName}</h2>
+      <p style="font-size:14px;line-height:1.5;margin:0 0 20px">
+        ${inviterName} invited you to join <strong>${householdName}</strong> on
+        AfterTaste, a shared recipe box.
+      </p>
+      <p style="margin:0 0 20px">
+        <a href="${inviteUrl}"
+           style="display:inline-block;background:#f97316;color:#fff;text-decoration:none;
+                  font-size:14px;font-weight:600;padding:10px 20px;border-radius:10px">
+          Create your account
+        </a>
+      </p>
+      <p style="font-size:12px;line-height:1.5;color:#6b7280;margin:0">
+        Sign up with <strong>${to}</strong> and you'll join the household
+        automatically. If you weren't expecting this, you can ignore this email.
+      </p>
+    </div>
+  `;
+
+  if (!resend) {
+    console.warn(
+      `[email] RESEND_API_KEY not set — household invite link for ${to}:\n${inviteUrl}`,
+    );
+    return;
+  }
+
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to,
+    subject,
+    text,
+    html,
+  });
+  if (error) {
+    console.error('[email] Resend invite send failed:', error);
+    throw new Error('Failed to send email');
+  }
+}

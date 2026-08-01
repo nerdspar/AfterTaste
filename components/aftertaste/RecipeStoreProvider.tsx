@@ -53,14 +53,14 @@ export function RecipeStoreProvider({
   // count is available synchronously.
   const addRecipes = useCallback(
     (newRecipes: Recipe[]): number => {
+      // Dedupe by id only. Ids are stable per source recipe, so a re-import
+      // is skipped, but two genuinely different recipes that share a title
+      // (e.g. two "Sourdough" attempts) are both kept.
       const ids = new Set(recipes.map((r) => r.id));
-      const titles = new Set(recipes.map((r) => r.title.trim().toLowerCase()));
       const toAdd: Recipe[] = [];
       for (const r of newRecipes) {
-        const key = r.title.trim().toLowerCase();
-        if (ids.has(r.id) || titles.has(key)) continue;
+        if (ids.has(r.id)) continue;
         ids.add(r.id);
-        titles.add(key);
         toAdd.push(r);
       }
       if (toAdd.length === 0) return 0;

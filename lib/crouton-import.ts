@@ -33,6 +33,7 @@ export interface CroutonRecipe {
   tags?: string[];
   neutritionalInfo?: string;
   notes?: string; // free-form recipe notes from the source
+  uuid?: string; // stable per-recipe id, used to dedupe re-imports
 }
 
 const FALLBACK_IMAGE =
@@ -116,13 +117,19 @@ function formatCookTime(mins: number): string {
   return m > 0 ? `${h}h ${m} mins` : `${h}h`;
 }
 
-function slugId(title: string, idx: number): string {
+function slugId(title: string, uuid: string | undefined, idx: number): string {
   const base = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
     .slice(0, 40);
-  return `${base || 'recipe'}-crouton-${Date.now().toString(36)}-${idx}`;
+  // Prefer Crouton's stable per-recipe uuid so re-importing the same export
+  // dedupes by id instead of duplicating. Fall back to a unique (but not
+  // stable) suffix only when a recipe has no uuid.
+  const suffix = uuid
+    ? uuid.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 24)
+    : `${Date.now().toString(36)}-${idx}`;
+  return `${base || 'recipe'}-crouton-${suffix}`;
 }
 
 // Shrink a base64 JPEG so a whole library fits in localStorage.
@@ -195,7 +202,7 @@ async function croutonToRecipe(
   if (!image) image = FALLBACK_IMAGE;
 
   return {
-    id: slugId(title, idx),
+    id: slugId(title, json.uuid, idx),
     title,
     category: 'Dinner',
     image,
