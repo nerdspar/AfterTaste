@@ -86,6 +86,8 @@ model Recipe {
   cuisine          String  @default("")
   source           String  @default("Original")
   description      String  @default("")
+  recipeNotes      String  @default("") // notes/tips that came with the original recipe
+  myNotes          String  @default("") // the household's own notes and tweaks
   ingredients      Json    @default("[]")
   instructions     Json    @default("[]")
   chef             Json?

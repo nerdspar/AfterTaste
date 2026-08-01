@@ -170,6 +170,10 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   const [description, setDescription] = useState(
     base?.description ?? init.description ?? '',
   );
+  const [recipeNotes, setRecipeNotes] = useState(
+    base?.recipeNotes ?? init.recipeNotes ?? '',
+  );
+  const [myNotes, setMyNotes] = useState(base?.myNotes ?? init.myNotes ?? '');
   const [image, setImage] = useState(base?.image ?? init.image ?? '');
   const [servings, setServings] = useState(
     base?.servings ?? init.servings ?? 4,
@@ -453,6 +457,8 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       cost: recipe?.cost ?? 0,
       isFavorite: recipe?.isFavorite ?? false,
       description: description.trim(),
+      recipeNotes: recipeNotes.trim(),
+      myNotes: myNotes.trim(),
       ingredients: validIngredients,
       instructions: validInstructions,
       chef: recipe?.chef ?? {
@@ -909,6 +915,44 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
             <PlusIcon className="w-4 h-4" />
             Add section
           </button>
+        </div>
+      </Card>
+
+      {/* Notes */}
+      <Card>
+        <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">
+          Notes
+        </h2>
+        <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">
+          Keep the recipe&apos;s original tips separate from your own tweaks.
+        </p>
+        <div className="space-y-4">
+          <div>
+            <label className={labelClasses}>Recipe Notes</label>
+            <p className="-mt-1 mb-1.5 text-xs text-gray-400 dark:text-gray-500">
+              Tips or context that came with the original recipe.
+            </p>
+            <textarea
+              value={recipeNotes}
+              onChange={(e) => setRecipeNotes(e.target.value)}
+              placeholder="e.g. Dough can be made a day ahead and chilled overnight."
+              rows={3}
+              className={cn(inputClasses, 'h-auto py-2.5')}
+            />
+          </div>
+          <div>
+            <label className={labelClasses}>My Notes</label>
+            <p className="-mt-1 mb-1.5 text-xs text-gray-400 dark:text-gray-500">
+              Your own tweaks, substitutions, and results.
+            </p>
+            <textarea
+              value={myNotes}
+              onChange={(e) => setMyNotes(e.target.value)}
+              placeholder="e.g. Used maple instead of honey — better. Doubled the garlic."
+              rows={3}
+              className={cn(inputClasses, 'h-auto py-2.5')}
+            />
+          </div>
         </div>
       </Card>
 

@@ -29,6 +29,8 @@ export interface Recipe {
   tags?: string[]; // free-form keywords for search/filter
   createdAt?: number; // epoch ms when the recipe was added
   sourceUrl?: string; // original web link (e.g. from an imported recipe)
+  recipeNotes?: string; // notes/tips that came with the original recipe
+  myNotes?: string; // the household's own notes and tweaks
 }
 
 export interface Ingredient {
