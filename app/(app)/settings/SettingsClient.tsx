@@ -16,6 +16,7 @@ import {
   Share2Icon,
   CameraIcon,
   CoffeeIcon,
+  SaladIcon,
 } from 'lucide-react';
 import { Card } from '@/components/aftertaste/Card';
 import { Avatar } from '@/components/aftertaste/Avatar';
@@ -32,6 +33,7 @@ import {
   PREF_CLIPBOARD,
   PREF_NOTIFICATIONS,
   PREF_KEEP_AWAKE,
+  PREF_NUTRITION,
 } from '@/lib/prefs';
 import { useInstallAvailable, promptInstall } from '@/lib/pwa-install';
 import { useCurrentUser } from '@/components/aftertaste/CurrentUserProvider';
@@ -135,6 +137,7 @@ export function SettingsClient({
   const clipboardOn = usePref(PREF_CLIPBOARD, true);
   const notificationsOn = usePref(PREF_NOTIFICATIONS, true);
   const keepAwakeOn = usePref(PREF_KEEP_AWAKE, false);
+  const nutritionOn = usePref(PREF_NUTRITION, false);
   const installAvailable = useInstallAvailable();
 
   useEffect(() => {
@@ -444,6 +447,22 @@ export function SettingsClient({
               </p>
             </div>
           </div>
+        </Section>
+
+        {/* Nutrition */}
+        <Section title="Nutrition">
+          <SettingRow
+            icon={SaladIcon}
+            title="Nutrition &amp; macro tracking"
+            subtitle="Show calories and macros on recipes, and enable the food log"
+            action={
+              <Toggle
+                checked={nutritionOn}
+                onChange={(v) => setPref(PREF_NUTRITION, v)}
+                label="Nutrition and macro tracking"
+              />
+            }
+          />
         </Section>
 
         {/* Cooking */}

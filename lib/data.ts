@@ -41,6 +41,14 @@ export function recipeRowToApp(r: RecipeRow): Recipe {
     totalTimeMinutes: r.totalTimeMinutes,
     servings: r.servings,
     calories: r.calories,
+    proteinG: r.proteinG ?? undefined,
+    carbsG: r.carbsG ?? undefined,
+    fatG: r.fatG ?? undefined,
+    fiberG: r.fiberG ?? undefined,
+    sugarG: r.sugarG ?? undefined,
+    sodiumMg: r.sodiumMg ?? undefined,
+    nutritionSource:
+      (r.nutritionSource as Recipe['nutritionSource']) ?? undefined,
     difficulty: r.difficulty,
     cost: r.cost,
     isFavorite: r.isFavorite,
@@ -118,6 +126,13 @@ export function recipeToCreateData(
     totalTimeMinutes: r.totalTimeMinutes ?? 0,
     servings: r.servings ?? 4,
     calories: r.calories ?? 0,
+    proteinG: r.proteinG ?? null,
+    carbsG: r.carbsG ?? null,
+    fatG: r.fatG ?? null,
+    fiberG: r.fiberG ?? null,
+    sugarG: r.sugarG ?? null,
+    sodiumMg: r.sodiumMg ?? null,
+    nutritionSource: r.nutritionSource ?? null,
     difficulty: r.difficulty ?? 'Medium',
     cost: r.cost ?? 0,
     cookingClassType: r.cookingClassType ?? 'Cozy Comfort Food',
@@ -156,6 +171,14 @@ export function recipeToUpdateData(
     data.totalTimeMinutes = u.totalTimeMinutes;
   if (u.servings !== undefined) data.servings = u.servings;
   if (u.calories !== undefined) data.calories = u.calories;
+  if (u.proteinG !== undefined) data.proteinG = u.proteinG ?? null;
+  if (u.carbsG !== undefined) data.carbsG = u.carbsG ?? null;
+  if (u.fatG !== undefined) data.fatG = u.fatG ?? null;
+  if (u.fiberG !== undefined) data.fiberG = u.fiberG ?? null;
+  if (u.sugarG !== undefined) data.sugarG = u.sugarG ?? null;
+  if (u.sodiumMg !== undefined) data.sodiumMg = u.sodiumMg ?? null;
+  if (u.nutritionSource !== undefined)
+    data.nutritionSource = u.nutritionSource ?? null;
   if (u.difficulty !== undefined) data.difficulty = u.difficulty;
   if (u.cost !== undefined) data.cost = u.cost;
   if (u.cookingClassType !== undefined)

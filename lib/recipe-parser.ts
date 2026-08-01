@@ -7,7 +7,14 @@ export interface ParsedRecipe {
   servings?: number;
   prepTimeMinutes?: number;
   cookTimeMinutes?: number;
-  calories?: number;
+  calories?: number; // per serving (kcal)
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+  fiberG?: number;
+  sugarG?: number;
+  sodiumMg?: number;
+  nutritionSource?: 'manual' | 'imported' | 'estimated';
   cuisine?: string;
   category?: string;
   rating?: number;
@@ -34,6 +41,16 @@ function parseISO8601Duration(duration: string): number {
   const hours = parseInt(match[1] || '0', 10);
   const minutes = parseInt(match[2] || '0', 10);
   return hours * 60 + minutes;
+}
+
+// Pull the leading number out of a schema.org nutrition value like "12 g",
+// "1.5 grams", or "250 mg". Returns whole units (grams / mg).
+function parseNutrientNumber(value: unknown): number | undefined {
+  if (value == null) return undefined;
+  const m = String(value).match(/(\d+(?:\.\d+)?)/);
+  if (!m) return undefined;
+  const n = Math.round(parseFloat(m[1]));
+  return isNaN(n) ? undefined : n;
 }
 
 // Parse free-text durations like "10 minutes", "1 hour 30 min", "1 hr", "45m".
@@ -190,11 +207,26 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
       else if (data.image?.url) imageUrl = data.image.url;
       if (imageUrl) imageUrl = stripWaybackPrefix(imageUrl);
 
+      const nutrition = data.nutrition ?? {};
       let calories: number | undefined;
-      if (data.nutrition?.calories) {
-        const cal = parseInt(String(data.nutrition.calories), 10);
+      if (nutrition.calories) {
+        const cal = parseInt(String(nutrition.calories), 10);
         if (!isNaN(cal)) calories = cal;
       }
+      const proteinG = parseNutrientNumber(nutrition.proteinContent);
+      const carbsG = parseNutrientNumber(nutrition.carbohydrateContent);
+      const fatG = parseNutrientNumber(nutrition.fatContent);
+      const fiberG = parseNutrientNumber(nutrition.fiberContent);
+      const sugarG = parseNutrientNumber(nutrition.sugarContent);
+      const sodiumMg = parseNutrientNumber(nutrition.sodiumContent);
+      const hasNutrition =
+        calories !== undefined ||
+        proteinG !== undefined ||
+        carbsG !== undefined ||
+        fatG !== undefined ||
+        fiberG !== undefined ||
+        sugarG !== undefined ||
+        sodiumMg !== undefined;
 
       let rating: number | undefined;
       let ratingCount: number | undefined;
@@ -233,6 +265,13 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
           ? parseISO8601Duration(data.cookTime)
           : undefined,
         calories,
+        proteinG,
+        carbsG,
+        fatG,
+        fiberG,
+        sugarG,
+        sodiumMg,
+        nutritionSource: hasNutrition ? 'imported' : undefined,
         cuisine: data.recipeCuisine
           ? (Array.isArray(data.recipeCuisine)
               ? data.recipeCuisine[0]

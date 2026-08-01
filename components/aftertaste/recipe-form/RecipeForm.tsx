@@ -17,6 +17,7 @@ import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { isVideoSource } from '@/lib/media';
 import type { Recipe, Ingredient, Instruction } from '@/data/sample/recipes';
 import type { ParsedRecipe } from '@/lib/recipe-parser';
+import { usePref, PREF_NUTRITION } from '@/lib/prefs';
 
 interface RecipeFormProps {
   recipe?: Recipe;
@@ -164,6 +165,9 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   // `duplicate` but saves as a brand-new recipe (fresh id, ratings, tags).
   const base = recipe ?? duplicate;
 
+  // Macro editing only shows when nutrition tracking is enabled (Settings).
+  const nutritionOn = usePref(PREF_NUTRITION, false);
+
   const [title, setTitle] = useState(
     recipe?.title ??
       (duplicate ? `${duplicate.title} (Copy)` : (init.title ?? '')),
@@ -192,6 +196,34 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   const [calories, setCalories] = useState(
     base?.calories ?? init.calories ?? 400,
   );
+  // Extended macros (per serving). Blank = unknown, so they're `number | ''`.
+  const [proteinG, setProteinG] = useState<number | ''>(
+    base?.proteinG ?? init.proteinG ?? '',
+  );
+  const [carbsG, setCarbsG] = useState<number | ''>(
+    base?.carbsG ?? init.carbsG ?? '',
+  );
+  const [fatG, setFatG] = useState<number | ''>(base?.fatG ?? init.fatG ?? '');
+  const [fiberG, setFiberG] = useState<number | ''>(
+    base?.fiberG ?? init.fiberG ?? '',
+  );
+  const [sugarG, setSugarG] = useState<number | ''>(
+    base?.sugarG ?? init.sugarG ?? '',
+  );
+  const [sodiumMg, setSodiumMg] = useState<number | ''>(
+    base?.sodiumMg ?? init.sodiumMg ?? '',
+  );
+  const [nutritionSource, setNutritionSource] = useState<
+    'manual' | 'imported' | 'estimated' | undefined
+  >(base?.nutritionSource ?? init.nutritionSource);
+  // Editing any nutrient by hand marks the whole panel as manually entered.
+  const onMacroChange =
+    (setter: (v: number | '') => void) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value;
+      setter(raw === '' ? '' : Number(raw));
+      setNutritionSource('manual');
+    };
   const [source, setSource] = useState(base?.source ?? 'Original');
   const [sourceUrl, setSourceUrl] = useState(
     base?.sourceUrl ?? init.sourceUrl ?? '',
@@ -475,6 +507,14 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       totalTimeMinutes: totalTime,
       servings,
       calories,
+      proteinG: proteinG === '' ? undefined : proteinG,
+      carbsG: carbsG === '' ? undefined : carbsG,
+      fatG: fatG === '' ? undefined : fatG,
+      fiberG: fiberG === '' ? undefined : fiberG,
+      sugarG: sugarG === '' ? undefined : sugarG,
+      sodiumMg: sodiumMg === '' ? undefined : sodiumMg,
+      // There's always at least calories, so nutrition is never fully empty.
+      nutritionSource: nutritionSource ?? 'manual',
       difficulty: recipe?.difficulty ?? 'Medium',
       cost: recipe?.cost ?? 0,
       isFavorite: recipe?.isFavorite ?? false,
@@ -703,13 +743,102 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
               <input
                 type="number"
                 value={calories}
-                onChange={(e) => setCalories(Number(e.target.value))}
+                onChange={(e) => {
+                  setCalories(Number(e.target.value));
+                  setNutritionSource('manual');
+                }}
                 min={0}
                 className={inputClasses}
               />
             </div>
           </div>
 
+          {/* Nutrition (per serving) — powers the recipe panel + food log */}
+          {nutritionOn && (
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className={labelClasses}>
+                Nutrition{' '}
+                <span className="font-normal text-gray-400 dark:text-gray-500">
+                  (per serving)
+                </span>
+              </label>
+              {nutritionSource === 'imported' && (
+                <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                  Imported — edit to override
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div>
+                <label className={labelClasses}>Protein (g)</label>
+                <input
+                  type="number"
+                  value={proteinG}
+                  onChange={onMacroChange(setProteinG)}
+                  min={0}
+                  placeholder="—"
+                  className={inputClasses}
+                />
+              </div>
+              <div>
+                <label className={labelClasses}>Carbs (g)</label>
+                <input
+                  type="number"
+                  value={carbsG}
+                  onChange={onMacroChange(setCarbsG)}
+                  min={0}
+                  placeholder="—"
+                  className={inputClasses}
+                />
+              </div>
+              <div>
+                <label className={labelClasses}>Fat (g)</label>
+                <input
+                  type="number"
+                  value={fatG}
+                  onChange={onMacroChange(setFatG)}
+                  min={0}
+                  placeholder="—"
+                  className={inputClasses}
+                />
+              </div>
+              <div>
+                <label className={labelClasses}>Fiber (g)</label>
+                <input
+                  type="number"
+                  value={fiberG}
+                  onChange={onMacroChange(setFiberG)}
+                  min={0}
+                  placeholder="—"
+                  className={inputClasses}
+                />
+              </div>
+              <div>
+                <label className={labelClasses}>Sugar (g)</label>
+                <input
+                  type="number"
+                  value={sugarG}
+                  onChange={onMacroChange(setSugarG)}
+                  min={0}
+                  placeholder="—"
+                  className={inputClasses}
+                />
+              </div>
+              <div>
+                <label className={labelClasses}>Sodium (mg)</label>
+                <input
+                  type="number"
+                  value={sodiumMg}
+                  onChange={onMacroChange(setSodiumMg)}
+                  min={0}
+                  placeholder="—"
+                  className={inputClasses}
+                />
+              </div>
+            </div>
+          </div>
+          )}
         </div>
       </Card>
 

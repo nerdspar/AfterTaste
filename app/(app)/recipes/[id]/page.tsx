@@ -5,6 +5,7 @@ import { notFound, useRouter } from 'next/navigation';
 import { Breadcrumbs } from '@/components/aftertaste/Breadcrumbs';
 import { RecipeHero } from '@/components/aftertaste/recipe-detail/RecipeHero';
 import { StatsRow } from '@/components/aftertaste/recipe-detail/StatsRow';
+import { NutritionPanel } from '@/components/aftertaste/recipe-detail/NutritionPanel';
 import { RecipeRatings } from '@/components/aftertaste/recipe-detail/RecipeRatings';
 import { IngredientsPanel } from '@/components/aftertaste/recipe-detail/IngredientsPanel';
 import { CookingInstructions } from '@/components/aftertaste/recipe-detail/CookingInstructions';
@@ -13,7 +14,7 @@ import { AIAssistantPanel } from '@/components/aftertaste/recipe-detail/AIAssist
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { recordRecipeView } from '@/lib/recently-viewed';
 import { useKeepAwake } from '@/lib/keep-awake';
-import { usePref, PREF_KEEP_AWAKE } from '@/lib/prefs';
+import { usePref, PREF_KEEP_AWAKE, PREF_NUTRITION } from '@/lib/prefs';
 
 interface RecipeDetailPageProps {
   params: Promise<{ id: string }>;
@@ -25,6 +26,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const router = useRouter();
   // Optionally keep the screen awake while viewing a recipe (Settings).
   useKeepAwake(usePref(PREF_KEEP_AWAKE, false));
+  const nutritionOn = usePref(PREF_NUTRITION, false);
   const [scaleMode, setScaleMode] = useState<'amount' | 'serving'>('amount');
   const [scaleValue, setScaleValue] = useState(1);
   // Tracks whether this recipe was ever present, so we can tell a freshly
@@ -52,9 +54,6 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
     // Genuinely unknown id.
     notFound();
   }
-
-  const multiplier =
-    scaleMode === 'amount' ? scaleValue : scaleValue / recipe.servings;
 
   const currentServings =
     scaleMode === 'amount'
@@ -94,7 +93,10 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
         {/* Main content */}
         <div className="lg:col-span-2 space-y-5">
           <RecipeHero recipe={recipe} />
-          <StatsRow recipe={recipe} servings={currentServings} multiplier={multiplier} />
+          <StatsRow recipe={recipe} servings={currentServings} />
+          {nutritionOn && (
+            <NutritionPanel recipe={recipe} servings={currentServings} />
+          )}
           <RecipeRatings recipe={recipe} />
           {/* On mobile/single-column, ingredients sit above the instructions;
               on desktop they move to the right rail instead. */}

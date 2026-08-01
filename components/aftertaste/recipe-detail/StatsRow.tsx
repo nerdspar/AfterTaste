@@ -11,7 +11,6 @@ import type { Recipe } from '@/data/sample/recipes';
 interface StatsRowProps {
   recipe: Recipe;
   servings: number;
-  multiplier: number;
 }
 
 function formatMinutes(mins: number) {
@@ -58,8 +57,7 @@ function StatTile({
   );
 }
 
-export function StatsRow({ recipe, servings, multiplier }: StatsRowProps) {
-  const scaledCalories = Math.round(recipe.calories * multiplier);
+export function StatsRow({ recipe, servings }: StatsRowProps) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
       <StatTile
@@ -70,8 +68,8 @@ export function StatsRow({ recipe, servings, multiplier }: StatsRowProps) {
       <StatTile icon={BookmarkIcon} value={recipe.source} sub="Source" />
       <StatTile
         icon={FlameIcon}
-        value={`${scaledCalories} kcal`}
-        sub="Calories"
+        value={`${recipe.calories} kcal`}
+        sub="Per serving"
       />
       <StatTile icon={UsersIcon} value={String(servings)} sub="Servings" />
     </div>

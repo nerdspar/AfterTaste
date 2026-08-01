@@ -10,7 +10,15 @@ export interface Recipe {
   prepTimeMinutes: number;
   totalTimeMinutes: number;
   servings: number;
-  calories: number;
+  calories: number; // per serving (kcal)
+  // Extended nutrition, all per serving. Undefined = unknown (distinct from 0).
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+  fiberG?: number;
+  sugarG?: number;
+  sodiumMg?: number;
+  nutritionSource?: 'manual' | 'imported' | 'estimated';
   difficulty: string;
   cost: number; // 1=$, 2=$$, 3=$$$
   isFavorite: boolean;

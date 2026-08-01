@@ -94,7 +94,17 @@ model Recipe {
   prepTimeMinutes  Int     @default(0)
   totalTimeMinutes Int     @default(0)
   servings         Int     @default(4)
-  calories         Int     @default(0)
+  calories         Int     @default(0) // per serving (kcal)
+  // Extended nutrition, all per serving. Null = unknown (distinct from 0).
+  proteinG        Int?
+  carbsG          Int?
+  fatG            Int?
+  fiberG          Int?
+  sugarG          Int?
+  sodiumMg        Int?
+  // How the nutrition was filled in: manual | imported | estimated. Lets the
+  // UI badge estimates and avoids clobbering hand-entered values later.
+  nutritionSource String?
   difficulty       String  @default("Medium")
   cost             Int     @default(0)
   cookingClassType String  @default("Cozy Comfort Food")
