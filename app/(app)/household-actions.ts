@@ -132,7 +132,7 @@ export async function renameHousehold(
 
 export async function inviteMember(
   emailRaw: string,
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; warning?: string }> {
   const { householdId, userId } = await requireSession();
   const email = emailRaw.toLowerCase().trim();
   if (!EMAIL_RE.test(email)) return { error: 'Enter a valid email address.' };
@@ -175,8 +175,15 @@ export async function inviteMember(
       householdName: household?.name ?? 'a household',
       inviterName: inviter?.displayName || inviter?.email || 'A household member',
     });
-  } catch {
-    // Ignore send failures — the pending invite still works via manual signup.
+  } catch (err) {
+    // The invite is recorded regardless — surface (and log) the send failure
+    // so it isn't silently lost. Common cause: sending from the default
+    // onboarding@resend.dev, which only delivers to the Resend account owner.
+    console.error('[invite] email send failed:', err);
+    return {
+      warning:
+        "Invite saved, but the email couldn't be sent — check your email (Resend) setup. They can still join by signing up with this email.",
+    };
   }
 
   return {};
