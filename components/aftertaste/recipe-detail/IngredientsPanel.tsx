@@ -319,7 +319,9 @@ export function IngredientsPanel({
               <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex-1 min-w-0 text-left leading-snug">
                 {ing.name}
               </span>
-              <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0 mt-0.5 pl-2 text-right">
+              {/* Reserve the quantity column even when empty so the name always
+                  stops at the same right margin. */}
+              <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0 mt-0.5 pl-2 text-right min-w-[3rem]">
                 {scaleQuantity(ing.quantity, multiplier)}
               </span>
             </>

@@ -42,6 +42,12 @@ export interface Instruction {
   title: string;
   body: string;
   videoThumb: string;
+  /**
+   * When defined, this item is a SECTION HEADER (its value is the section
+   * title, e.g. "Dough"), not a step — step numbering restarts after it.
+   * Steps leave this undefined.
+   */
+  section?: string;
 }
 
 export interface Chef {
