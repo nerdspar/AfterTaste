@@ -57,16 +57,25 @@ export function ActivityCenter() {
   }, [open]);
 
   const todaysMeals: MealLine[] = mounted
-    ? MEAL_TYPES.map((meal): MealLine | null => {
-        const entry = parsePlanEntry(plan[todayKey(meal)]);
-        if (!entry) return null;
-        if (entry.type === 'note')
-          return { meal, label: entry.text, href: null, note: true };
-        const recipe = getRecipe(entry.recipeId);
-        return recipe
-          ? { meal, label: recipe.title, href: `/recipes/${recipe.id}`, note: false }
-          : null;
-      }).filter((m): m is MealLine => m !== null)
+    ? MEAL_TYPES.flatMap((meal): MealLine[] =>
+        (plan[todayKey(meal)] ?? [])
+          .map((value): MealLine | null => {
+            const entry = parsePlanEntry(value);
+            if (!entry) return null;
+            if (entry.type === 'note')
+              return { meal, label: entry.text, href: null, note: true };
+            const recipe = getRecipe(entry.recipeId);
+            return recipe
+              ? {
+                  meal,
+                  label: recipe.title,
+                  href: `/recipes/${recipe.id}`,
+                  note: false,
+                }
+              : null;
+          })
+          .filter((m): m is MealLine => m !== null),
+      )
     : [];
 
   const groceryLeft = items.filter((i) => !i.checked).length;
@@ -129,7 +138,7 @@ export function ActivityCenter() {
             <div className="max-h-96 overflow-y-auto py-1">
               {todaysMeals.length > 0 && (
                 <ActivityGroup label="Today's meals">
-                  {todaysMeals.map((m) => {
+                  {todaysMeals.map((m, i) => {
                     const inner = (
                       <>
                         <span
@@ -158,7 +167,7 @@ export function ActivityCenter() {
                     );
                     return m.href ? (
                       <Link
-                        key={m.meal}
+                        key={`${m.meal}-${i}`}
                         href={m.href}
                         onClick={() => setOpen(false)}
                         className="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors"
@@ -167,7 +176,7 @@ export function ActivityCenter() {
                       </Link>
                     ) : (
                       <div
-                        key={m.meal}
+                        key={`${m.meal}-${i}`}
                         className="flex items-center gap-2.5 px-3 py-1.5"
                       >
                         {inner}

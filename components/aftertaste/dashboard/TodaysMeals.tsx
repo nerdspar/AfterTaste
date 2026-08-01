@@ -30,13 +30,17 @@ export function TodaysMeals() {
   const { plan } = useMealPlan();
   const { getRecipe } = useRecipeStore();
 
-  const meals = MEAL_TYPES.map((mealType): MealItem | null => {
-    const entry = parsePlanEntry(plan[todayKey(mealType)]);
-    if (!entry) return null;
-    if (entry.type === 'note') return { mealType, note: entry.text };
-    const recipe = getRecipe(entry.recipeId);
-    return recipe ? { mealType, recipe } : null;
-  }).filter((m): m is MealItem => m !== null);
+  const meals = MEAL_TYPES.flatMap((mealType): MealItem[] =>
+    (plan[todayKey(mealType)] ?? [])
+      .map((value): MealItem | null => {
+        const entry = parsePlanEntry(value);
+        if (!entry) return null;
+        if (entry.type === 'note') return { mealType, note: entry.text };
+        const recipe = getRecipe(entry.recipeId);
+        return recipe ? { mealType, recipe } : null;
+      })
+      .filter((m): m is MealItem => m !== null),
+  );
 
   if (meals.length === 0) {
     return (
@@ -56,12 +60,12 @@ export function TodaysMeals() {
 
   return (
     <div className="space-y-3">
-      {meals.map((meal) => {
+      {meals.map((meal, i) => {
         // Free-text note (e.g. eating out) — no recipe to link to.
         if ('note' in meal) {
           return (
             <div
-              key={meal.mealType}
+              key={`${meal.mealType}-${i}`}
               className={cn(
                 'flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-3',
                 'dark:border-amber-500/30 dark:bg-amber-500/10',
@@ -84,7 +88,7 @@ export function TodaysMeals() {
 
         const { mealType, recipe } = meal;
         return (
-          <Link key={mealType} href={`/recipes/${recipe.id}`}>
+          <Link key={`${mealType}-${i}`} href={`/recipes/${recipe.id}`}>
             <div
               className={cn(
                 'flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3',

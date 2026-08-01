@@ -20,7 +20,10 @@ export async function GET(req: Request) {
   }
 
   if (scope === 'mealplan') {
-    const meals = await prisma.mealPlan.findMany({ where: { householdId } });
+    const meals = await prisma.mealPlan.findMany({
+      where: { householdId },
+      orderBy: { position: 'asc' },
+    });
     return NextResponse.json({ plan: mealsToPlan(meals) });
   }
 
