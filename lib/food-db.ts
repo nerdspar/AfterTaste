@@ -65,13 +65,26 @@ async function fetchJson(
 type OffProduct = {
   code?: string;
   product_name?: string;
+  product_name_en?: string;
+  lang?: string;
   brands?: string;
   serving_quantity?: number | string;
   nutriments?: Record<string, number | string>;
 };
 
+// Keep a search hit only if it reads in English or is a branded product
+// (branded foreign names like "Nutella" are fine — it's generic non-English
+// entries like "Bananes" we want to drop). Barcode lookups skip this.
+function isEnglishOrBranded(p: OffProduct): boolean {
+  return Boolean(
+    (p.brands || '').trim() ||
+      p.lang === 'en' ||
+      (p.product_name_en || '').trim(),
+  );
+}
+
 function offToItem(p: OffProduct, fallbackCode?: string): FoodItem | null {
-  const name = (p.product_name || '').trim();
+  const name = (p.product_name_en || p.product_name || '').trim();
   const n = p.nutriments || {};
   const cals = num(n['energy-kcal_100g']);
   if (!name || cals == null) return null; // need a name and calories
@@ -116,12 +129,15 @@ async function searchOff(query: string, limit: number): Promise<FoodItem[]> {
       action: 'process',
       json: '1',
       page_size: String(limit),
-      fields: 'code,product_name,brands,serving_quantity,nutriments',
+      lc: 'en', // prefer English product names
+      fields:
+        'code,product_name,product_name_en,lang,brands,serving_quantity,nutriments',
     });
   const data = (await fetchJson(url, {
     headers: { 'User-Agent': OFF_UA },
   })) as { products?: OffProduct[] };
   const items = (data.products || [])
+    .filter(isEnglishOrBranded)
     .map((p) => offToItem(p))
     .filter((x): x is FoodItem => x != null);
   return items;
@@ -223,7 +239,7 @@ export async function searchFoods(query: string): Promise<FoodItem[]> {
 export async function lookupBarcode(code: string): Promise<FoodItem | null> {
   const clean = code.replace(/\D/g, '');
   if (clean.length < 6) return null;
-  const url = `https://world.openfoodfacts.org/api/v2/product/${clean}.json?fields=code,product_name,brands,serving_quantity,nutriments`;
+  const url = `https://world.openfoodfacts.org/api/v2/product/${clean}.json?lc=en&fields=code,product_name,product_name_en,brands,serving_quantity,nutriments`;
   const data = (await fetchJson(url, {
     headers: { 'User-Agent': OFF_UA },
   }).catch(() => null)) as { status?: number; product?: OffProduct } | null;
