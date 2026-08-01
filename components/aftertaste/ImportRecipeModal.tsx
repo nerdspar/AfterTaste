@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import {
   XIcon,
@@ -210,9 +211,9 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
     reader.readAsText(file);
   }
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div
@@ -450,7 +451,8 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
