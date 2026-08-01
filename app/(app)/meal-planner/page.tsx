@@ -254,9 +254,14 @@ function MealPlannerContent() {
                           type="button"
                           onClick={() => clearSlot(key)}
                           aria-label="Remove note"
-                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/50"
+                          className={cn(
+                            'absolute top-1 right-1 z-10 flex h-6 w-6 items-center justify-center rounded-full',
+                            'bg-black/50 text-white transition-opacity hover:bg-black/70',
+                            // Always tappable on touch; reveal on hover for pointer devices.
+                            'opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100',
+                          )}
                         >
-                          <XIcon className="w-2.5 h-2.5 text-white" />
+                          <XIcon className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     );
@@ -294,9 +299,14 @@ function MealPlannerContent() {
                           type="button"
                           onClick={() => clearSlot(key)}
                           aria-label="Remove from plan"
-                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/60"
+                          className={cn(
+                            'absolute top-1 right-1 z-10 flex h-6 w-6 items-center justify-center rounded-full',
+                            'bg-black/50 text-white transition-opacity hover:bg-black/70',
+                            // Always tappable on touch; reveal on hover for pointer devices.
+                            'opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100',
+                          )}
                         >
-                          <XIcon className="w-2.5 h-2.5 text-white" />
+                          <XIcon className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     );
