@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <style>
+    .tile { fill: #f0d9cd; }
+    @media (prefers-color-scheme: dark) { .tile { fill: #0B1220; } }
+  </style>
+  <defs>
+    <clipPath id="tile"><rect x="0" y="0" width="1024" height="1024" rx="232" ry="232"/></clipPath>
+    <clipPath id="disc"><circle cx="512" cy="512" r="304"/></clipPath>
+  </defs>
+  <g clip-path="url(#tile)"><rect class="tile" x="0" y="0" width="1024" height="1024"/></g>
+  <g clip-path="url(#disc)">
+    <rect x="208" y="208" width="608" height="608" fill="#b3502c"/>
+    <rect x="-1200" y="-1200" width="1662.7" height="3400" fill="#e5a184" transform="rotate(58 512 512)"/>
+  </g>
+</svg>

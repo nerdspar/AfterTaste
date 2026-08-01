@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { DISC_DATA_URI, TILE_LIGHT } from '@/lib/brand';
 
 export const size = { width: 180, height: 180 };
 export const contentType = 'image/png';
@@ -14,14 +15,10 @@ export default function AppleIcon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#f97316',
-          color: 'white',
-          fontSize: 112,
-          fontWeight: 800,
-          fontFamily: 'sans-serif',
+          background: TILE_LIGHT,
         }}
       >
-        A
+        <img width={107} height={107} src={DISC_DATA_URI} alt="" />
       </div>
     ),
     size,
