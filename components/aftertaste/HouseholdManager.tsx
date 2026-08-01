@@ -29,6 +29,7 @@ export function HouseholdManager({
   const [inviteEmail, setInviteEmail] = useState('');
   const [name, setName] = useState(initialView.name);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
 
   // Re-fetch after a mutation (event-triggered, so it's reliable).
@@ -46,6 +47,7 @@ export function HouseholdManager({
 
   const run = async (fn: () => Promise<{ error?: string } | void>) => {
     setError('');
+    setNotice('');
     setBusy(true);
     try {
       const res = await fn();
@@ -65,15 +67,33 @@ export function HouseholdManager({
 
   const onInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ok = await run(() => inviteMember(inviteEmail));
-    if (ok) {
+    setError('');
+    setNotice('');
+    setBusy(true);
+    try {
+      const res = await inviteMember(inviteEmail);
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
       setInviteEmail('');
+      if (res.warning) setNotice(res.warning);
       refresh();
+    } catch (err) {
+      console.error('[household] invite failed', err);
+      setError('Something went wrong. Try again.');
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
     <div className="space-y-5">
+      {notice && (
+        <p className="rounded-lg bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-400">
+          {notice}
+        </p>
+      )}
       {error && (
         <p className="rounded-lg bg-red-50 dark:bg-red-500/10 px-3 py-2 text-sm text-red-600 dark:text-red-400">
           {error}
