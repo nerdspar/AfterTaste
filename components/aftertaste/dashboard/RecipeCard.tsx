@@ -3,9 +3,10 @@
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { HeartIcon, ClockIcon, FlameIcon } from 'lucide-react';
+import { HeartIcon, ClockIcon, FlameIcon, UsersIcon } from 'lucide-react';
 import { RatingStars } from '../RatingStars';
 import { recipePersonalRating } from '@/lib/recipe-rating';
+import { recipeTimeLabel } from '@/lib/recipe-time';
 import { useFavorites } from '../FavoritesProvider';
 import { useRecipeActions } from '../RecipeActionsProvider';
 import { useLongPress } from '@/lib/useLongPress';
@@ -82,15 +83,25 @@ export function RecipeCard({ recipe, className }: RecipeCardProps) {
         </h3>
 
         {/* Meta row */}
-        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-          <span className="flex items-center gap-1 tabular-nums">
-            <ClockIcon className="w-3.5 h-3.5" />
-            {recipe.cookTime}
-          </span>
-          <span className="flex items-center gap-1 tabular-nums">
-            <FlameIcon className="w-3.5 h-3.5" />
-            {recipe.calories} kcal
-          </span>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+          {recipeTimeLabel(recipe) && (
+            <span className="flex items-center gap-1 tabular-nums">
+              <ClockIcon className="w-3.5 h-3.5" />
+              {recipeTimeLabel(recipe)}
+            </span>
+          )}
+          {recipe.servings > 0 && (
+            <span className="flex items-center gap-1 tabular-nums">
+              <UsersIcon className="w-3.5 h-3.5" />
+              {recipe.servings}
+            </span>
+          )}
+          {recipe.calories > 0 && (
+            <span className="flex items-center gap-1 tabular-nums">
+              <FlameIcon className="w-3.5 h-3.5" />
+              {recipe.calories} kcal
+            </span>
+          )}
         </div>
       </div>
     </Link>

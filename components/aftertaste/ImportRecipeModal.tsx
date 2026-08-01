@@ -112,15 +112,9 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
         );
         return;
       }
-      let added = 0;
-      try {
-        added = addRecipes(recipes);
-      } catch {
-        setError(
-          'Ran out of browser storage while importing. Try fewer recipes at a time.',
-        );
-        return;
-      }
+      // Recipes save to your account in the background (in batches); this is
+      // the number newly added (skipping duplicates already in your box).
+      const added = addRecipes(recipes);
       setCroutonResult({ added, total: recipes.length });
     } catch {
       setError('Could not read that file. Is it a Crouton export?');
