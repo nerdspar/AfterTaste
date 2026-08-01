@@ -12,7 +12,14 @@ import {
   MinusIcon,
   LoaderIcon,
   SaladIcon,
+  ScanLineIcon,
 } from 'lucide-react';
+import { BarcodeScanner } from './BarcodeScanner';
+import {
+  searchFoodDatabase,
+  lookupFoodBarcode,
+} from '@/app/(app)/food-db-actions';
+import type { FoodItem } from '@/lib/food-db';
 import { cn } from '@/lib/utils';
 import { usePref, PREF_NUTRITION } from '@/lib/prefs';
 import { useCurrentUser } from '@/components/aftertaste/CurrentUserProvider';
@@ -222,7 +229,7 @@ function AddFoodModal({
   onAdd: (input: Omit<AddFoodLogInput, 'date'>) => void;
 }) {
   const { recipes } = useRecipeStore();
-  const [tab, setTab] = useState<'recipe' | 'quick'>('recipe');
+  const [tab, setTab] = useState<'recipe' | 'database' | 'quick'>('recipe');
   const [query, setQuery] = useState('');
   // A picked recipe opens the amount step.
   const [selected, setSelected] = useState<Recipe | null>(null);
@@ -235,6 +242,75 @@ function AddFoodModal({
   const [protein, setProtein] = useState<number | ''>('');
   const [carbs, setCarbs] = useState<number | ''>('');
   const [fat, setFat] = useState<number | ''>('');
+  // Food-database tab.
+  const [dbQuery, setDbQuery] = useState('');
+  const [dbResults, setDbResults] = useState<FoodItem[]>([]);
+  const [dbLoading, setDbLoading] = useState(false);
+  const [selectedFood, setSelectedFood] = useState<FoodItem | null>(null);
+  const [grams, setGrams] = useState<number | ''>(100);
+  const [scanning, setScanning] = useState(false);
+  const [barcodeMsg, setBarcodeMsg] = useState('');
+
+  // Debounced food-database search.
+  useEffect(() => {
+    const q = dbQuery.trim();
+    if (q.length < 2) {
+      setDbResults([]);
+      return;
+    }
+    let cancelled = false;
+    setDbLoading(true);
+    const t = setTimeout(() => {
+      searchFoodDatabase(q)
+        .then((r) => {
+          if (!cancelled) setDbResults(r);
+        })
+        .finally(() => {
+          if (!cancelled) setDbLoading(false);
+        });
+    }, 350);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [dbQuery]);
+
+  function pickFood(f: FoodItem) {
+    setSelectedFood(f);
+    setGrams(f.servingSizeG ?? 100);
+    setScanning(false);
+    setBarcodeMsg('');
+  }
+
+  async function handleBarcode(code: string) {
+    setScanning(false);
+    setDbLoading(true);
+    const f = await lookupFoodBarcode(code);
+    setDbLoading(false);
+    if (f) pickFood(f);
+    else setBarcodeMsg(`No product found for barcode ${code}.`);
+  }
+
+  function addFood() {
+    if (!selectedFood) return;
+    const g = grams === '' || grams <= 0 ? 100 : Number(grams);
+    const factor = g / 100;
+    const p = selectedFood.per100;
+    const scale = (v: number | null) => (v == null ? null : Math.round(v * factor));
+    onAdd({
+      meal,
+      name: `${selectedFood.name}${selectedFood.brand ? ` (${selectedFood.brand})` : ''} · ${g} g`,
+      servings: 1,
+      calories: Math.round(p.calories * factor),
+      proteinG: scale(p.proteinG),
+      carbsG: scale(p.carbsG),
+      fatG: scale(p.fatG),
+      fiberG: scale(p.fiberG),
+      sugarG: scale(p.sugarG),
+      sodiumMg: scale(p.sodiumMg),
+    });
+    onClose();
+  }
 
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -325,8 +401,12 @@ function AddFoodModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
-          <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">
-            {selected ? selected.title : `Add to ${meal}`}
+          <h2 className="truncate text-base font-bold text-gray-900 dark:text-gray-100">
+            {selected
+              ? selected.title
+              : selectedFood
+                ? selectedFood.name
+                : `Add to ${meal}`}
           </h2>
           <button
             type="button"
@@ -449,10 +529,88 @@ function AddFoodModal({
               </button>
             </div>
           </div>
+        ) : selectedFood ? (
+          /* Amount step for a food-database item — by grams */
+          <div className="space-y-4 p-4">
+            {selectedFood.brand && (
+              <p className="-mt-1 text-xs text-gray-400">{selectedFood.brand}</p>
+            )}
+            <div>
+              <label className="text-xs text-gray-500 dark:text-gray-400">
+                Amount (grams)
+              </label>
+              <input
+                type="number"
+                min={0}
+                value={grams}
+                onChange={(e) =>
+                  setGrams(e.target.value === '' ? '' : Number(e.target.value))
+                }
+                className={cn(inputCls, 'mt-1')}
+              />
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {selectedFood.servingSizeG && (
+                  <button
+                    type="button"
+                    onClick={() => setGrams(selectedFood.servingSizeG!)}
+                    className={chip(grams === selectedFood.servingSizeG)}
+                  >
+                    1 serving ({selectedFood.servingSizeG} g)
+                  </button>
+                )}
+                {[50, 100, 200].map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setGrams(g)}
+                    className={chip(grams === g)}
+                  >
+                    {g} g
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-lg bg-gray-50 px-3 py-2.5 text-sm dark:bg-gray-800/50">
+              {(() => {
+                const g = grams === '' || grams <= 0 ? 0 : Number(grams);
+                const f = g / 100;
+                const p = selectedFood.per100;
+                return (
+                  <>
+                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                      {Math.round(p.calories * f)} kcal
+                    </span>
+                    <span className="text-gray-400">
+                      {p.proteinG != null && ` · ${Math.round(p.proteinG * f)}p`}
+                      {p.carbsG != null && ` · ${Math.round(p.carbsG * f)}c`}
+                      {p.fatG != null && ` · ${Math.round(p.fatG * f)}f`}
+                      {`  (${g} g)`}
+                    </span>
+                  </>
+                );
+              })()}
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedFood(null)}
+                className="h-10 flex-1 rounded-lg border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                onClick={addFood}
+                className="h-10 flex-[2] rounded-lg bg-primary-500 text-sm font-medium text-white hover:bg-primary-600"
+              >
+                Add to {meal}
+              </button>
+            </div>
+          </div>
         ) : (
           <>
             <div className="flex gap-1 border-b border-gray-100 px-4 pt-2 dark:border-gray-800">
-              {(['recipe', 'quick'] as const).map((t) => (
+              {(['recipe', 'database', 'quick'] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -464,7 +622,11 @@ function AddFoodModal({
                       : 'text-gray-500 hover:text-gray-700 dark:text-gray-400',
                   )}
                 >
-                  {t === 'recipe' ? 'Your recipes' : 'Quick add'}
+                  {t === 'recipe'
+                    ? 'Your recipes'
+                    : t === 'database'
+                      ? 'Food database'
+                      : 'Quick add'}
                 </button>
               ))}
             </div>
@@ -502,6 +664,80 @@ function AddFoodModal({
                     </p>
                   ) : (
                     matches.map((r) => <RecipeRow key={r.id} r={r} />)
+                  )}
+                </div>
+              </div>
+            ) : tab === 'database' ? (
+              <div className="flex min-h-0 flex-col p-4">
+                <div className="mb-3 flex gap-2">
+                  <div className="relative flex-1">
+                    <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <input
+                      autoFocus
+                      value={dbQuery}
+                      onChange={(e) => {
+                        setDbQuery(e.target.value);
+                        setBarcodeMsg('');
+                      }}
+                      placeholder="Search foods &amp; brands…"
+                      className={cn(inputCls, 'pl-9')}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setScanning(true);
+                      setBarcodeMsg('');
+                    }}
+                    className="flex h-10 items-center gap-1.5 rounded-lg border border-gray-200 px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                  >
+                    <ScanLineIcon className="h-4 w-4" />
+                    Scan
+                  </button>
+                </div>
+                {barcodeMsg && (
+                  <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                    {barcodeMsg}
+                  </p>
+                )}
+                <div className="-mx-1 min-h-0 flex-1 overflow-y-auto">
+                  {dbLoading ? (
+                    <div className="flex justify-center py-6">
+                      <LoaderIcon className="h-5 w-5 animate-spin text-gray-400" />
+                    </div>
+                  ) : dbResults.length === 0 ? (
+                    <p className="px-1 py-6 text-center text-sm text-gray-400">
+                      {dbQuery.trim().length < 2
+                        ? 'Search Open Food Facts & USDA, or scan a barcode.'
+                        : 'No matches.'}
+                    </p>
+                  ) : (
+                    dbResults.map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => pickFood(f)}
+                        className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/60"
+                      >
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                            {f.name}
+                          </span>
+                          {f.brand && (
+                            <span className="block truncate text-xs text-gray-400">
+                              {f.brand}
+                            </span>
+                          )}
+                        </span>
+                        <span className="flex-shrink-0 text-xs tabular-nums text-gray-400">
+                          {f.per100.calories}
+                          <span className="text-gray-300 dark:text-gray-600">
+                            {' '}
+                            kcal/100g
+                          </span>
+                        </span>
+                      </button>
+                    ))
                   )}
                 </div>
               </div>
@@ -581,6 +817,13 @@ function AddFoodModal({
           </>
         )}
       </div>
+
+      {scanning && (
+        <BarcodeScanner
+          onDetected={handleBarcode}
+          onClose={() => setScanning(false)}
+        />
+      )}
     </div>
   );
 }
