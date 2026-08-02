@@ -11,6 +11,8 @@ import { useFirstName } from '@/components/aftertaste/CurrentUserProvider';
 import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
 import { useRecentlyViewedIds } from '@/lib/recently-viewed';
 import { recipePersonalRating } from '@/lib/recipe-rating';
+import { DASHBOARD_SECTION_BY_ID } from '@/lib/dashboard-sections';
+import { cn } from '@/lib/utils';
 import type { Recipe } from '@/data/sample/recipes';
 
 const DEFAULT_COUNT = 2;
@@ -103,7 +105,8 @@ export default function DashboardPage() {
     hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
 
   // Each dashboard section keyed by id; the user's pref decides which show and
-  // in what order (a single column, so what's configured is what's rendered).
+  // in what order. Sections keep their column (main vs side rail) so the
+  // two-column desktop layout is preserved; reorder/hide happen within it.
   const recipeSection = (
     title: string,
     key: string,
@@ -117,7 +120,7 @@ export default function DashboardPage() {
         onAction={() => toggleSection(key)}
       />
       {list.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {getVisibleRecipes(list, key).map((recipe) => (
             <RecipeCard key={recipe.id} recipe={recipe} />
           ))}
@@ -161,9 +164,16 @@ export default function DashboardPage() {
   };
 
   const orderedIds = prefs.dashboardSections.filter((id) => sectionNodes[id]);
+  const mainIds = orderedIds.filter(
+    (id) => DASHBOARD_SECTION_BY_ID[id]?.column !== 'rail',
+  );
+  const railIds = orderedIds.filter(
+    (id) => DASHBOARD_SECTION_BY_ID[id]?.column === 'rail',
+  );
+  const twoColumn = mainIds.length > 0 && railIds.length > 0;
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-7xl mx-auto">
       {/* Greeting */}
       <div className="mb-5">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -174,10 +184,21 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="space-y-6">
-        {orderedIds.map((id) => (
-          <div key={id}>{sectionNodes[id]}</div>
-        ))}
+      <div className={cn('grid gap-5', twoColumn ? 'lg:grid-cols-3' : 'grid-cols-1')}>
+        {mainIds.length > 0 && (
+          <div className={cn('space-y-5', twoColumn && 'lg:col-span-2')}>
+            {mainIds.map((id) => (
+              <div key={id}>{sectionNodes[id]}</div>
+            ))}
+          </div>
+        )}
+        {railIds.length > 0 && (
+          <div className="space-y-5">
+            {railIds.map((id) => (
+              <div key={id}>{sectionNodes[id]}</div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
