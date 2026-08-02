@@ -26,7 +26,7 @@ export function MobileTabBar() {
 
   const tabCls = (active: boolean) =>
     cn(
-      'flex flex-1 flex-col items-center justify-center gap-1 pb-2.5 pt-3.5 text-[10px] font-medium transition-colors',
+      'flex flex-1 flex-col items-center justify-center gap-[3px] text-[10px] font-medium transition-colors',
       active
         ? 'text-primary-600 dark:text-primary-400'
         : 'text-gray-400 dark:text-gray-500',
@@ -36,47 +36,51 @@ export function MobileTabBar() {
     <>
       <nav
         className={cn(
-          'fixed inset-x-0 bottom-0 z-40 flex md:hidden',
+          'fixed inset-x-0 bottom-0 z-40 md:hidden',
           'border-t border-gray-200/70 dark:border-white/10',
           'bg-white/75 backdrop-blur-xl dark:bg-slate-900/55',
+          // The home-indicator safe area sits below the content band.
           'pb-[env(safe-area-inset-bottom)]',
         )}
       >
-        {tabs.map((d) => {
-          const active = isActive(d.href);
-          return (
-            <Link
-              key={d.id}
-              href={d.href}
-              className={tabCls(active)}
-              aria-current={active ? 'page' : undefined}
-              onClick={(e) => {
-                // Tapping the tab you're already on returns to its root: a
-                // sub-route or filtered view navigates back (Link handles that);
-                // if you're already at the exact root, scroll to the top.
-                if (
-                  active &&
-                  window.location.pathname === d.href &&
-                  window.location.search === ''
-                ) {
-                  e.preventDefault();
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }
-              }}
-            >
-              <d.Icon className="h-[22px] w-[22px]" />
-              <span>{d.short}</span>
-            </Link>
-          );
-        })}
-        <button
-          type="button"
-          onClick={() => setMoreOpen(true)}
-          className={tabCls(onOverflowPage)}
-        >
-          <MoreHorizontalIcon className="h-[22px] w-[22px]" />
-          <span>More</span>
-        </button>
+        {/* Fixed 56px content band (iOS tab bars are ~49pt), items centered. */}
+        <div className="flex h-14">
+          {tabs.map((d) => {
+            const active = isActive(d.href);
+            return (
+              <Link
+                key={d.id}
+                href={d.href}
+                className={tabCls(active)}
+                aria-current={active ? 'page' : undefined}
+                onClick={(e) => {
+                  // Tapping the tab you're already on returns to its root: a
+                  // sub-route or filtered view navigates back (Link handles
+                  // that); at the exact root, scroll to the top.
+                  if (
+                    active &&
+                    window.location.pathname === d.href &&
+                    window.location.search === ''
+                  ) {
+                    e.preventDefault();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }
+                }}
+              >
+                <d.Icon className="h-6 w-6" />
+                <span>{d.short}</span>
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            className={tabCls(onOverflowPage)}
+          >
+            <MoreHorizontalIcon className="h-6 w-6" />
+            <span>More</span>
+          </button>
+        </div>
       </nav>
 
       {moreOpen && (
