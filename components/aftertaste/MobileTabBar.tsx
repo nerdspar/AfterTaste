@@ -39,9 +39,9 @@ export function MobileTabBar() {
           'fixed inset-x-0 bottom-0 z-40 md:hidden',
           'border-t border-gray-200/70 dark:border-white/10',
           'bg-white/75 backdrop-blur-xl dark:bg-slate-900/55',
-          // A small fixed gap below the content band, in place of the full
+          // A fixed gap below the content band, in place of the full
           // home-indicator safe area (which made the bar sit too tall).
-          'pb-2',
+          'pb-4',
         )}
       >
         {/* Fixed 56px content band (iOS tab bars are ~49pt), items centered. */}

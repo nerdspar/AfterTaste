@@ -38,8 +38,8 @@ export function AppShell({ children }: AppShellProps) {
       <div className="relative z-30 flex min-h-screen min-w-0 flex-col bg-gray-50 dark:bg-[#0B1220] md:ml-[280px]">
         <HeaderBar />
         {/* Bottom padding on mobile so content clears the fixed tab bar
-            (56px band + 8px pad = 64px, plus an 8px breathing gap). */}
-        <main className="flex-1 px-4 pb-[4.5rem] md:px-5 md:pb-6">
+            (56px band + 16px pad = 72px, plus an 8px breathing gap). */}
+        <main className="flex-1 px-4 pb-20 md:px-5 md:pb-6">
           {children}
         </main>
       </div>
