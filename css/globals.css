@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* iOS Safari zooms into a form field on focus when its font-size is under 16px
+   and never zooms back out — which left the PWA stuck zoomed in. Force fields
+   to 16px on touch devices so it never triggers, while keeping the compact
+   sizing on desktop and leaving pinch-zoom available. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 @layer base {
   :root {
     --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
