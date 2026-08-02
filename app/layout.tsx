@@ -21,6 +21,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#f97316',
+  // Extend under the notch/home indicator so env(safe-area-inset-*) is
+  // non-zero — the bottom tab bar relies on it to clear the home indicator.
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
