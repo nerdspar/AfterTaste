@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/aftertaste/Card';
 import { Button } from '@/components/aftertaste/Button';
@@ -12,8 +12,11 @@ import {
   PlayIcon,
   ChevronUpIcon,
   ChevronDownIcon,
+  SparklesIcon,
+  Loader2Icon,
 } from 'lucide-react';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
+import { estimateRecipeNutrition } from '@/app/(app)/food-db-actions';
 import { isVideoSource } from '@/lib/media';
 import type { Recipe, Ingredient, Instruction } from '@/data/sample/recipes';
 import type { ParsedRecipe } from '@/lib/recipe-parser';
@@ -242,6 +245,79 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   const [imageError, setImageError] = useState('');
   const [stepUploadIndex, setStepUploadIndex] = useState<number | null>(null);
   const [stepImageError, setStepImageError] = useState('');
+
+  // Nutrition estimation from the ingredient list (food-database lookups).
+  const [estimating, setEstimating] = useState(false);
+  const [estimateNote, setEstimateNote] = useState<string | null>(null);
+  const didAutoEstimate = useRef(false);
+
+  const runEstimate = async (isAuto = false) => {
+    const real = ingredients.filter((i) => !isIngredientSection(i) && i.name.trim());
+    if (real.length === 0) {
+      if (!isAuto) setEstimateNote('Add some ingredients first.');
+      return;
+    }
+    setEstimating(true);
+    setEstimateNote(null);
+    try {
+      const est = await estimateRecipeNutrition(
+        ingredients.map((i) => ({
+          name: i.name,
+          quantity: i.quantity,
+          section: i.section,
+        })),
+      );
+      if (!est) {
+        // Couldn't match anything — honor "leave blank + notify" on imports.
+        if (isAuto) {
+          setCalories('');
+          setProteinG('');
+          setCarbsG('');
+          setFatG('');
+          setFiberG('');
+          setSugarG('');
+          setSodiumMg('');
+        }
+        setEstimateNote(
+          "We couldn't estimate nutrition from these ingredients — enter it manually if you like.",
+        );
+        return;
+      }
+      setCalories(est.calories);
+      setProteinG(est.proteinG);
+      setCarbsG(est.carbsG);
+      setFatG(est.fatG);
+      setFiberG(est.fiberG);
+      setSugarG(est.sugarG);
+      setSodiumMg(est.sodiumMg);
+      setNutritionSource('estimated');
+      setEstimateNote(
+        `Estimated from ${est.matched} of ${est.total} ingredient${est.total === 1 ? '' : 's'} — please double-check.`,
+      );
+    } finally {
+      setEstimating(false);
+    }
+  };
+
+  // On a fresh import that carried no nutrition from the source, auto-estimate
+  // from the ingredients once (only when nutrition tracking is on).
+  useEffect(() => {
+    if (didAutoEstimate.current || !nutritionOn) return;
+    const isFreshImport = !!imported && !recipe && !duplicate;
+    const sourceHadNutrition =
+      init.nutritionSource === 'imported' ||
+      init.calories != null ||
+      init.proteinG != null ||
+      init.carbsG != null ||
+      init.fatG != null;
+    const hasIngredients = (init.ingredients?.length ?? 0) > 0;
+    if (isFreshImport && hasIngredients && !sourceHadNutrition) {
+      didAutoEstimate.current = true;
+      void runEstimate(true);
+    }
+    // Mount-only; the seed props are stable for a given form instance.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [submitError, setSubmitError] = useState('');
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -767,19 +843,44 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
               + food log. Enter totals for the whole batch you make. */}
           {nutritionOn && (
           <div>
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2 flex items-center justify-between gap-2">
               <label className={labelClasses}>
                 Nutrition{' '}
                 <span className="font-normal text-gray-400 dark:text-gray-500">
                   (whole recipe)
                 </span>
               </label>
-              {nutritionSource === 'imported' && (
-                <span className="text-[11px] text-gray-400 dark:text-gray-500">
-                  Imported — edit to override
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {nutritionSource === 'imported' && (
+                  <span className="text-[11px] text-gray-400 dark:text-gray-500">
+                    Imported — edit to override
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => runEstimate(false)}
+                  disabled={estimating}
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors',
+                    'bg-primary-50 text-primary-700 hover:bg-primary-100',
+                    'dark:bg-primary-500/10 dark:text-primary-300 dark:hover:bg-primary-500/20',
+                    'disabled:opacity-60',
+                  )}
+                >
+                  {estimating ? (
+                    <Loader2Icon className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <SparklesIcon className="h-3.5 w-3.5" />
+                  )}
+                  {estimating ? 'Estimating…' : 'Estimate from ingredients'}
+                </button>
+              </div>
             </div>
+            {estimateNote && (
+              <p className="mb-2 text-xs text-primary-700 dark:text-primary-300">
+                {estimateNote}
+              </p>
+            )}
             <p className="mb-2 text-xs text-gray-400 dark:text-gray-500">
               Totals for the whole recipe. We divide by {servings} serving
               {servings === 1 ? '' : 's'}

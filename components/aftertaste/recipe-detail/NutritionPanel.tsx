@@ -17,7 +17,7 @@ const KCAL = { protein: 4, carbs: 4, fat: 9 };
 
 const SOURCE_LABEL: Record<string, string> = {
   imported: 'Imported',
-  estimated: 'AI estimate',
+  estimated: 'Estimated',
 };
 
 function MacroValue({
