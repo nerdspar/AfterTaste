@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { requireSession } from '@/lib/session';
 import { DEFAULT_TABS } from '@/lib/tab-config';
+import { DEFAULT_DASHBOARD_SECTIONS } from '@/lib/dashboard-sections';
 import type {
   Recipe,
   GroceryItem,
@@ -292,6 +293,10 @@ export interface UserPrefs {
   notifications: boolean;
   clipboard: boolean;
   tabs: string[];
+  /** "field:direction" for the My Recipes sort (last one the user picked). */
+  recipeSort: string;
+  /** Ordered list of visible dashboard section ids. */
+  dashboardSections: string[];
 }
 
 /** Load the signed-in user's profile + preferences. */
@@ -315,6 +320,8 @@ export async function loadUserProfile(): Promise<UserProfile> {
       notificationsEnabled: true,
       clipboardDetect: true,
       tabConfig: true,
+      recipeSort: true,
+      dashboardSections: true,
     },
   });
   if (!u) redirect('/login');
@@ -339,6 +346,11 @@ export async function loadUserProfile(): Promise<UserProfile> {
       notifications: u.notificationsEnabled,
       clipboard: u.clipboardDetect,
       tabs: u.tabConfig.length > 0 ? u.tabConfig : DEFAULT_TABS,
+      recipeSort: u.recipeSort || 'title:asc',
+      dashboardSections:
+        u.dashboardSections.length > 0
+          ? u.dashboardSections
+          : DEFAULT_DASHBOARD_SECTIONS,
     },
   };
 }

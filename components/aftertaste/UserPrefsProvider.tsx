@@ -66,6 +66,8 @@ export function UserPrefsProvider({
       notificationsEnabled: patch.notifications,
       clipboardDetect: patch.clipboard,
       tabConfig: patch.tabs,
+      recipeSort: patch.recipeSort,
+      dashboardSections: patch.dashboardSections,
     }).catch((err) => console.error('[prefs] save failed', err));
   }, []);
 

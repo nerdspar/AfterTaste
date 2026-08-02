@@ -10,6 +10,7 @@ import { FilterBar } from '@/components/aftertaste/recipes/FilterBar';
 import { SortDropdown } from '@/components/aftertaste/recipes/SortDropdown';
 import { useFavorites } from '@/components/aftertaste/FavoritesProvider';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
+import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
 import { computePersonalRating } from '@/lib/recipe-rating';
 import { cn } from '@/lib/utils';
 import {
@@ -44,6 +45,7 @@ function MyRecipesContent() {
 
   const { isFavorite } = useFavorites();
   const { recipes: allRecipes } = useRecipeStore();
+  const { prefs, set: setPrefs } = useUserPrefs();
 
   // Deep-link filters from the Insights charts: cuisine / source pre-apply a
   // filter; rating filters by rounded personal rating (no config field for it).
@@ -61,11 +63,30 @@ function MyRecipesContent() {
     if (sourceParam) init.source = [sourceParam];
     return init;
   });
-  const [sort, setSort] = useState<SortOption | null>(
-    () =>
-      sortOptions.find((o) => `${o.field}:${o.direction}` === sortParam) ??
-      null,
-  );
+  // Sort priority: a URL deep-link (transient, not saved) wins; otherwise the
+  // user's last saved sort; otherwise Title A-Z. Sorting is always active.
+  const titleAsc =
+    sortOptions.find((o) => o.field === 'title' && o.direction === 'asc') ??
+    null;
+  const [sort, setSort] = useState<SortOption | null>(() => {
+    const fromUrl = sortParam
+      ? sortOptions.find((o) => `${o.field}:${o.direction}` === sortParam)
+      : undefined;
+    if (fromUrl) return fromUrl;
+    const fromPref = sortOptions.find(
+      (o) => `${o.field}:${o.direction}` === prefs.recipeSort,
+    );
+    return fromPref ?? titleAsc;
+  });
+
+  // Persist the user's pick so it's the default next time (deep-links don't).
+  const changeSort = (next: SortOption | null) => {
+    const resolved = next ?? titleAsc;
+    setSort(resolved);
+    if (resolved) {
+      setPrefs({ recipeSort: `${resolved.field}:${resolved.direction}` });
+    }
+  };
   // Default to grid on first render (matches SSR), then restore the saved
   // preference on the client to avoid a hydration mismatch.
   const [view, setView] = useState<ViewMode>('grid');
@@ -176,7 +197,7 @@ function MyRecipesContent() {
               <ListIcon className="w-4 h-4" />
             </button>
           </div>
-          <SortDropdown options={sortOptions} value={sort} onChange={setSort} />
+          <SortDropdown options={sortOptions} value={sort} onChange={changeSort} />
         </div>
       </div>
 
@@ -204,7 +225,6 @@ function MyRecipesContent() {
             type="button"
             onClick={() => {
               setFilters({});
-              setSort(null);
               setActiveTab('All');
             }}
             className="text-xs text-secondary-500 hover:text-secondary-600 dark:text-secondary-400 dark:hover:text-secondary-300 font-medium transition-colors"

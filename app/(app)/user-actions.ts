@@ -23,6 +23,8 @@ export interface UserPrefsInput {
   notificationsEnabled?: boolean;
   clipboardDetect?: boolean;
   tabConfig?: string[];
+  recipeSort?: string;
+  dashboardSections?: string[];
 }
 
 /** Persist the signed-in user's profile / preferences. */
@@ -53,6 +55,9 @@ export async function updateUserPrefs(input: UserPrefsInput): Promise<void> {
     data.clipboardDetect = input.clipboardDetect;
   if (input.tabConfig !== undefined)
     data.tabConfig = input.tabConfig.slice(0, 4);
+  if (input.recipeSort !== undefined) data.recipeSort = input.recipeSort;
+  if (input.dashboardSections !== undefined)
+    data.dashboardSections = input.dashboardSections;
   if (Object.keys(data).length === 0) return;
 
   await prisma.user.update({ where: { id: userId }, data });

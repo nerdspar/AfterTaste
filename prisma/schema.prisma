@@ -30,6 +30,10 @@ model User {
   notificationsEnabled Boolean  @default(true)
   clipboardDetect      Boolean  @default(true)
   tabConfig            String[] @default([]) // empty = the default bottom tabs
+  // "field:direction" for the My Recipes sort; remembers the last one picked.
+  recipeSort           String   @default("title:asc")
+  // Ordered list of visible dashboard section ids; empty = the default set.
+  dashboardSections    String[] @default([])
 
   // Personal daily nutrition goals (per user, not household). Null = unset.
   calorieGoal  Int?
