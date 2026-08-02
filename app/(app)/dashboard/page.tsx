@@ -8,6 +8,7 @@ import { TodaysMeals } from '@/components/aftertaste/dashboard/TodaysMeals';
 import { GroceryListWidget } from '@/components/aftertaste/dashboard/GroceryListWidget';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { useFirstName } from '@/components/aftertaste/CurrentUserProvider';
+import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
 import { useRecentlyViewedIds } from '@/lib/recently-viewed';
 import { recipePersonalRating } from '@/lib/recipe-rating';
 import type { Recipe } from '@/data/sample/recipes';
@@ -29,6 +30,7 @@ function mealCategoryForHour(hour: number): MealCategory {
 export default function DashboardPage() {
   const { recipes } = useRecipeStore();
   const firstName = useFirstName();
+  const { prefs } = useUserPrefs();
   const viewedIds = useRecentlyViewedIds();
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
@@ -100,8 +102,68 @@ export default function DashboardPage() {
   const greeting =
     hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
 
+  // Each dashboard section keyed by id; the user's pref decides which show and
+  // in what order (a single column, so what's configured is what's rendered).
+  const recipeSection = (
+    title: string,
+    key: string,
+    list: Recipe[],
+    emptyHint?: string,
+  ) => (
+    <section>
+      <SectionHeader
+        title={title}
+        actionLabel={getSeeMoreLabel(list, key)}
+        onAction={() => toggleSection(key)}
+      />
+      {list.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {getVisibleRecipes(list, key).map((recipe) => (
+            <RecipeCard key={recipe.id} recipe={recipe} />
+          ))}
+        </div>
+      ) : emptyHint ? (
+        <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 px-4 py-8 text-center">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {emptyHint}
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
+
+  const sectionNodes: Record<string, React.ReactNode> = {
+    categoryTiles: <CategoryTiles />,
+    recentlyViewed: recipeSection(
+      'Recently Viewed',
+      'recentlyViewed',
+      recentlyViewed,
+      'Recipes you open will show up here.',
+    ),
+    recentlyAdded: recipeSection(
+      'Recently Added',
+      'recentlyAdded',
+      recentlyAdded,
+    ),
+    suggested: recipeSection('Suggested Recipes', 'suggested', suggested),
+    todaysMeals: (
+      <section>
+        <SectionHeader title="Today's Meals" />
+        <TodaysMeals />
+      </section>
+    ),
+    groceryList: (
+      <section>
+        <SectionHeader title="Grocery List" />
+        <GroceryListWidget />
+      </section>
+    ),
+  };
+
+  const orderedIds = prefs.dashboardSections.filter((id) => sectionNodes[id]);
+
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       {/* Greeting */}
       <div className="mb-5">
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -112,81 +174,10 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Left / Main Column */}
-        <div className="lg:col-span-2 space-y-5">
-          {/* Category Tiles */}
-          <CategoryTiles />
-
-          {/* Recently Viewed */}
-          <section>
-            <SectionHeader
-              title="Recently Viewed"
-              actionLabel={getSeeMoreLabel(recentlyViewed, 'recentlyViewed')}
-              onAction={() => toggleSection('recentlyViewed')}
-            />
-            {recentlyViewed.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {getVisibleRecipes(recentlyViewed, 'recentlyViewed').map(
-                  (recipe) => (
-                    <RecipeCard key={recipe.id} recipe={recipe} />
-                  ),
-                )}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 px-4 py-8 text-center">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Recipes you open will show up here.
-                </p>
-              </div>
-            )}
-          </section>
-
-          {/* Recently Added */}
-          <section>
-            <SectionHeader
-              title="Recently Added"
-              actionLabel={getSeeMoreLabel(recentlyAdded, 'recentlyAdded')}
-              onAction={() => toggleSection('recentlyAdded')}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {getVisibleRecipes(recentlyAdded, 'recentlyAdded').map(
-                (recipe) => (
-                  <RecipeCard key={recipe.id} recipe={recipe} />
-                ),
-              )}
-            </div>
-          </section>
-
-          {/* Suggested Recipes */}
-          <section>
-            <SectionHeader
-              title="Suggested Recipes"
-              actionLabel={getSeeMoreLabel(suggested, 'suggested')}
-              onAction={() => toggleSection('suggested')}
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {getVisibleRecipes(suggested, 'suggested').map((recipe) => (
-                <RecipeCard key={recipe.id} recipe={recipe} />
-              ))}
-            </div>
-          </section>
-        </div>
-
-        {/* Right Rail */}
-        <div className="space-y-5">
-          {/* Today's Meals */}
-          <section>
-            <SectionHeader title="Today's Meals" />
-            <TodaysMeals />
-          </section>
-
-          {/* Grocery List */}
-          <section>
-            <SectionHeader title="Grocery List" />
-            <GroceryListWidget />
-          </section>
-        </div>
+      <div className="space-y-6">
+        {orderedIds.map((id) => (
+          <div key={id}>{sectionNodes[id]}</div>
+        ))}
       </div>
     </div>
   );

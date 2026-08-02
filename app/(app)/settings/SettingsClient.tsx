@@ -22,6 +22,7 @@ import { Card } from '@/components/aftertaste/Card';
 import { Avatar } from '@/components/aftertaste/Avatar';
 import { HouseholdManager } from '@/components/aftertaste/HouseholdManager';
 import { TabCustomizer } from '@/components/aftertaste/TabCustomizer';
+import { DashboardCustomizer } from '@/components/aftertaste/DashboardCustomizer';
 import { AccountSecurity } from '@/components/aftertaste/AccountSecurity';
 import { cn } from '@/lib/utils';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
@@ -392,6 +393,15 @@ export function SettingsClient({
           description="Choose the tabs in your mobile bottom bar."
         >
           <TabCustomizer />
+        </Section>
+
+        {/* Dashboard — reorder / hide home-screen sections */}
+        <Section
+          id="dashboard"
+          title="Dashboard"
+          description="Reorder or hide the sections on your home screen."
+        >
+          <DashboardCustomizer />
         </Section>
 
         {/* Recipes: import & export */}
