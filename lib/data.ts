@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { requireSession } from '@/lib/session';
+import { DEFAULT_TABS } from '@/lib/tab-config';
 import type {
   Recipe,
   GroceryItem,
@@ -273,6 +274,7 @@ export interface UserProfile {
   theme: string;
   units: string;
   goals: NutritionGoals;
+  prefs: UserPrefs;
 }
 
 /** Personal daily nutrition targets. Null = not set. */
@@ -281,6 +283,15 @@ export interface NutritionGoals {
   protein: number | null;
   carbs: number | null;
   fat: number | null;
+}
+
+/** Per-user app preferences that sync across devices. */
+export interface UserPrefs {
+  nutrition: boolean;
+  keepAwake: boolean;
+  notifications: boolean;
+  clipboard: boolean;
+  tabs: string[];
 }
 
 /** Load the signed-in user's profile + preferences. */
@@ -299,6 +310,11 @@ export async function loadUserProfile(): Promise<UserProfile> {
       proteinGoalG: true,
       carbsGoalG: true,
       fatGoalG: true,
+      nutritionEnabled: true,
+      keepAwake: true,
+      notificationsEnabled: true,
+      clipboardDetect: true,
+      tabConfig: true,
     },
   });
   if (!u) redirect('/login');
@@ -316,6 +332,13 @@ export async function loadUserProfile(): Promise<UserProfile> {
       protein: u.proteinGoalG,
       carbs: u.carbsGoalG,
       fat: u.fatGoalG,
+    },
+    prefs: {
+      nutrition: u.nutritionEnabled,
+      keepAwake: u.keepAwake,
+      notifications: u.notificationsEnabled,
+      clipboard: u.clipboardDetect,
+      tabs: u.tabConfig.length > 0 ? u.tabConfig : DEFAULT_TABS,
     },
   };
 }

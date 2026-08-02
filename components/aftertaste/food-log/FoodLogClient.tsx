@@ -20,7 +20,7 @@ import {
 } from '@/app/(app)/food-db-actions';
 import type { FoodItem } from '@/lib/food-db';
 import { cn } from '@/lib/utils';
-import { usePref, PREF_NUTRITION } from '@/lib/prefs';
+import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
 import { useCurrentUser } from '@/components/aftertaste/CurrentUserProvider';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import {
@@ -1099,7 +1099,7 @@ function MealSection({
 // ---- page -------------------------------------------------------------------
 
 export function FoodLogClient() {
-  const nutritionOn = usePref(PREF_NUTRITION, false);
+  const nutritionOn = useUserPrefs().prefs.nutrition;
   const { goals } = useCurrentUser();
   const { plan } = useMealPlan();
   const { getRecipe } = useRecipeStore();

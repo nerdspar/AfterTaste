@@ -19,7 +19,7 @@ import { parseRecipeFromText, parseRecipeFromHtml } from '@/lib/recipe-parser';
 import type { ParsedRecipe } from '@/lib/recipe-parser';
 import { useRecipeStore } from './RecipeStoreProvider';
 import { importCroutonFiles } from '@/lib/crouton-import';
-import { usePref, PREF_CLIPBOARD } from '@/lib/prefs';
+import { useUserPrefs } from './UserPrefsProvider';
 
 interface ImportRecipeModalProps {
   open: boolean;
@@ -59,7 +59,7 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
     total: number;
   } | null>(null);
   const [clipboardDetected, setClipboardDetected] = useState(false);
-  const clipboardPref = usePref(PREF_CLIPBOARD, true);
+  const clipboardPref = useUserPrefs().prefs.clipboard;
   const fileRef = useRef<HTMLInputElement>(null);
   const croutonRef = useRef<HTMLInputElement>(null);
 

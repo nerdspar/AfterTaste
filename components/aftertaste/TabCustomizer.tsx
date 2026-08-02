@@ -8,12 +8,13 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NAV_DESTS, NAV_BY_ID } from './nav-items';
-import { useTabConfig, setTabConfig, MAX_TABS } from '@/lib/tab-config';
-import { usePref, PREF_NUTRITION } from '@/lib/prefs';
+import { MAX_TABS } from '@/lib/tab-config';
+import { useUserPrefs } from './UserPrefsProvider';
 
 export function TabCustomizer() {
-  const ids = useTabConfig();
-  const nutritionOn = usePref(PREF_NUTRITION, false);
+  const { prefs, set } = useUserPrefs();
+  const ids = prefs.tabs;
+  const nutritionOn = prefs.nutrition;
 
   const chosen = ids.map((id) => NAV_BY_ID[id]).filter(Boolean);
   const available = NAV_DESTS.filter(
@@ -25,12 +26,12 @@ export function TabCustomizer() {
     if (j < 0 || j >= ids.length) return;
     const next = [...ids];
     [next[i], next[j]] = [next[j], next[i]];
-    setTabConfig(next);
+    set({ tabs: next });
   };
-  const remove = (id: string) => setTabConfig(ids.filter((x) => x !== id));
+  const remove = (id: string) => set({ tabs: ids.filter((x) => x !== id) });
   const add = (id: string) => {
     if (ids.length >= MAX_TABS) return;
-    setTabConfig([...ids, id]);
+    set({ tabs: [...ids, id] });
   };
 
   const rowCls =

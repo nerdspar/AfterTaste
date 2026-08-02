@@ -18,7 +18,7 @@ import { useMealPlan, parsePlanEntry } from './MealPlanStoreProvider';
 import { useRecipeStore } from './RecipeStoreProvider';
 import { useGroceryStore } from './GroceryStoreProvider';
 import { isRated } from '@/lib/analytics';
-import { usePref, PREF_NOTIFICATIONS } from '@/lib/prefs';
+import { useUserPrefs } from './UserPrefsProvider';
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'] as const;
 const DISMISSED_KEY = 'aftertaste-dismissed-activity';
@@ -52,7 +52,7 @@ export function ActivityCenter() {
   const { plan } = useMealPlan();
   const { recipes, getRecipe } = useRecipeStore();
   const { items } = useGroceryStore();
-  const notificationsOn = usePref(PREF_NOTIFICATIONS, true);
+  const notificationsOn = useUserPrefs().prefs.notifications;
 
   // Load dismissed keys once on the client.
   useEffect(() => {

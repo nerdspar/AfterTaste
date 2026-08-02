@@ -17,7 +17,7 @@ import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { isVideoSource } from '@/lib/media';
 import type { Recipe, Ingredient, Instruction } from '@/data/sample/recipes';
 import type { ParsedRecipe } from '@/lib/recipe-parser';
-import { usePref, PREF_NUTRITION } from '@/lib/prefs';
+import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
 
 interface RecipeFormProps {
   recipe?: Recipe;
@@ -190,7 +190,7 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   const base = recipe ?? duplicate;
 
   // Macro editing only shows when nutrition tracking is enabled (Settings).
-  const nutritionOn = usePref(PREF_NUTRITION, false);
+  const nutritionOn = useUserPrefs().prefs.nutrition;
 
   const [title, setTitle] = useState(
     recipe?.title ??

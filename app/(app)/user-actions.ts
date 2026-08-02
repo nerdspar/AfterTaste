@@ -17,6 +17,12 @@ export interface UserPrefsInput {
   proteinGoal?: number | null;
   carbsGoal?: number | null;
   fatGoal?: number | null;
+  // Synced app preferences.
+  nutritionEnabled?: boolean;
+  keepAwake?: boolean;
+  notificationsEnabled?: boolean;
+  clipboardDetect?: boolean;
+  tabConfig?: string[];
 }
 
 /** Persist the signed-in user's profile / preferences. */
@@ -38,6 +44,15 @@ export async function updateUserPrefs(input: UserPrefsInput): Promise<void> {
   if (input.proteinGoal !== undefined) data.proteinGoalG = input.proteinGoal;
   if (input.carbsGoal !== undefined) data.carbsGoalG = input.carbsGoal;
   if (input.fatGoal !== undefined) data.fatGoalG = input.fatGoal;
+  if (input.nutritionEnabled !== undefined)
+    data.nutritionEnabled = input.nutritionEnabled;
+  if (input.keepAwake !== undefined) data.keepAwake = input.keepAwake;
+  if (input.notificationsEnabled !== undefined)
+    data.notificationsEnabled = input.notificationsEnabled;
+  if (input.clipboardDetect !== undefined)
+    data.clipboardDetect = input.clipboardDetect;
+  if (input.tabConfig !== undefined)
+    data.tabConfig = input.tabConfig.slice(0, 4);
   if (Object.keys(data).length === 0) return;
 
   await prisma.user.update({ where: { id: userId }, data });

@@ -6,14 +6,14 @@ import { usePathname } from 'next/navigation';
 import { MoreHorizontalIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NAV_BY_ID } from './nav-items';
-import { useTabConfig } from '@/lib/tab-config';
-import { usePref, PREF_NUTRITION } from '@/lib/prefs';
+import { useUserPrefs } from './UserPrefsProvider';
 import { MoreSheet } from './MoreSheet';
 
 export function MobileTabBar() {
   const pathname = usePathname();
-  const configIds = useTabConfig();
-  const nutritionOn = usePref(PREF_NUTRITION, false);
+  const { prefs } = useUserPrefs();
+  const configIds = prefs.tabs;
+  const nutritionOn = prefs.nutrition;
   const [moreOpen, setMoreOpen] = useState(false);
 
   const tabs = configIds
@@ -26,7 +26,7 @@ export function MobileTabBar() {
 
   const tabCls = (active: boolean) =>
     cn(
-      'flex flex-1 flex-col items-center justify-center gap-0.5 py-2 text-[10px] font-medium transition-colors',
+      'flex flex-1 flex-col items-center justify-center gap-1 pb-2.5 pt-3.5 text-[10px] font-medium transition-colors',
       active
         ? 'text-primary-600 dark:text-primary-400'
         : 'text-gray-400 dark:text-gray-500',

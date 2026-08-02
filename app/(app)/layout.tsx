@@ -7,6 +7,7 @@ import { RecipeActionsProvider } from '@/components/aftertaste/RecipeActionsProv
 import { RecentlyViewedHydrator } from '@/components/aftertaste/RecentlyViewedHydrator';
 import { RealtimeSync } from '@/components/aftertaste/RealtimeSync';
 import { CurrentUserProvider } from '@/components/aftertaste/CurrentUserProvider';
+import { UserPrefsProvider } from '@/components/aftertaste/UserPrefsProvider';
 import { PrefsInitializer } from '@/components/aftertaste/PrefsInitializer';
 import { loadHouseholdState, loadUserProfile } from '@/lib/data';
 
@@ -24,6 +25,7 @@ export default async function AppLayout({
 
   return (
     <CurrentUserProvider user={profile}>
+      <UserPrefsProvider initial={profile.prefs}>
       <PrefsInitializer />
       <RecipeStoreProvider initialRecipes={state.recipes}>
         <FavoritesProvider initialFavorites={state.favorites}>
@@ -38,6 +40,7 @@ export default async function AppLayout({
           </GroceryStoreProvider>
         </FavoritesProvider>
       </RecipeStoreProvider>
+      </UserPrefsProvider>
     </CurrentUserProvider>
   );
 }

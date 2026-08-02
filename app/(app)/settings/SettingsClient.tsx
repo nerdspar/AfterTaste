@@ -28,14 +28,7 @@ import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { ImportRecipeModal } from '@/components/aftertaste/ImportRecipeModal';
 import { exportRecipesJson } from '@/lib/recipe-export';
 import { ACCENT_PRESETS, applyAccent } from '@/lib/accent';
-import {
-  usePref,
-  setPref,
-  PREF_CLIPBOARD,
-  PREF_NOTIFICATIONS,
-  PREF_KEEP_AWAKE,
-  PREF_NUTRITION,
-} from '@/lib/prefs';
+import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
 import { useInstallAvailable, promptInstall } from '@/lib/pwa-install';
 import { useCurrentUser } from '@/components/aftertaste/CurrentUserProvider';
 import {
@@ -143,10 +136,11 @@ export function SettingsClient({
     fat: user.goals.fat?.toString() ?? '',
   });
 
-  const clipboardOn = usePref(PREF_CLIPBOARD, true);
-  const notificationsOn = usePref(PREF_NOTIFICATIONS, true);
-  const keepAwakeOn = usePref(PREF_KEEP_AWAKE, false);
-  const nutritionOn = usePref(PREF_NUTRITION, false);
+  const { prefs, set: setUserPref } = useUserPrefs();
+  const clipboardOn = prefs.clipboard;
+  const notificationsOn = prefs.notifications;
+  const keepAwakeOn = prefs.keepAwake;
+  const nutritionOn = prefs.nutrition;
   const installAvailable = useInstallAvailable();
 
   useEffect(() => {
@@ -439,7 +433,7 @@ export function SettingsClient({
               action={
                 <Toggle
                   checked={clipboardOn}
-                  onChange={(v) => setPref(PREF_CLIPBOARD, v)}
+                  onChange={(v) => setUserPref({ clipboard: v })}
                   label="Detect links on clipboard"
                 />
               }
@@ -491,7 +485,7 @@ export function SettingsClient({
             action={
               <Toggle
                 checked={nutritionOn}
-                onChange={(v) => setPref(PREF_NUTRITION, v)}
+                onChange={(v) => setUserPref({ nutrition: v })}
                 label="Nutrition and macro tracking"
               />
             }
@@ -546,7 +540,7 @@ export function SettingsClient({
             action={
               <Toggle
                 checked={keepAwakeOn}
-                onChange={(v) => setPref(PREF_KEEP_AWAKE, v)}
+                onChange={(v) => setUserPref({ keepAwake: v })}
                 label="Keep screen awake in a recipe"
               />
             }
@@ -562,7 +556,7 @@ export function SettingsClient({
             action={
               <Toggle
                 checked={notificationsOn}
-                onChange={(v) => setPref(PREF_NOTIFICATIONS, v)}
+                onChange={(v) => setUserPref({ notifications: v })}
                 label="Activity and reminders"
               />
             }

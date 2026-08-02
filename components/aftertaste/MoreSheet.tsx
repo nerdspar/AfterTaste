@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { NAV_DESTS } from './nav-items';
-import { usePref, PREF_NUTRITION } from '@/lib/prefs';
+import { useUserPrefs } from './UserPrefsProvider';
 
 export function MoreSheet({
   barIds,
@@ -19,7 +19,7 @@ export function MoreSheet({
   barIds: string[];
   onClose: () => void;
 }) {
-  const nutritionOn = usePref(PREF_NUTRITION, false);
+  const nutritionOn = useUserPrefs().prefs.nutrition;
 
   // Everything not already pinned to the bar (respecting the nutrition gate).
   const overflow = NAV_DESTS.filter(

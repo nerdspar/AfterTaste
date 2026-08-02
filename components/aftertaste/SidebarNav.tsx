@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { ImportRecipeModal } from './ImportRecipeModal';
 import { logout } from '@/app/(auth)/actions';
-import { usePref, PREF_NUTRITION } from '@/lib/prefs';
+import { useUserPrefs } from './UserPrefsProvider';
 
 interface NavItem {
   label: string;
@@ -55,7 +55,7 @@ interface SidebarNavProps {
 
 export function SidebarNav({ onNavigate, className }: SidebarNavProps) {
   const pathname = usePathname();
-  const nutritionOn = usePref(PREF_NUTRITION, false);
+  const nutritionOn = useUserPrefs().prefs.nutrition;
   // Food Log only appears once nutrition tracking is enabled (Settings).
   const groups: NavGroup[] = navGroups.map((g) =>
     g.title === 'Main Menu' && nutritionOn
