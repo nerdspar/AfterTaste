@@ -95,7 +95,27 @@ function decodeParsed(r: ParsedRecipe): ParsedRecipe {
   };
 }
 
+// Pull the first usable image URL out of schema.org's `image`, which may be a
+// string, an array of strings or ImageObjects, or a single ImageObject.
+function extractImageUrl(image: unknown): string {
+  if (!image) return '';
+  if (typeof image === 'string') return image;
+  if (Array.isArray(image)) {
+    for (const entry of image) {
+      const url = extractImageUrl(entry);
+      if (url) return url;
+    }
+    return '';
+  }
+  if (typeof image === 'object') {
+    const url = (image as { url?: unknown }).url;
+    if (typeof url === 'string') return url;
+  }
+  return '';
+}
+
 function stripWaybackPrefix(url: string): string {
+  if (typeof url !== 'string' || !url) return '';
   // Archived pages rewrite asset URLs through web.archive.org; recover the
   // original so imported images don't depend on the Wayback Machine.
   return url.replace(
@@ -154,6 +174,31 @@ function guessCategory(title: string, keywords: string[] = []): string {
     return 'Dessert';
   if (/lunch|salad|sandwich|wrap|soup|bowl/.test(text)) return 'Lunch';
   return 'Dinner';
+}
+
+// Map a site's recipeCategory (free-form: "Main Course", "30-minute meals",
+// "Drinks"…) onto one of our five categories; if it doesn't clearly match,
+// fall back to guessing from the title/keywords.
+function normalizeCategory(
+  raw: string,
+  title: string,
+  keywords: string[] = [],
+): string {
+  const r = raw.toLowerCase();
+  if (/breakfast|brunch/.test(r)) return 'Breakfast';
+  if (/dessert|sweet|cake|cookie|baking|pastry/.test(r)) return 'Dessert';
+  if (/lunch/.test(r)) return 'Lunch';
+  if (/snack|appetiz|starter|side|dip/.test(r)) return 'Snack';
+  if (/dinner|main|entr[ée]e|supper/.test(r)) return 'Dinner';
+  return guessCategory(title, keywords);
+}
+
+// Recipe pages often suffix the site name onto the title: "Recipe Name | Site",
+// "Recipe Name – Site". Strip a trailing " <sep> Site" for pipe/en/em dashes
+// (hyphens are left alone since they appear in real titles).
+function cleanTitle(title: string): string {
+  const cleaned = title.replace(/\s*[|–—]\s*[^|–—]+$/, '').trim();
+  return cleaned || title.trim();
 }
 
 export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
@@ -270,11 +315,11 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
         addStep(item);
       }
 
-      let imageUrl = '';
-      if (typeof data.image === 'string') imageUrl = data.image;
-      else if (Array.isArray(data.image)) imageUrl = data.image[0];
-      else if (data.image?.url) imageUrl = data.image.url;
-      if (imageUrl) imageUrl = stripWaybackPrefix(imageUrl);
+      // `image` can be a string, an array (of strings OR ImageObjects), or a
+      // single ImageObject. Pull out the first usable URL string. (Passing a
+      // non-string on to stripWaybackPrefix used to throw and abort the whole
+      // parse — e.g. Hearst sites that use an array of ImageObjects.)
+      const imageUrl = stripWaybackPrefix(extractImageUrl(data.image));
 
       const nutrition = data.nutrition ?? {};
       let calories: number | undefined;
@@ -347,9 +392,15 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
               : data.recipeCuisine)
           : undefined,
         category: data.recipeCategory
-          ? (Array.isArray(data.recipeCategory)
-              ? data.recipeCategory[0]
-              : data.recipeCategory)
+          ? normalizeCategory(
+              String(
+                Array.isArray(data.recipeCategory)
+                  ? data.recipeCategory[0]
+                  : data.recipeCategory,
+              ),
+              data.name || '',
+              keywords,
+            )
           : guessCategory(data.name || '', keywords),
         rating,
         ratingCount,
@@ -364,28 +415,32 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
 }
 
 function extractMetaContent(html: string, property: string): string {
+  // Capture up to the SAME quote character that opened the value (backref \\2),
+  // so an apostrophe inside a double-quoted value (e.g. "Ree Drummond's ...")
+  // doesn't truncate the match.
   const regex = new RegExp(
-    `<meta[^>]*(?:property|name)\\s*=\\s*["']${property}["'][^>]*content\\s*=\\s*["']([^"']+)["']`,
+    `<meta[^>]*(?:property|name)\\s*=\\s*["']${property}["'][^>]*content\\s*=\\s*(["'])(.*?)\\1`,
     'i',
   );
   const match = html.match(regex);
-  if (match) return match[1];
+  if (match) return match[2];
   const regex2 = new RegExp(
-    `<meta[^>]*content\\s*=\\s*["']([^"']+)["'][^>]*(?:property|name)\\s*=\\s*["']${property}["']`,
+    `<meta[^>]*content\\s*=\\s*(["'])(.*?)\\1[^>]*(?:property|name)\\s*=\\s*["']${property}["']`,
     'i',
   );
   const match2 = html.match(regex2);
-  return match2 ? match2[1] : '';
+  return match2 ? match2[2] : '';
 }
 
 export function parseRecipeFromMeta(html: string): ParsedRecipe | null {
-  const title =
+  const rawTitle =
     extractMetaContent(html, 'og:title') ||
     html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim();
   const description = extractMetaContent(html, 'og:description');
   const image = extractMetaContent(html, 'og:image');
 
-  if (!title) return null;
+  if (!rawTitle) return null;
+  const title = cleanTitle(rawTitle);
 
   return {
     title,
