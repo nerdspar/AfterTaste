@@ -18,6 +18,7 @@ import { isVideoSource } from '@/lib/media';
 import type { Recipe, Ingredient, Instruction } from '@/data/sample/recipes';
 import type { ParsedRecipe } from '@/lib/recipe-parser';
 import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
+import { CATEGORIES, SOURCES, CUISINES } from '@/lib/recipe-options';
 
 interface RecipeFormProps {
   recipe?: Recipe;
@@ -28,41 +29,6 @@ interface RecipeFormProps {
 
 /** sessionStorage key used to hand a recipe to the "new" page for duplication. */
 export const DUPLICATE_KEY = 'aftertaste-duplicate-recipe';
-
-const CATEGORIES = ['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert'];
-const SOURCES = [
-  'Cooking Class',
-  'Internet',
-  'Cookbook',
-  'Family Recipe',
-  'Friend Recommendation',
-  'Original',
-  'AI Generated',
-];
-
-const CUISINES = [
-  'American',
-  'Italian',
-  'Mexican',
-  'Chinese',
-  'Japanese',
-  'Thai',
-  'Indian',
-  'French',
-  'Mediterranean',
-  'Greek',
-  'Spanish',
-  'Korean',
-  'Vietnamese',
-  'Middle Eastern',
-  'Caribbean',
-  'Cajun/Creole',
-  'German',
-  'British',
-  'Southern',
-  'Fusion',
-  'Other',
-];
 
 const inputClasses = cn(
   'w-full h-10 px-3 rounded-lg text-sm',

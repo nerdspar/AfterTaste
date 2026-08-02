@@ -2,12 +2,17 @@
 
 import { useState, useMemo, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { LayoutGridIcon, ListIcon } from 'lucide-react';
+import { LayoutGridIcon, ListIcon, ListChecksIcon } from 'lucide-react';
 import { RecipeCard } from '@/components/aftertaste/dashboard/RecipeCard';
 import { RecipeListItem } from '@/components/aftertaste/recipes/RecipeListItem';
 import { Chip } from '@/components/aftertaste/Chip';
 import { FilterBar } from '@/components/aftertaste/recipes/FilterBar';
 import { SortDropdown } from '@/components/aftertaste/recipes/SortDropdown';
+import {
+  SelectableRecipe,
+  BulkEditBar,
+  type BulkPatch,
+} from '@/components/aftertaste/recipes/BulkSelect';
 import { useFavorites } from '@/components/aftertaste/FavoritesProvider';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
@@ -44,7 +49,7 @@ function MyRecipesContent() {
     : 'All';
 
   const { isFavorite } = useFavorites();
-  const { recipes: allRecipes } = useRecipeStore();
+  const { recipes: allRecipes, updateRecipe } = useRecipeStore();
   const { prefs, set: setPrefs } = useUserPrefs();
 
   // Deep-link filters from the Insights charts: cuisine / source pre-apply a
@@ -101,6 +106,29 @@ function MyRecipesContent() {
     try {
       localStorage.setItem(VIEW_STORAGE_KEY, next);
     } catch {}
+  };
+
+  // Bulk edit: tap-to-select recipes, then set category/source on all at once.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const exitSelect = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const applyBulk = (patch: BulkPatch) => {
+    if (Object.keys(patch).length === 0) return;
+    selectedIds.forEach((id) => updateRecipe(id, patch));
+    exitSelect();
   };
 
   const displayRecipes = useMemo(() => {
@@ -167,6 +195,20 @@ function MyRecipesContent() {
           onChange={setFilters}
         />
         <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            type="button"
+            aria-pressed={selectMode}
+            onClick={() => (selectMode ? exitSelect() : setSelectMode(true))}
+            className={cn(
+              'inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium border transition-colors',
+              selectMode
+                ? 'bg-primary-50 border-primary-300 text-primary-700 dark:bg-primary-500/10 dark:border-primary-500/40 dark:text-primary-300'
+                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300 dark:bg-slate-900 dark:border-gray-700/40 dark:text-gray-400 dark:hover:border-gray-600',
+            )}
+          >
+            <ListChecksIcon className="w-3.5 h-3.5" />
+            {selectMode ? 'Done' : 'Select'}
+          </button>
           <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
             <button
               type="button"
@@ -201,19 +243,53 @@ function MyRecipesContent() {
         </div>
       </div>
 
+      {/* Bulk edit bar */}
+      {selectMode && (
+        <BulkEditBar
+          count={selectedIds.size}
+          total={displayRecipes.length}
+          onSelectAll={() =>
+            setSelectedIds(new Set(displayRecipes.map((r) => r.id)))
+          }
+          onClear={() => setSelectedIds(new Set())}
+          onCancel={exitSelect}
+          onApply={applyBulk}
+        />
+      )}
+
       {/* Recipes */}
       {displayRecipes.length > 0 ? (
         view === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {displayRecipes.map((recipe) => (
-              <RecipeCard key={recipe.id} recipe={recipe} />
-            ))}
+            {displayRecipes.map((recipe) =>
+              selectMode ? (
+                <SelectableRecipe
+                  key={recipe.id}
+                  selected={selectedIds.has(recipe.id)}
+                  onToggle={() => toggleSelect(recipe.id)}
+                >
+                  <RecipeCard recipe={recipe} />
+                </SelectableRecipe>
+              ) : (
+                <RecipeCard key={recipe.id} recipe={recipe} />
+              ),
+            )}
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {displayRecipes.map((recipe) => (
-              <RecipeListItem key={recipe.id} recipe={recipe} />
-            ))}
+            {displayRecipes.map((recipe) =>
+              selectMode ? (
+                <SelectableRecipe
+                  key={recipe.id}
+                  selected={selectedIds.has(recipe.id)}
+                  onToggle={() => toggleSelect(recipe.id)}
+                >
+                  <RecipeListItem recipe={recipe} />
+                </SelectableRecipe>
+              ) : (
+                <RecipeListItem key={recipe.id} recipe={recipe} />
+              ),
+            )}
           </div>
         )
       ) : (

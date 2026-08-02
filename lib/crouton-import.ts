@@ -101,10 +101,63 @@ function formatQuantity(amount?: number | null, type?: string | null): string {
   return `${amountStr} ${unit}`.trim();
 }
 
-function parseCalories(info?: string): number {
-  if (!info) return 0;
-  const m = info.match(/Calories:\s*([\d.]+)/i);
-  return m ? Math.round(Number(m[1])) : 0;
+interface CroutonNutrition {
+  calories: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+  fiberG?: number;
+  sugarG?: number;
+  sodiumMg?: number;
+  /** true when any macro beyond calories was found. */
+  hasMacros: boolean;
+}
+
+// Crouton stores nutrition as a free-text blob like
+// "Fat: 1 g,\nSugar: 17 g,\nCalories: 75 kcal". Pull out whatever's present.
+function parseCroutonNutrition(info?: string): CroutonNutrition {
+  const num = (label: string): number | undefined => {
+    if (!info) return undefined;
+    const m = info.match(new RegExp(`${label}:\\s*([\\d.]+)`, 'i'));
+    return m ? Math.round(Number(m[1])) : undefined;
+  };
+  const proteinG = num('Protein');
+  const carbsG = num('(?:Carbohydrates?|Carbs?)');
+  const fatG = num('Fat');
+  const fiberG = num('Fib(?:er|re)');
+  const sugarG = num('Sugar');
+  const sodiumMg = num('Sodium');
+  return {
+    calories: num('Calories') ?? 0,
+    proteinG,
+    carbsG,
+    fatG,
+    fiberG,
+    sugarG,
+    sodiumMg,
+    hasMacros: [proteinG, carbsG, fatG, fiberG, sugarG, sodiumMg].some(
+      (v) => v !== undefined,
+    ),
+  };
+}
+
+// Our meal categories. Crouton has no explicit category, but the meal type is
+// often present as a tag, so map a matching tag onto our category.
+const CATEGORY_KEYWORDS: [string, RegExp][] = [
+  ['Breakfast', /\b(breakfast|brunch)\b/i],
+  ['Lunch', /\blunch\b/i],
+  ['Dessert', /\b(dessert|sweets?|baking|cake|cookie)\b/i],
+  ['Snack', /\b(snack|appetiz|starter|side|dip)\b/i],
+  ['Dinner', /\b(dinner|supper|main|entr[ée]e|mains)\b/i],
+];
+
+function categoryFromTags(tags?: string[]): string {
+  if (Array.isArray(tags)) {
+    for (const [category, re] of CATEGORY_KEYWORDS) {
+      if (tags.some((t) => typeof t === 'string' && re.test(t))) return category;
+    }
+  }
+  return 'Dinner';
 }
 
 function formatCookTime(mins: number): string {
@@ -200,10 +253,12 @@ async function croutonToRecipe(
   if (json.images?.[0]) image = await downscaleImage(json.images[0]);
   if (!image && json.sourceImage) image = await downscaleImage(json.sourceImage);
 
+  const nutrition = parseCroutonNutrition(json.neutritionalInfo);
+
   return {
     id: slugId(title, json.uuid, idx),
     title,
-    category: 'Dinner',
+    category: categoryFromTags(json.tags),
     image,
     rating: 0,
     ratingCount: 0,
@@ -212,7 +267,16 @@ async function croutonToRecipe(
     prepTimeMinutes: prep,
     totalTimeMinutes: total,
     servings: json.serves && json.serves > 0 ? Math.round(json.serves) : 4,
-    calories: parseCalories(json.neutritionalInfo),
+    calories: nutrition.calories,
+    proteinG: nutrition.proteinG,
+    carbsG: nutrition.carbsG,
+    fatG: nutrition.fatG,
+    fiberG: nutrition.fiberG,
+    sugarG: nutrition.sugarG,
+    sodiumMg: nutrition.sodiumMg,
+    // Any nutrition here came from the Crouton export, not hand-entry.
+    nutritionSource:
+      nutrition.calories > 0 || nutrition.hasMacros ? 'imported' : undefined,
     difficulty: 'Medium',
     cost: 0,
     isFavorite: false,
