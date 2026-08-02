@@ -581,12 +581,14 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
 
     try {
       setSubmitError('');
+      // replace (not push) so the editor leaves the history stack — going back
+      // from the saved recipe never re-opens the form.
       if (isEditing) {
         updateRecipe(recipe.id, recipeData);
-        router.push(`/recipes/${recipe.id}`);
+        router.replace(`/recipes/${recipe.id}`);
       } else {
         addRecipe(recipeData);
-        router.push(`/recipes/${recipeData.id}`);
+        router.replace(`/recipes/${recipeData.id}`);
       }
     } catch {
       setSubmitError(

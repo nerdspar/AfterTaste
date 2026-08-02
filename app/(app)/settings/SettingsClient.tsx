@@ -21,6 +21,7 @@ import {
 import { Card } from '@/components/aftertaste/Card';
 import { Avatar } from '@/components/aftertaste/Avatar';
 import { HouseholdManager } from '@/components/aftertaste/HouseholdManager';
+import { TabCustomizer } from '@/components/aftertaste/TabCustomizer';
 import { AccountSecurity } from '@/components/aftertaste/AccountSecurity';
 import { cn } from '@/lib/utils';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
@@ -58,13 +59,15 @@ function Section({
   title,
   description,
   children,
+  id,
 }: {
   title: string;
   description?: string;
   children: React.ReactNode;
+  id?: string;
 }) {
   return (
-    <section>
+    <section id={id} className={id ? 'scroll-mt-20' : undefined}>
       <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">
         {title}
       </h2>
@@ -386,6 +389,15 @@ export function SettingsClient({
               </div>
             </div>
           </div>
+        </Section>
+
+        {/* Navigation — the mobile bottom tab bar */}
+        <Section
+          id="tabs"
+          title="Navigation"
+          description="Choose the tabs in your mobile bottom bar."
+        >
+          <TabCustomizer />
         </Section>
 
         {/* Recipes: import & export */}

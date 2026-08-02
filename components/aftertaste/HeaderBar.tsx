@@ -1,30 +1,40 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { SearchIcon, MenuIcon } from 'lucide-react';
+import { SearchIcon, ChevronLeftIcon } from 'lucide-react';
 import { ActivityCenter } from './ActivityCenter';
 import { AccountMenu } from './AccountMenu';
 
 interface HeaderBarProps {
-  onMenuToggle?: () => void;
   className?: string;
 }
 
-export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
+// The logical parent of a drill-down screen, so "back" goes somewhere sensible
+// regardless of how tangled the history got (e.g. after save). Top-level pages
+// return null — you switch those from the bottom bar, not a back button.
+function parentPath(p: string): string | null {
+  if (/^\/recipes\/[^/]+\/edit$/.test(p)) return p.replace(/\/edit$/, '');
+  if (p === '/recipes/new') return '/recipes';
+  if (/^\/recipes\/[^/]+$/.test(p)) return '/recipes';
+  return null;
+}
+
+export function HeaderBar({ className }: HeaderBarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
-  // Fall back to a shorter placeholder when the box is too narrow to fit the
-  // full one (small phones), so it never truncates to "Search rec".
   const [placeholder, setPlaceholder] = useState('Search recipes...');
+
+  const back = parentPath(pathname);
 
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
     const update = () => {
-      // ~190px is the point below which "Search recipes..." starts to clip.
       setPlaceholder(el.clientWidth < 190 ? 'Search' : 'Search recipes...');
     };
     update();
@@ -48,17 +58,18 @@ export function HeaderBar({ onMenuToggle, className }: HeaderBarProps) {
         className,
       )}
     >
-      {/* Mobile hamburger */}
-      <button
-        onClick={onMenuToggle}
-        className="md:hidden p-2 -ml-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-        aria-label="Open menu"
-      >
-        <MenuIcon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-      </button>
+      {/* Mobile back button (only on drill-down screens) */}
+      {back && (
+        <Link
+          href={back}
+          aria-label="Back"
+          className="md:hidden -ml-2 rounded-xl p-2 text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+        >
+          <ChevronLeftIcon className="w-5 h-5" />
+        </Link>
+      )}
 
-      {/* Search — min-w-0 lets the field shrink instead of pushing the header
-          wider than the viewport on small phones. */}
+      {/* Search */}
       <form onSubmit={handleSearch} className="relative flex-1 min-w-0 max-w-md">
         <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
