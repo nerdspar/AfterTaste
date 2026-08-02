@@ -50,6 +50,19 @@ export function MobileTabBar() {
               href={d.href}
               className={tabCls(active)}
               aria-current={active ? 'page' : undefined}
+              onClick={(e) => {
+                // Tapping the tab you're already on returns to its root: a
+                // sub-route or filtered view navigates back (Link handles that);
+                // if you're already at the exact root, scroll to the top.
+                if (
+                  active &&
+                  window.location.pathname === d.href &&
+                  window.location.search === ''
+                ) {
+                  e.preventDefault();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
             >
               <d.Icon className="h-[22px] w-[22px]" />
               <span>{d.short}</span>
