@@ -203,8 +203,8 @@ export function SettingsClient({
   const nutritionOn = prefs.nutrition;
   const installAvailable = useInstallAvailable();
 
-  // Accordion: one category open at a time; Account is open by default.
-  const [openCat, setOpenCat] = useState('account');
+  // Accordion: one category open at a time; all collapsed by default.
+  const [openCat, setOpenCat] = useState('');
   const toggleCat = (id: string) => setOpenCat((c) => (c === id ? '' : id));
 
   useEffect(() => {
