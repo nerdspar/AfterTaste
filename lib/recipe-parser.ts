@@ -546,6 +546,21 @@ function matchMeta(line: string, next: string | undefined): MetaHit | null {
   return null;
 }
 
+// A heading that begins trailing notes/variations after the steps — an
+// alternate version, a "Notes:"/"Tips:" block, storage advice, etc. Everything
+// from here to the end goes into the recipe notes rather than the steps.
+function isNotesHeading(line: string): boolean {
+  return (
+    /^(?:notes?|tips?|variations?|to serve|serving suggestions?|make[- ]ahead|storage|substitutions?)\s*:?\s*$/i.test(
+      line,
+    ) ||
+    /^(?:other|alternate|alternative)\b.*\b(?:option|stuffing|version|recipe|method|filling|topping|sauce|variation)\b/i.test(
+      line,
+    ) ||
+    /\bincludes:\s*$/i.test(line)
+  );
+}
+
 export function parseRecipeFromText(
   text: string,
   opts: { fallbackTitle?: string } = {},
@@ -562,7 +577,8 @@ export function parseRecipeFromText(
 
   const ingredients: Ingredient[] = [];
   const steps: Instruction[] = [];
-  let mode: 'pre' | 'ingredients' | 'instructions' = 'pre';
+  const notes: string[] = [];
+  let mode: 'pre' | 'ingredients' | 'instructions' | 'notes' = 'pre';
   let lastNumbered = false;
 
   const addIngredient = (line: string) => {
@@ -572,6 +588,20 @@ export function parseRecipeFromText(
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+
+    // Once in the trailing-notes block, everything is a note.
+    if (mode === 'notes') {
+      notes.push(line);
+      continue;
+    }
+
+    // A notes/variation heading after the steps ends the recipe body — collect
+    // the rest as notes (an alternate version, tips, storage, etc.).
+    if (mode === 'instructions' && steps.length > 0 && isNotesHeading(line)) {
+      mode = 'notes';
+      notes.push(line);
+      continue;
+    }
 
     // Metadata (times / servings) — only before the instructions body, so a
     // step that says "Bake: ..." isn't eaten.
@@ -678,6 +708,7 @@ export function parseRecipeFromText(
     cookTimeMinutes,
     ingredients: ingredients.length > 0 ? ingredients : undefined,
     instructions: steps.length > 0 ? steps : undefined,
+    recipeNotes: notes.length > 0 ? notes.join('\n') : undefined,
   });
 }
 
