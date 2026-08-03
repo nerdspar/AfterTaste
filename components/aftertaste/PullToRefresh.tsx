@@ -4,25 +4,32 @@ import { useEffect, useRef, useState } from 'react';
 import { RefreshCwIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Custom pull-to-refresh for the installed PWA. In standalone mode iOS/Android
-// give no native pull-to-refresh and keep the web view alive between opens, so
-// users can get stuck on a stale build after a deploy. This lets them pull down
-// at the top of the page to reload (which, with the network-first service
-// worker, fetches the freshly deployed HTML + chunks).
+// Native-style pull-to-refresh for the installed PWA. As you pull down at the
+// top of the page the whole content column moves down, revealing a refresh
+// indicator in the gap; the indicator "arms" (fills with the accent colour)
+// once you've pulled far enough, so a release only refreshes when it's clearly
+// engaged — no accidental refreshes.
 //
-// Gated to standalone display mode so it never double-triggers with a normal
-// mobile browser's own pull-to-refresh.
+// Gated to standalone display-mode (installed app), where there's no native
+// pull-to-refresh and the web view is kept alive between opens, so users can
+// otherwise get stuck on a stale build after a deploy.
 
-const TRIGGER = 70; // raw px pulled to trigger a refresh
-const MAX = 120; // clamp the visual travel
+const REFRESH_AT = 64; // visual px pulled to arm/trigger
+const MAX = 96; // clamp the visual travel
+const RESIST = 0.5; // pull resistance (raw px → visual px)
 
-export function PullToRefresh() {
+type Phase = 'idle' | 'pull' | 'settle' | 'refresh';
+
+export function PullToRefresh({ children }: { children: React.ReactNode }) {
   const [offset, setOffset] = useState(0);
-  const [dragging, setDragging] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  // Refs so the (once-attached) listeners read live values without re-binding.
-  const gesture = useRef({ startY: 0, pulling: false, dy: 0 });
-  const refreshingRef = useRef(false);
+  const [phase, setPhase] = useState<Phase>('idle');
+  const phaseRef = useRef<Phase>('idle');
+  const g = useRef({ startY: 0, pulling: false, offset: 0 });
+
+  const setPhaseBoth = (p: Phase) => {
+    phaseRef.current = p;
+    setPhase(p);
+  };
 
   useEffect(() => {
     const standalone =
@@ -32,13 +39,9 @@ export function PullToRefresh() {
     // Only in the installed app, and only on touch input.
     if (!standalone || !window.matchMedia('(pointer: coarse)').matches) return;
 
-    const g = gesture.current;
+    const gg = g.current;
 
-    const doRefresh = async () => {
-      refreshingRef.current = true;
-      setRefreshing(true);
-      setDragging(false);
-      setOffset(MAX * 0.5);
+    const reload = async () => {
       try {
         if ('serviceWorker' in navigator) {
           const reg = await navigator.serviceWorker.getRegistration();
@@ -47,46 +50,59 @@ export function PullToRefresh() {
       } catch {
         // ignore — reload still fetches fresh with the network-first SW
       }
-      // Let the spinner show briefly, then reload.
-      window.setTimeout(() => window.location.reload(), 450);
+      window.setTimeout(() => window.location.reload(), 500);
     };
 
     const onStart = (e: TouchEvent) => {
-      if (refreshingRef.current || window.scrollY > 0 || e.touches.length !== 1) {
-        g.pulling = false;
+      if (
+        phaseRef.current === 'refresh' ||
+        window.scrollY > 0 ||
+        e.touches.length !== 1
+      ) {
+        gg.pulling = false;
         return;
       }
-      g.startY = e.touches[0].clientY;
-      g.dy = 0;
-      g.pulling = true;
+      gg.startY = e.touches[0].clientY;
+      gg.offset = 0;
+      gg.pulling = true;
     };
 
     const onMove = (e: TouchEvent) => {
-      if (!g.pulling || refreshingRef.current) return;
-      const dy = e.touches[0].clientY - g.startY;
-      // Pulling up, or the page has scrolled — abandon the gesture.
+      if (!gg.pulling || phaseRef.current === 'refresh') return;
+      const dy = e.touches[0].clientY - gg.startY;
+      // Pulling up, or the page has scrolled — abandon and snap back.
       if (dy <= 0 || window.scrollY > 0) {
-        g.pulling = false;
-        setDragging(false);
-        setOffset(0);
+        gg.pulling = false;
+        if (gg.offset !== 0) {
+          gg.offset = 0;
+          setOffset(0);
+          setPhaseBoth('settle');
+        }
         return;
       }
-      g.dy = dy;
-      setDragging(true);
-      // Resistance: the pull gets progressively harder.
-      setOffset(Math.min(MAX, dy * 0.6));
+      const o = Math.min(MAX, dy * RESIST);
+      gg.offset = o;
+      if (phaseRef.current !== 'pull') setPhaseBoth('pull');
+      setOffset(o);
       // Stop the iOS rubber-band / scroll while actively pulling.
       if (dy > 8 && e.cancelable) e.preventDefault();
     };
 
     const onEnd = () => {
-      if (!g.pulling) return;
-      g.pulling = false;
-      if (g.dy >= TRIGGER) {
-        void doRefresh();
-      } else {
-        setDragging(false);
+      if (!gg.pulling) return;
+      gg.pulling = false;
+      if (gg.offset >= REFRESH_AT) {
+        setPhaseBoth('refresh');
+        setOffset(REFRESH_AT);
+        void reload();
+      } else if (gg.offset < 2) {
+        // Negligible pull — no transform to animate back, so return to idle
+        // directly (a 'settle' here would never get a transitionend to close it).
         setOffset(0);
+        setPhaseBoth('idle');
+      } else {
+        setOffset(0);
+        setPhaseBoth('settle');
       }
     };
 
@@ -102,26 +118,67 @@ export function PullToRefresh() {
     };
   }, []);
 
-  const visible = offset > 2 || refreshing;
+  const refreshing = phase === 'refresh';
+  const active = phase !== 'idle';
+  const armed = offset >= REFRESH_AT;
+  const smooth = phase !== 'pull'; // 1:1 while pulling, animate on release
 
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex justify-center md:hidden"
-      style={{
-        transform: `translateY(${Math.max(0, offset - 16)}px)`,
-        opacity: visible ? Math.min(1, offset / 40) || 1 : 0,
-        transition: dragging ? 'none' : 'transform 0.2s ease, opacity 0.2s ease',
-      }}
-    >
-      <div className="mt-[env(safe-area-inset-top)] flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-black/5 dark:bg-slate-800 dark:ring-white/10">
-        <RefreshCwIcon
-          className={cn('h-5 w-5 text-primary-500', refreshing && 'animate-spin')}
-          style={
-            refreshing ? undefined : { transform: `rotate(${offset * 2.5}deg)` }
-          }
-        />
+    <>
+      {/* Indicator revealed in the gap as the content moves down. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 z-[60] flex justify-center md:hidden"
+        style={{
+          transform: `translateY(${offset - 44}px)`,
+          opacity: refreshing || offset > 2 ? 1 : 0,
+          transition: smooth
+            ? 'transform 0.25s ease, opacity 0.2s ease'
+            : 'none',
+        }}
+      >
+        <div className="mt-[env(safe-area-inset-top)]">
+          <div
+            className={cn(
+              'flex h-9 w-9 items-center justify-center rounded-full shadow-md ring-1 transition-colors',
+              armed || refreshing
+                ? 'bg-primary-500 text-white ring-primary-500/30'
+                : 'bg-white text-primary-500 ring-black/5 dark:bg-slate-800 dark:text-primary-400 dark:ring-white/10',
+            )}
+          >
+            <RefreshCwIcon
+              className={cn('h-5 w-5', refreshing && 'animate-spin')}
+              style={
+                refreshing ? undefined : { transform: `rotate(${offset * 3}deg)` }
+              }
+            />
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* The content column: translated down while pulling/refreshing. Kept at
+          `none` when idle so it never creates a containing block for the fixed
+          modals/sheets rendered inside the page. */}
+      <div
+        onTransitionEnd={(e) => {
+          // Only the wrapper's own transform settling (not a bubbled child
+          // transition) closes the gesture.
+          if (
+            e.target === e.currentTarget &&
+            e.propertyName === 'transform' &&
+            phaseRef.current === 'settle'
+          ) {
+            setPhaseBoth('idle');
+          }
+        }}
+        style={{
+          transform: active ? `translateY(${offset}px)` : undefined,
+          transition: smooth ? 'transform 0.25s ease' : 'none',
+          willChange: active ? 'transform' : undefined,
+        }}
+      >
+        {children}
+      </div>
+    </>
   );
 }

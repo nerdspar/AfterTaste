@@ -24,7 +24,6 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-gray-50 dark:bg-[#0B1220] transition-colors">
-      <PullToRefresh />
       {/* Desktop sidebar (fixed). On mobile, navigation lives in the bottom bar
           + More sheet, so there's no drawer/hamburger. */}
       <aside
@@ -37,14 +36,17 @@ export function AppShell({ children }: AppShellProps) {
         <SidebarNav />
       </aside>
 
-      <div className="relative z-30 flex min-h-screen min-w-0 flex-col bg-gray-50 dark:bg-[#0B1220] md:ml-[280px]">
-        <HeaderBar />
-        {/* Bottom padding on mobile so content clears the fixed tab bar
-            (56px band + 16px pad = 72px, plus an 8px breathing gap). */}
-        <main className="flex-1 px-4 pb-20 md:px-5 md:pb-6">
-          {children}
-        </main>
-      </div>
+      {/* Pull-to-refresh moves this content column down as you pull (mobile PWA). */}
+      <PullToRefresh>
+        <div className="relative z-30 flex min-h-screen min-w-0 flex-col bg-gray-50 dark:bg-[#0B1220] md:ml-[280px]">
+          <HeaderBar />
+          {/* Bottom padding on mobile so content clears the fixed tab bar
+              (56px band + 16px pad = 72px, plus an 8px breathing gap). */}
+          <main className="flex-1 px-4 pb-20 md:px-5 md:pb-6">
+            {children}
+          </main>
+        </div>
+      </PullToRefresh>
 
       <MobileTabBar />
     </div>
