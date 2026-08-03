@@ -25,6 +25,11 @@
 #      App: http://<nas-ip>:8300  (change the host port below if 8300 is taken)
 #      First boot runs DB migrations automatically.
 #      See DEPLOY.md for the GHCR token, HTTPS, updates, and backups.
+#
+# ── 5. (optional) Expose it over the internet ────────────────────────────
+#      A Cloudflare Tunnel gives you a public HTTPS URL with no port-
+#      forwarding — see the commented `cloudflared` service at the bottom of
+#      this file and DEPLOY.md → "Cloudflare Tunnel".
 # =============================================================================
 
 services:
@@ -74,3 +79,28 @@ services:
       - '8300:3000'
     volumes:
       - /mnt/NAS/Data/aftertaste/uploads:/app/uploads
+
+  # ── Optional: expose the app over the internet with a Cloudflare Tunnel ─────
+  # Outbound-only connection to Cloudflare's edge → free HTTPS on your own
+  # subdomain, with NO router port-forwarding. To turn it on:
+  #   1. Cloudflare Zero Trust → Networks → Tunnels → Create a tunnel
+  #      (Cloudflared). Copy the tunnel TOKEN it shows (the long "eyJ..." string).
+  #   2. In the tunnel's "Public Hostname" tab, add:
+  #        Subdomain: recipes   Domain: yourdomain.com
+  #        Service URL: http://app:3000    (http, not https — this network
+  #                                         reaches the app container directly)
+  #   3. Uncomment the block below and paste the token at ⬅ TUNNEL_TOKEN.
+  #   4. Set APP_URL above to https://recipes.yourdomain.com (for reset emails).
+  #   5. docker compose up -d
+  # Logins need no extra config: the app trusts the forwarded host and Cloudflare
+  # sends X-Forwarded-Proto=https, so session cookies stay secure. Full
+  # walkthrough (plus Cloudflare Access hardening) in DEPLOY.md.
+  #
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   restart: unless-stopped
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     TUNNEL_TOKEN: "PASTE_TUNNEL_TOKEN_HERE" # ⬅ TUNNEL_TOKEN
+  #   depends_on:
+  #     - app

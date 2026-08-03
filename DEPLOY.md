@@ -115,6 +115,65 @@ at `http://<nas-ip>:8300`. The app trusts the proxy's forwarded host, so no
 extra config is needed — just make sure the proxy forwards
 `X-Forwarded-Proto: https` so login cookies are marked secure.
 
+## Cloudflare Tunnel (public HTTPS, no port-forwarding)
+
+A [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+gives AfterTaste a public HTTPS URL on your own subdomain over an
+**outbound-only** connection from the NAS — no router ports opened, no static
+IP. `cloudflared` runs as one more container in this compose stack (a
+commented-out service is already in [`docker-compose.yml`](docker-compose.yml)).
+
+**Prerequisite:** a domain on Cloudflare (the free plan is fine — point the
+domain's nameservers at Cloudflare).
+
+1. **Create the tunnel.** Cloudflare **Zero Trust** dashboard → *Networks →
+   Tunnels → Create a tunnel → Cloudflared*, name it `aftertaste`. On the
+   "Install connector" screen, copy the **tunnel token** (the long `eyJ...`
+   string).
+
+2. **Add a public hostname** to the tunnel (still in the dashboard):
+   - Subdomain `recipes`, Domain `yourdomain.com`
+   - **Service URL:** `http://app:3000`
+
+   Use `http`, **not** `https` — TLS is terminated at Cloudflare's edge, and
+   `app:3000` is the app container reached directly over this compose network.
+   (If you run `cloudflared` outside this stack instead, use
+   `http://<nas-ip>:8300`.)
+
+3. **Enable the service.** In `docker-compose.yml`, uncomment the `cloudflared`
+   block at the bottom and paste your token at `PASTE_TUNNEL_TOKEN_HERE`.
+
+4. **Set the public URL.** Set `APP_URL` in the `app` service to
+   `https://recipes.yourdomain.com` so password-reset emails link correctly.
+
+5. **Launch:** `docker compose up -d`. The tunnel connects outbound and the app
+   is live at `https://recipes.yourdomain.com` (the tunnel shows **Healthy** in
+   the dashboard).
+
+**Notes**
+
+- **Logins work with no extra config** — `trustHost` is on and Cloudflare sends
+  `X-Forwarded-Proto: https`, so session cookies are secure. No `AUTH_URL` /
+  `AUTH_TRUST_HOST` needed.
+- You can **delete the `ports: - '8300:3000'`** mapping if you only want tunnel
+  access (nothing on your LAN); `cloudflared` still reaches `app:3000`
+  internally. Keep it for direct `http://<nas-ip>:8300` on your home network.
+- **Lock it down (recommended):** add **Cloudflare Access** (Zero Trust →
+  *Access → Applications* → self-hosted) in front of the hostname with a policy
+  allowing only your household's emails — so only approved people reach the
+  login page at all.
+- Free-plan requests are capped at 100 MB; AfterTaste caps images at 2 MB and
+  PDF imports at 15 MB, so you're well under.
+
+**Quick test without a domain:**
+
+```bash
+docker run --rm cloudflare/cloudflared:latest tunnel --url http://<nas-ip>:8300
+```
+
+prints a temporary `https://<random>.trycloudflare.com` URL — handy to verify
+end-to-end, but ephemeral (not for permanent use).
+
 ## Password-reset emails (optional)
 
 The "Forgot password?" flow emails a reset link via [Resend](https://resend.com).
@@ -172,6 +231,7 @@ docker compose exec db pg_dump -U aftertaste aftertaste > aftertaste-$(date +%F)
 | Image uploads fail / images 404 | `uploads/` isn't writable by uid 1001 — re-run the `chown`, or fix the dataset ACL. |
 | "AUTH_SECRET" error on boot | The `PASTE_AUTH_SECRET_HERE` placeholder wasn't replaced. |
 | Login drops on refresh behind HTTPS | Reverse proxy must forward `X-Forwarded-Proto: https`. |
+| Tunnel shows Healthy but the site 502s | Public-hostname Service URL must be `http://app:3000` (**http**, not https), and `cloudflared` must be in this compose stack so `app` resolves. |
 
 ## Building on the box instead of pulling (optional)
 
