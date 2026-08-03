@@ -17,8 +17,13 @@ import {
   CameraIcon,
   CoffeeIcon,
   SaladIcon,
+  UserIcon,
+  UsersIcon,
+  PaletteIcon,
+  LayoutDashboardIcon,
+  UtensilsCrossedIcon,
+  ChevronDownIcon,
 } from 'lucide-react';
-import { Card } from '@/components/aftertaste/Card';
 import { Avatar } from '@/components/aftertaste/Avatar';
 import { HouseholdManager } from '@/components/aftertaste/HouseholdManager';
 import { TabCustomizer } from '@/components/aftertaste/TabCustomizer';
@@ -49,30 +54,84 @@ function persistPrefs(input: UserPrefsInput) {
   );
 }
 
-function Section({
+/** A collapsible settings category. Only one is open at a time (accordion). */
+function AccordionItem({
+  id,
   title,
   description,
+  icon: Icon,
+  open,
+  onToggle,
+  bodyClassName,
   children,
-  id,
 }: {
+  id: string;
   title: string;
   description?: string;
+  icon: React.ComponentType<{ className?: string }>;
+  open: boolean;
+  onToggle: () => void;
+  bodyClassName?: string;
   children: React.ReactNode;
-  id?: string;
 }) {
   return (
-    <section id={id} className={id ? 'scroll-mt-20' : undefined}>
-      <h2 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-1">
-        {title}
-      </h2>
-      {description && (
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">
-          {description}
-        </p>
+    <div
+      id={id}
+      className="scroll-mt-20 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-slate-900"
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={`${id}-panel`}
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-gray-50/60 dark:hover:bg-slate-800/40"
+      >
+        <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-primary-500/10 text-primary-500">
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-gray-900 dark:text-gray-100">
+            {title}
+          </span>
+          {description && (
+            <span className="block text-xs text-gray-400 dark:text-gray-500">
+              {description}
+            </span>
+          )}
+        </span>
+        <ChevronDownIcon
+          className={cn(
+            'h-5 w-5 flex-shrink-0 text-gray-400 transition-transform',
+            open && 'rotate-180',
+          )}
+        />
+      </button>
+      {open && (
+        <div
+          id={`${id}-panel`}
+          className={cn(
+            'border-t border-gray-100 dark:border-gray-800',
+            bodyClassName ?? 'p-4',
+          )}
+        >
+          {children}
+        </div>
       )}
-      {!description && <div className="mb-3" />}
-      <Card>{children}</Card>
-    </section>
+    </div>
+  );
+}
+
+/** Small heading used to introduce a sub-block inside a category. */
+function SubHeading({ title, hint }: { title: string; hint?: string }) {
+  return (
+    <div className="mb-3">
+      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        {title}
+      </p>
+      {hint && (
+        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{hint}</p>
+      )}
+    </div>
   );
 }
 
@@ -144,8 +203,32 @@ export function SettingsClient({
   const nutritionOn = prefs.nutrition;
   const installAvailable = useInstallAvailable();
 
+  // Accordion: one category open at a time; Account is open by default.
+  const [openCat, setOpenCat] = useState('account');
+  const toggleCat = (id: string) => setOpenCat((c) => (c === id ? '' : id));
+
   useEffect(() => {
     setMounted(true);
+    // Deep-links (e.g. /settings#tabs from the More sheet) open the matching
+    // category and scroll to it.
+    const hash = window.location.hash.replace('#', '');
+    const map: Record<string, string> = {
+      account: 'account',
+      household: 'household',
+      appearance: 'appearance',
+      tabs: 'home-nav',
+      dashboard: 'home-nav',
+      nutrition: 'recipes-nutrition',
+      app: 'app-device',
+    };
+    if (map[hash]) {
+      setOpenCat(map[hash]);
+      requestAnimationFrame(() =>
+        document
+          .getElementById(map[hash])
+          ?.scrollIntoView({ block: 'start', behavior: 'smooth' }),
+      );
+    }
   }, []);
 
   // Persist a nutrition goal on blur. Blank clears it (null).
@@ -219,9 +302,16 @@ export function SettingsClient({
         Settings
       </h1>
 
-      <div className="space-y-6">
-        {/* Profile */}
-        <Section title="Profile">
+      <div className="space-y-3">
+        {/* Account — profile + sign-in */}
+        <AccordionItem
+          id="account"
+          title="Account"
+          description="Your photo, name, email, and password"
+          icon={UserIcon}
+          open={openCat === 'account'}
+          onToggle={() => toggleCat('account')}
+        >
           <div className="space-y-5">
             <div>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -296,37 +386,42 @@ export function SettingsClient({
                 {user.email}
               </p>
             </div>
-
-            <div>
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Measurement units
-              </p>
-              <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 p-1 w-full max-w-xs">
-                {UNIT_OPTIONS.map((u) => {
-                  const active = units === u.key;
-                  return (
-                    <button
-                      key={u.key}
-                      type="button"
-                      onClick={() => selectUnits(u.key)}
-                      className={cn(
-                        'flex-1 flex items-center justify-center h-8 rounded-md text-xs font-medium transition-colors',
-                        active
-                          ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
-                          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400',
-                      )}
-                    >
-                      {u.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
-        </Section>
+
+          <div className="mt-5 border-t border-gray-100 pt-5 dark:border-gray-800">
+            <SubHeading
+              title="Sign in & security"
+              hint="Update the email and password you use to sign in."
+            />
+            <AccountSecurity />
+          </div>
+        </AccordionItem>
+
+        {/* Household */}
+        <AccordionItem
+          id="household"
+          title="Household"
+          description="Who you share recipes and plans with"
+          icon={UsersIcon}
+          open={openCat === 'household'}
+          onToggle={() => toggleCat('household')}
+        >
+          <p className="mb-4 text-xs text-gray-400 dark:text-gray-500">
+            Recipes, groceries, meal plans, ratings, and favorites are shared
+            with everyone in your household.
+          </p>
+          <HouseholdManager initialView={householdView} />
+        </AccordionItem>
 
         {/* Appearance */}
-        <Section title="Appearance">
+        <AccordionItem
+          id="appearance"
+          title="Appearance"
+          description="Theme, accent color, and units"
+          icon={PaletteIcon}
+          open={openCat === 'appearance'}
+          onToggle={() => toggleCat('appearance')}
+        >
           <div className="space-y-5">
             <div>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -383,29 +478,65 @@ export function SettingsClient({
                 })}
               </div>
             </div>
+
+            <div>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Measurement units
+              </p>
+              <div className="flex items-center rounded-lg border border-gray-200 dark:border-gray-700 p-1 w-full max-w-xs">
+                {UNIT_OPTIONS.map((u) => {
+                  const active = units === u.key;
+                  return (
+                    <button
+                      key={u.key}
+                      type="button"
+                      onClick={() => selectUnits(u.key)}
+                      className={cn(
+                        'flex-1 flex items-center justify-center h-8 rounded-md text-xs font-medium transition-colors',
+                        active
+                          ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+                          : 'text-gray-500 hover:text-gray-700 dark:text-gray-400',
+                      )}
+                    >
+                      {u.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        </Section>
+        </AccordionItem>
 
-        {/* Navigation — the mobile bottom tab bar */}
-        <Section
-          id="tabs"
-          title="Navigation"
-          description="Choose the tabs in your mobile bottom bar."
+        {/* Home & navigation — tabs + dashboard */}
+        <AccordionItem
+          id="home-nav"
+          title="Home & navigation"
+          description="Your bottom tabs and dashboard layout"
+          icon={LayoutDashboardIcon}
+          open={openCat === 'home-nav'}
+          onToggle={() => toggleCat('home-nav')}
+          bodyClassName=""
         >
-          <TabCustomizer />
-        </Section>
+          <div id="tabs">
+            <TabCustomizer />
+          </div>
+          <div
+            id="dashboard"
+            className="border-t border-gray-100 dark:border-gray-800"
+          >
+            <DashboardCustomizer />
+          </div>
+        </AccordionItem>
 
-        {/* Dashboard — reorder / hide home-screen sections */}
-        <Section
-          id="dashboard"
-          title="Dashboard"
-          description="Reorder or hide the sections on your home screen."
+        {/* Recipes & nutrition */}
+        <AccordionItem
+          id="recipes-nutrition"
+          title="Recipes & nutrition"
+          description="Import/export and macro tracking"
+          icon={UtensilsCrossedIcon}
+          open={openCat === 'recipes-nutrition'}
+          onToggle={() => toggleCat('recipes-nutrition')}
         >
-          <DashboardCustomizer />
-        </Section>
-
-        {/* Recipes: import & export */}
-        <Section title="Recipes">
           <div className="divide-y divide-gray-100 dark:divide-gray-800">
             <SettingRow
               icon={UploadIcon}
@@ -448,66 +579,25 @@ export function SettingsClient({
                 />
               }
             />
+            <SettingRow
+              icon={SaladIcon}
+              title="Nutrition &amp; macro tracking"
+              subtitle="Show calories and macros on recipes, and enable the food log"
+              action={
+                <Toggle
+                  checked={nutritionOn}
+                  onChange={(v) => setUserPref({ nutrition: v })}
+                  label="Nutrition and macro tracking"
+                />
+              }
+            />
           </div>
-        </Section>
-
-        {/* Share to AfterTaste */}
-        <Section
-          title="Share to AfterTaste"
-          description="Send a recipe link straight into the app from your phone's share sheet."
-        >
-          <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300">
-            <div className="flex items-start gap-2.5">
-              <Share2Icon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-              <p>
-                <span className="font-medium text-gray-900 dark:text-gray-100">
-                  Android:
-                </span>{' '}
-                install AfterTaste (below), then choose it in any browser&apos;s
-                Share menu.
-              </p>
-            </div>
-            <div className="flex items-start gap-2.5">
-              <SmartphoneIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-              <p>
-                <span className="font-medium text-gray-900 dark:text-gray-100">
-                  iPhone:
-                </span>{' '}
-                iOS can&apos;t share into web apps directly, so add a one-tap
-                Shortcut — create a Shortcut with{' '}
-                <em>Receive URLs from Share Sheet</em> → <em>Open URL</em> set to{' '}
-                <code className="text-[11px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
-                  {mounted ? window.location.origin : ''}/import?url=[Shortcut
-                  Input]
-                </code>
-                .
-              </p>
-            </div>
-          </div>
-        </Section>
-
-        {/* Nutrition */}
-        <Section title="Nutrition">
-          <SettingRow
-            icon={SaladIcon}
-            title="Nutrition &amp; macro tracking"
-            subtitle="Show calories and macros on recipes, and enable the food log"
-            action={
-              <Toggle
-                checked={nutritionOn}
-                onChange={(v) => setUserPref({ nutrition: v })}
-                label="Nutrition and macro tracking"
-              />
-            }
-          />
           {nutritionOn && (
-            <div className="border-t border-gray-100 px-4 py-4 dark:border-gray-800">
-              <p className="mb-1 text-sm font-medium text-gray-900 dark:text-gray-100">
-                Daily goals
-              </p>
-              <p className="mb-3 text-xs text-gray-400 dark:text-gray-500">
-                Your personal targets for the food log. Leave blank for no goal.
-              </p>
+            <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
+              <SubHeading
+                title="Daily goals"
+                hint="Your personal targets for the food log. Leave blank for no goal."
+              />
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {(
                   [
@@ -539,85 +629,105 @@ export function SettingsClient({
               </div>
             </div>
           )}
-        </Section>
+        </AccordionItem>
 
-        {/* Cooking */}
-        <Section title="Cooking">
-          <SettingRow
-            icon={CoffeeIcon}
-            title="Keep screen awake in a recipe"
-            subtitle="Stop your phone from sleeping while a recipe is open"
-            action={
-              <Toggle
-                checked={keepAwakeOn}
-                onChange={(v) => setUserPref({ keepAwake: v })}
-                label="Keep screen awake in a recipe"
-              />
-            }
-          />
-        </Section>
-
-        {/* Notifications */}
-        <Section title="Notifications">
-          <SettingRow
-            icon={BellIcon}
-            title="Activity &amp; reminders"
-            subtitle="Show today's meals, grocery items, and things to rate in the bell"
-            action={
-              <Toggle
-                checked={notificationsOn}
-                onChange={(v) => setUserPref({ notifications: v })}
-                label="Activity and reminders"
-              />
-            }
-          />
-        </Section>
-
-        {/* Install */}
-        <Section title="App">
-          <SettingRow
-            icon={SmartphoneIcon}
-            title="Install AfterTaste"
-            subtitle={
-              isStandalone
-                ? 'Installed — running as an app'
-                : installAvailable
-                  ? 'Add AfterTaste to your home screen'
-                  : 'Use your browser menu → Add to Home Screen / Install'
-            }
-            action={
-              isStandalone ? (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                  <CheckIcon className="w-3.5 h-3.5" /> Installed
-                </span>
-              ) : installAvailable ? (
-                <button
-                  type="button"
-                  onClick={() => promptInstall()}
-                  className="h-8 px-3 rounded-lg text-xs font-medium bg-primary-500 text-white hover:bg-primary-700 transition-colors"
-                >
-                  Install
-                </button>
-              ) : null
-            }
-          />
-        </Section>
-
-        {/* Sign in & security */}
-        <Section
-          title="Sign in &amp; security"
-          description="Update the email and password you use to sign in."
+        {/* App & device */}
+        <AccordionItem
+          id="app-device"
+          title="App & device"
+          description="Install, sharing, and on-device behavior"
+          icon={SmartphoneIcon}
+          open={openCat === 'app-device'}
+          onToggle={() => toggleCat('app-device')}
         >
-          <AccountSecurity />
-        </Section>
-
-        {/* Household */}
-        <Section
-          title="Household"
-          description="Recipes, groceries, meal plans, ratings, and favorites are shared with everyone in your household."
-        >
-          <HouseholdManager initialView={householdView} />
-        </Section>
+          <div className="divide-y divide-gray-100 dark:divide-gray-800">
+            <SettingRow
+              icon={SmartphoneIcon}
+              title="Install AfterTaste"
+              subtitle={
+                isStandalone
+                  ? 'Installed — running as an app'
+                  : installAvailable
+                    ? 'Add AfterTaste to your home screen'
+                    : 'Use your browser menu → Add to Home Screen / Install'
+              }
+              action={
+                isStandalone ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    <CheckIcon className="w-3.5 h-3.5" /> Installed
+                  </span>
+                ) : installAvailable ? (
+                  <button
+                    type="button"
+                    onClick={() => promptInstall()}
+                    className="h-8 px-3 rounded-lg text-xs font-medium bg-primary-500 text-white hover:bg-primary-700 transition-colors"
+                  >
+                    Install
+                  </button>
+                ) : null
+              }
+            />
+            <SettingRow
+              icon={CoffeeIcon}
+              title="Keep screen awake in a recipe"
+              subtitle="Stop your phone from sleeping while a recipe is open"
+              action={
+                <Toggle
+                  checked={keepAwakeOn}
+                  onChange={(v) => setUserPref({ keepAwake: v })}
+                  label="Keep screen awake in a recipe"
+                />
+              }
+            />
+            <SettingRow
+              icon={BellIcon}
+              title="Activity &amp; reminders"
+              subtitle="Show today's meals, grocery items, and things to rate in the bell"
+              action={
+                <Toggle
+                  checked={notificationsOn}
+                  onChange={(v) => setUserPref({ notifications: v })}
+                  label="Activity and reminders"
+                />
+              }
+            />
+          </div>
+          <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
+            <SubHeading
+              title="Share to AfterTaste"
+              hint="Send a recipe link straight into the app from your phone's share sheet."
+            />
+            <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300">
+              <div className="flex items-start gap-2.5">
+                <Share2Icon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <p>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    Android:
+                  </span>{' '}
+                  install AfterTaste (above), then choose it in any
+                  browser&apos;s Share menu.
+                </p>
+              </div>
+              <div className="flex items-start gap-2.5">
+                <SmartphoneIcon className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <p>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">
+                    iPhone:
+                  </span>{' '}
+                  iOS can&apos;t share into web apps directly, so add a one-tap
+                  Shortcut — create a Shortcut with{' '}
+                  <em>Receive URLs from Share Sheet</em> → <em>Open URL</em> set
+                  to{' '}
+                  <code className="text-[11px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
+                    {mounted ? window.location.origin : ''}/import?url=[Shortcut
+                    Input]
+                  </code>
+                  .
+                </p>
+              </div>
+            </div>
+          </div>
+        </AccordionItem>
       </div>
 
       <ImportRecipeModal open={importOpen} onClose={() => setImportOpen(false)} />
