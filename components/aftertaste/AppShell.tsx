@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { SidebarNav } from './SidebarNav';
 import { HeaderBar } from './HeaderBar';
 import { MobileTabBar } from './MobileTabBar';
+import { PullToRefresh } from './PullToRefresh';
 import { initInstallCapture } from '@/lib/pwa-install';
 
 interface AppShellProps {
@@ -23,6 +24,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-gray-50 dark:bg-[#0B1220] transition-colors">
+      <PullToRefresh />
       {/* Desktop sidebar (fixed). On mobile, navigation lives in the bottom bar
           + More sheet, so there's no drawer/hamburger. */}
       <aside
