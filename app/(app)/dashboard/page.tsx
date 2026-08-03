@@ -104,9 +104,10 @@ export default function DashboardPage() {
   const greeting =
     hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
 
-  // Each dashboard section keyed by id; the user's pref decides which show and
-  // in what order. Sections keep their column (main vs side rail) so the
-  // two-column desktop layout is preserved; reorder/hide happen within it.
+  // Each dashboard section keyed by id. The saved order is the MOBILE order
+  // (one column, exactly as configured). On desktop we project that same list
+  // into two columns — rail sections peel off to the side panel — so the
+  // two-column layout is preserved without losing free mobile ordering.
   const recipeSection = (
     title: string,
     key: string,
@@ -184,7 +185,20 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className={cn('grid gap-5', twoColumn ? 'lg:grid-cols-3' : 'grid-cols-1')}>
+      {/* Mobile: one column in the exact saved order (rail sections can lead). */}
+      <div className="space-y-6 lg:hidden">
+        {orderedIds.map((id) => (
+          <div key={id}>{sectionNodes[id]}</div>
+        ))}
+      </div>
+
+      {/* Desktop: the same list projected into two columns. */}
+      <div
+        className={cn(
+          'hidden gap-5 lg:grid',
+          twoColumn ? 'lg:grid-cols-3' : 'lg:grid-cols-1',
+        )}
+      >
         {mainIds.length > 0 && (
           <div className={cn('space-y-5', twoColumn && 'lg:col-span-2')}>
             {mainIds.map((id) => (
