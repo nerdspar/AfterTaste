@@ -250,7 +250,8 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
           setError('Could not parse JSON file.');
         }
       } else {
-        const parsed = parseRecipeFromText(content);
+        const fallbackTitle = file.name.replace(/\.[^.]+$/, '').trim();
+        const parsed = parseRecipeFromText(content, { fallbackTitle });
         navigateWithData(parsed);
       }
     };

@@ -450,110 +450,234 @@ export function parseRecipeFromMeta(html: string): ParsedRecipe | null {
   };
 }
 
-export function parseRecipeFromText(text: string): ParsedRecipe {
+// --- Plain-text / PDF / docx recipe parsing --------------------------------
+//
+// PDFs and pasted text have no structure to lean on, so we classify each line:
+// numbered lines are steps, quantity/bullet lines are ingredients, "Label:"
+// lines are metadata (times/servings) or sub-section headers, and boilerplate
+// (URLs, copyright, page footers) is dropped. Wrapped step lines are re-joined.
+
+const TEXT_JUNK: RegExp[] = [
+  /^https?:\/\//i,
+  /©|\bcopyright\b/i,
+  /all rights reserved/i,
+  /^\d+\s+of\s+\d+\b/i, // "1 of 1  5/26/11 3:15 PM"
+  /^page\s+\d+\b/i,
+  /\brecipe courtesy\b/i,
+  /television food network/i,
+];
+function isTextJunk(line: string): boolean {
+  return TEXT_JUNK.some((re) => re.test(line));
+}
+
+const FOOD_UNIT =
+  '(?:cups?|c|tbsps?|tablespoons?|tsps?|teaspoons?|pounds?|lbs?|ounces?|oz|grams?|g|kg|ml|milliliters?|l|liters?|litres?|cloves?|cans?|packages?|pkgs?|pinch(?:es)?|quarts?|qts?|pints?|pts?|sticks?|slices?|ribs?|bunch(?:es)?|dash(?:es)?|handfuls?|sprigs?|stalks?|heads?|boxes?|box|jars?|bottles?|bags?|containers?)';
+const QTY_START = /^[\d¼½¾⅓⅔⅛⅜⅝⅞]/;
+const NUMBERED = /^(\d{1,3})[.)]\s+(.*\S)/;
+const BULLET = /^[-–—•*·▪]\s+/;
+const FOOD_UNIT_WORD = new RegExp(`^${FOOD_UNIT}[.,]?$`, 'i');
+const FOOD_UNIT_NEAR = new RegExp(`\\b${FOOD_UNIT}\\b`, 'i');
+
+// A quantity line naming a food measure ("¼ cup butter") — an ingredient even
+// when it appears amid the steps. Excludes "5 to 7 minutes" / "500 degrees F".
+function looksLikeIngredient(line: string): boolean {
+  if (!QTY_START.test(line)) return false;
+  return FOOD_UNIT_NEAR.test(line.split(/\s+/).slice(0, 4).join(' '));
+}
+
+function splitIngredient(line: string): { quantity: string; name: string } {
+  const m = line.match(
+    /^((?:\d+\s+\d+\/\d+)|(?:\d+\/\d+)|(?:\d+(?:\.\d+)?)|[¼½¾⅓⅔⅛⅜⅝⅞])\s*(.*)$/,
+  );
+  if (!m) return { quantity: '', name: line };
+  let quantity = m[1];
+  let rest = m[2];
+  const words = rest.split(/\s+/);
+  if (words[0] && FOOD_UNIT_WORD.test(words[0])) {
+    quantity = `${quantity} ${words[0].replace(/[.,]$/, '')}`.trim();
+    rest = words.slice(1).join(' ');
+  }
+  return { quantity: quantity.trim(), name: rest.trim() || line };
+}
+
+function firstInt(s: string): number | undefined {
+  const m = s.match(/\d+/);
+  return m ? parseInt(m[0], 10) : undefined;
+}
+
+interface MetaHit {
+  kind: 'prep' | 'cook' | 'serves' | 'skip';
+  minutes?: number;
+  number?: number;
+  consumeNext?: boolean;
+}
+function classifyMetaLabel(label: string): MetaHit['kind'] | null {
+  const l = label.toLowerCase().trim();
+  if (/^(?:active\s+|inactive\s+)?prep(?:\s*time)?$/.test(l)) return 'prep';
+  if (/^(?:cook(?:ing)?|bake|baking|total)(?:\s*time)?$/.test(l))
+    return l.startsWith('total') ? 'skip' : 'cook';
+  if (/^(?:serves?|servings?|yields?|makes|portions?)$/.test(l)) return 'serves';
+  if (/^(?:level|difficulty|category|course|cuisine|prep time)$/.test(l))
+    return 'skip';
+  return null;
+}
+// Recognize "Prep Time: 10 min" (inline) or "Serves:" then the value on the
+// next line. Returns null for anything that isn't a known metadata label.
+function matchMeta(line: string, next: string | undefined): MetaHit | null {
+  const inline = line.match(/^([A-Za-z][A-Za-z /]*?)\s*:\s*(\S.*)$/);
+  if (inline) {
+    const kind = classifyMetaLabel(inline[1]);
+    if (!kind) return null;
+    if (kind === 'prep' || kind === 'cook')
+      return { kind, minutes: parseMinutesFromText(inline[2]) };
+    if (kind === 'serves') return { kind, number: firstInt(inline[2]) };
+    return { kind: 'skip' };
+  }
+  const only = line.match(/^([A-Za-z][A-Za-z /]*?)\s*:\s*$/);
+  if (only && next) {
+    const kind = classifyMetaLabel(only[1]);
+    if (!kind) return null;
+    if (kind === 'prep' || kind === 'cook')
+      return { kind, minutes: parseMinutesFromText(next), consumeNext: true };
+    if (kind === 'serves')
+      return { kind, number: firstInt(next), consumeNext: true };
+    return { kind: 'skip', consumeNext: true };
+  }
+  return null;
+}
+
+export function parseRecipeFromText(
+  text: string,
+  opts: { fallbackTitle?: string } = {},
+): ParsedRecipe {
   const lines = text
     .split('\n')
     .map((l) => l.trim())
-    .filter(Boolean);
+    .filter((l) => l && !isTextJunk(l));
 
-  const title = lines[0] || 'Untitled Recipe';
-
-  const ingredientPatterns =
-    /^[-•*]\s+|^\d+[.)]\s+|^(?:[\d/½¼¾⅓⅔⅛]+\s)/;
-  const ingredientLines: string[] = [];
-  const instructionLines: string[] = [];
-  let inIngredients = false;
-  let inInstructions = false;
   let servings: number | undefined;
   let prepTimeMinutes: number | undefined;
   let cookTimeMinutes: number | undefined;
-  let description = '';
+  let textTitle: string | undefined;
 
-  for (const line of lines.slice(1)) {
-    const lower = line.toLowerCase();
-    if (/^ingredients?:?$/i.test(line)) {
-      inIngredients = true;
-      inInstructions = false;
+  const ingredients: Ingredient[] = [];
+  const steps: Instruction[] = [];
+  let mode: 'pre' | 'ingredients' | 'instructions' = 'pre';
+  let lastNumbered = false;
+
+  const addIngredient = (line: string) => {
+    const { quantity, name } = splitIngredient(line);
+    if (name) ingredients.push({ name, quantity, image: '' });
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Metadata (times / servings) — only before the instructions body, so a
+    // step that says "Bake: ..." isn't eaten.
+    if (mode !== 'instructions') {
+      const meta = matchMeta(line, lines[i + 1]);
+      if (meta) {
+        if (meta.consumeNext) i++;
+        if (meta.kind === 'prep' && prepTimeMinutes === undefined)
+          prepTimeMinutes = meta.minutes;
+        if (meta.kind === 'cook' && cookTimeMinutes === undefined)
+          cookTimeMinutes = meta.minutes;
+        if (meta.kind === 'serves' && servings === undefined)
+          servings = meta.number;
+        continue;
+      }
+    }
+
+    // Explicit "Ingredients" / "Directions" headers switch mode.
+    if (/^ingredients?:?\s*$/i.test(line)) {
+      mode = 'ingredients';
       continue;
     }
     if (
-      /^(?:instructions?|directions?|steps?|method|preparation):?$/i.test(line)
+      /^(?:directions?|instructions?|method|steps?|preparation|procedure):?\s*$/i.test(
+        line,
+      )
     ) {
-      inInstructions = true;
-      inIngredients = false;
+      mode = 'instructions';
       continue;
     }
 
-    // Metadata labels only apply in the header, before the ingredient/step
-    // bodies (a step may legitimately mention "cook 5 minutes").
-    if (!inIngredients && !inInstructions) {
-      const servingsMatch = line.match(
-        /^(?:servings?|serves|yields?|makes)\b[:\s]+(.+)$/i,
-      );
-      if (servingsMatch) {
-        if (servings === undefined) {
-          const n = parseInt(servingsMatch[1], 10);
-          if (!isNaN(n)) servings = n;
-        }
-        continue;
-      }
-      const prepMatch = line.match(/^prep(?:\s*time)?\b[:\s]+(.+)$/i);
-      if (prepMatch) {
-        if (prepTimeMinutes === undefined)
-          prepTimeMinutes = parseMinutesFromText(prepMatch[1]);
-        continue;
-      }
-      const cookMatch = line.match(/^cook(?:ing)?(?:\s*time)?\b[:\s]+(.+)$/i);
-      if (cookMatch) {
-        if (cookTimeMinutes === undefined)
-          cookTimeMinutes = parseMinutesFromText(cookMatch[1]);
-        continue;
-      }
-      // "Total Time" isn't stored, but shouldn't leak into the description.
-      if (/^total\s*time\b[:\s]/i.test(line)) continue;
+    // Numbered lines are always steps.
+    const num = line.match(NUMBERED);
+    if (num) {
+      mode = 'instructions';
+      steps.push({ step: '', title: '', body: num[2].trim(), videoThumb: '' });
+      lastNumbered = true;
+      continue;
     }
 
-    if (inIngredients) {
-      ingredientLines.push(line.replace(/^[-•*]\s+/, ''));
-    } else if (inInstructions) {
-      instructionLines.push(line.replace(/^\d+[.)]\s+/, ''));
-    } else if (ingredientPatterns.test(line) && !inInstructions) {
-      ingredientLines.push(line.replace(/^[-•*]\s+/, ''));
-    } else if (/^\d+[.)]\s/.test(line)) {
-      instructionLines.push(line.replace(/^\d+[.)]\s+/, ''));
-    } else if (lower.includes('cup') || lower.includes('tbsp') || lower.includes('tsp') || lower.includes('oz')) {
-      ingredientLines.push(line);
-    } else if (!description) {
-      // First prose line before any section becomes the description.
-      description = line;
+    // Bulleted lines are ingredients.
+    if (BULLET.test(line)) {
+      if (mode === 'pre') mode = 'ingredients';
+      addIngredient(line.replace(BULLET, ''));
+      continue;
+    }
+
+    // A quantity + food-unit line is an ingredient, even amid the steps.
+    if (looksLikeIngredient(line)) {
+      if (mode === 'pre') mode = 'ingredients';
+      addIngredient(line);
+      continue;
+    }
+
+    // A short "Label:" line is an ingredient sub-section (e.g. "Stuffing:").
+    if (/:\s*$/.test(line) && line.length <= 32 && !QTY_START.test(line)) {
+      const label = line.replace(/:\s*$/, '').trim();
+      if (mode === 'instructions') {
+        steps.push({ step: '', title: '', body: label, videoThumb: '' });
+        lastNumbered = false;
+      } else {
+        if (mode === 'pre') mode = 'ingredients';
+        ingredients.push({ name: '', quantity: '', image: '', section: label });
+      }
+      continue;
+    }
+
+    // Plain prose.
+    if (mode === 'instructions') {
+      const last = steps[steps.length - 1];
+      // A wrapped continuation (after a numbered step, or a line that didn't end
+      // a sentence) is appended; otherwise it starts a new step.
+      if (last && (lastNumbered || !/[.!?]$/.test(last.body))) {
+        last.body = `${last.body} ${line}`.trim();
+      } else {
+        steps.push({ step: '', title: '', body: line, videoThumb: '' });
+      }
+      lastNumbered = false;
+    } else if (mode === 'ingredients') {
+      addIngredient(line);
+    } else if (textTitle === undefined) {
+      // First prose line before anything else — the in-text title candidate.
+      textTitle = line;
+      mode = 'ingredients';
     }
   }
 
-  const ingredients: Ingredient[] = ingredientLines.map((line) => {
-    const parts = line.match(/^([\d/.\s½¼¾⅓⅔⅛]+\s*\w*)\s+(.+)$/);
-    return {
-      name: parts ? parts[2].trim() : line,
-      quantity: parts ? parts[1].trim() : '',
-      image: '',
-    };
+  steps.forEach((s, i) => {
+    s.step = String(i + 1).padStart(2, '0');
+    s.title = `Step ${i + 1}`;
   });
 
-  const instructions: Instruction[] = instructionLines.map((line, i) => ({
-    step: String(i + 1).padStart(2, '0'),
-    title: `Step ${i + 1}`,
-    body: line,
-    videoThumb: '',
-  }));
+  const title =
+    (opts.fallbackTitle && opts.fallbackTitle.trim()) ||
+    textTitle ||
+    lines[0] ||
+    'Untitled Recipe';
 
   return decodeParsed({
     title,
-    description: description || undefined,
     category: guessCategory(title),
     servings,
     prepTimeMinutes,
     cookTimeMinutes,
     ingredients: ingredients.length > 0 ? ingredients : undefined,
-    instructions: instructions.length > 0 ? instructions : undefined,
+    instructions: steps.length > 0 ? steps : undefined,
   });
 }
 

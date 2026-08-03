@@ -37,7 +37,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const recipe = parseRecipeFromText(content);
+    const fallbackTitle = file.name.replace(/\.[^.]+$/, '').trim();
+    const recipe = parseRecipeFromText(content, { fallbackTitle });
     return NextResponse.json({ recipe });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to read document';
