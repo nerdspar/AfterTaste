@@ -54,6 +54,10 @@ async function fetchJson(
   try {
     const res = await fetch(url, { ...init, signal: ctrl.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // The APIs sometimes return an HTML error/interstitial page with a 200;
+    // parsing that as JSON throws deep in .json(). Fail cleanly instead.
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('json')) throw new Error(`non-JSON response (${ct})`);
     return await res.json();
   } finally {
     clearTimeout(t);
@@ -71,17 +75,6 @@ type OffProduct = {
   serving_quantity?: number | string;
   nutriments?: Record<string, number | string>;
 };
-
-// Keep a search hit only if it reads in English or is a branded product
-// (branded foreign names like "Nutella" are fine — it's generic non-English
-// entries like "Bananes" we want to drop). Barcode lookups skip this.
-function isEnglishOrBranded(p: OffProduct): boolean {
-  return Boolean(
-    (p.brands || '').trim() ||
-      p.lang === 'en' ||
-      (p.product_name_en || '').trim(),
-  );
-}
 
 function offToItem(p: OffProduct, fallbackCode?: string): FoodItem | null {
   const name = (p.product_name_en || p.product_name || '').trim();
@@ -121,26 +114,25 @@ function offToItem(p: OffProduct, fallbackCode?: string): FoodItem | null {
 }
 
 async function searchOff(query: string, limit: number): Promise<FoodItem[]> {
+  // Open Food Facts' "Search-a-licious" API. Unlike the legacy cgi/search.pl
+  // (which is slow and often returns an HTML error page instead of JSON, and is
+  // French-dominated), this returns reliable JSON and honours `lang=en`, so
+  // results are relevant AND in English.
   const url =
-    'https://world.openfoodfacts.org/cgi/search.pl?' +
+    'https://search.openfoodfacts.org/search?' +
     new URLSearchParams({
-      search_terms: query,
-      search_simple: '1',
-      action: 'process',
-      json: '1',
+      q: query,
       page_size: String(limit),
-      lc: 'en', // prefer English product names
+      lang: 'en',
       fields:
         'code,product_name,product_name_en,lang,brands,serving_quantity,nutriments',
     });
   const data = (await fetchJson(url, {
     headers: { 'User-Agent': OFF_UA },
-  })) as { products?: OffProduct[] };
-  const items = (data.products || [])
-    .filter(isEnglishOrBranded)
+  })) as { hits?: OffProduct[] };
+  return (data.hits || [])
     .map((p) => offToItem(p))
     .filter((x): x is FoodItem => x != null);
-  return items;
 }
 
 // ---- USDA FoodData Central ---------------------------------------------------
@@ -210,10 +202,19 @@ async function searchUsda(query: string, limit: number): Promise<FoodItem[]> {
 
 // ---- public API --------------------------------------------------------------
 
+// Cache recent searches (per server process) so typing/backspacing and repeat
+// lookups don't re-hit the APIs — helps latency and the USDA DEMO_KEY limit.
+const searchCache = new Map<string, FoodItem[]>();
+
 /** Search both sources in parallel and interleave the results. */
 export async function searchFoods(query: string): Promise<FoodItem[]> {
   const q = query.trim();
   if (q.length < 2) return [];
+
+  const cacheKey = q.toLowerCase();
+  const cached = searchCache.get(cacheKey);
+  if (cached) return cached;
+
   const [off, usda] = await Promise.all([
     searchOff(q, 15).catch(() => [] as FoodItem[]),
     searchUsda(q, 15).catch(() => [] as FoodItem[]),
@@ -232,7 +233,13 @@ export async function searchFoods(query: string): Promise<FoodItem[]> {
       out.push(item);
     }
   }
-  return out.slice(0, 24);
+  const result = out.slice(0, 24);
+  // Only cache non-empty results, so a transient API blip isn't sticky.
+  if (result.length > 0) {
+    if (searchCache.size > 300) searchCache.clear();
+    searchCache.set(cacheKey, result);
+  }
+  return result;
 }
 
 /** Look up a single product by barcode (Open Food Facts). */
