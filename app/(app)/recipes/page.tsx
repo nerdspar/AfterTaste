@@ -17,6 +17,7 @@ import { useFavorites } from '@/components/aftertaste/FavoritesProvider';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
 import { computePersonalRating } from '@/lib/recipe-rating';
+import { searchRecipes } from '@/lib/recipe-search';
 import { cn } from '@/lib/utils';
 import {
   defaultFilterConfigs,
@@ -135,15 +136,8 @@ function MyRecipesContent() {
     let result = [...allRecipes];
 
     if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (r) =>
-          r.title.toLowerCase().includes(q) ||
-          r.category.toLowerCase().includes(q) ||
-          r.cuisine.toLowerCase().includes(q) ||
-          r.description.toLowerCase().includes(q) ||
-          (r.tags ?? []).some((t) => t.toLowerCase().includes(q)),
-      );
+      // Deep match: title, ingredients, steps, tags, notes, cuisine, source…
+      result = searchRecipes(result, searchQuery);
     }
 
     if (activeTab === 'Favorites') {

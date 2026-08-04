@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { SearchIcon, ChevronLeftIcon } from 'lucide-react';
+import { ChevronLeftIcon } from 'lucide-react';
 import { ActivityCenter } from './ActivityCenter';
 import { AccountMenu } from './AccountMenu';
+import { GlobalSearch } from './GlobalSearch';
 
 interface HeaderBarProps {
   className?: string;
@@ -23,33 +23,8 @@ function parentPath(p: string): string | null {
 }
 
 export function HeaderBar({ className }: HeaderBarProps) {
-  const router = useRouter();
   const pathname = usePathname();
-  const [query, setQuery] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [placeholder, setPlaceholder] = useState('Search recipes...');
-
   const back = parentPath(pathname);
-
-  useEffect(() => {
-    const el = inputRef.current;
-    if (!el) return;
-    const update = () => {
-      setPlaceholder(el.clientWidth < 190 ? 'Search' : 'Search recipes...');
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    const q = query.trim();
-    if (q) {
-      router.push(`/recipes?q=${encodeURIComponent(q)}`);
-    }
-  }
 
   return (
     <header
@@ -69,26 +44,8 @@ export function HeaderBar({ className }: HeaderBarProps) {
         </Link>
       )}
 
-      {/* Search */}
-      <form onSubmit={handleSearch} className="relative flex-1 min-w-0 max-w-md">
-        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder={placeholder}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className={cn(
-            'w-full h-10 pl-9 pr-4 rounded-full text-sm',
-            'bg-gray-100 dark:bg-gray-800/60',
-            'border border-transparent focus:border-secondary-500/40',
-            'text-gray-900 dark:text-gray-100',
-            'placeholder:text-gray-400 dark:placeholder:text-gray-500',
-            'focus:outline-none focus:ring-2 focus:ring-secondary-500/20',
-            'transition-colors',
-          )}
-        />
-      </form>
+      {/* Search — live typeahead across the whole recipe */}
+      <GlobalSearch />
 
       {/* Right actions */}
       <div className="flex items-center gap-1">
