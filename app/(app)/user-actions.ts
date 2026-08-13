@@ -25,6 +25,7 @@ export interface UserPrefsInput {
   tabConfig?: string[];
   recipeSort?: string;
   dashboardSections?: string[];
+  addButton?: string;
 }
 
 /** Persist the signed-in user's profile / preferences. */
@@ -58,6 +59,7 @@ export async function updateUserPrefs(input: UserPrefsInput): Promise<void> {
   if (input.recipeSort !== undefined) data.recipeSort = input.recipeSort;
   if (input.dashboardSections !== undefined)
     data.dashboardSections = input.dashboardSections;
+  if (input.addButton !== undefined) data.addButton = input.addButton;
   if (Object.keys(data).length === 0) return;
 
   await prisma.user.update({ where: { id: userId }, data });

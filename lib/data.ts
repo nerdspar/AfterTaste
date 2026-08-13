@@ -297,6 +297,8 @@ export interface UserPrefs {
   recipeSort: string;
   /** Ordered list of visible dashboard section ids. */
   dashboardSections: string[];
+  /** Add-recipe button placement: 'header' | 'fab' | 'off'. */
+  addButton: string;
 }
 
 /** Load the signed-in user's profile + preferences. */
@@ -322,6 +324,7 @@ export async function loadUserProfile(): Promise<UserProfile> {
       tabConfig: true,
       recipeSort: true,
       dashboardSections: true,
+      addButton: true,
     },
   });
   if (!u) redirect('/login');
@@ -351,6 +354,7 @@ export async function loadUserProfile(): Promise<UserProfile> {
         u.dashboardSections.length > 0
           ? u.dashboardSections
           : DEFAULT_DASHBOARD_SECTIONS,
+      addButton: u.addButton || 'header',
     },
   };
 }

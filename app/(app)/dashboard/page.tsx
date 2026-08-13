@@ -9,6 +9,7 @@ import { GroceryListWidget } from '@/components/aftertaste/dashboard/GroceryList
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { useFirstName } from '@/components/aftertaste/CurrentUserProvider';
 import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
+import { AddRecipe } from '@/components/aftertaste/AddRecipe';
 import { useRecentlyViewedIds } from '@/lib/recently-viewed';
 import { recipePersonalRating } from '@/lib/recipe-rating';
 import { DASHBOARD_SECTION_BY_ID } from '@/lib/dashboard-sections';
@@ -211,13 +212,16 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto">
       {/* Greeting */}
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-          Good {greeting}, {firstName}
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          What would you like to cook today?
-        </p>
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+            Good {greeting}, {firstName}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            What would you like to cook today?
+          </p>
+        </div>
+        <AddRecipe />
       </div>
 
       {/* Mobile: one column in the exact saved order (rail sections can lead). */}

@@ -526,6 +526,39 @@ export function SettingsClient({
           >
             <DashboardCustomizer />
           </div>
+          <div className="border-t border-gray-100 px-4 py-4 dark:border-gray-800">
+            <p className="mb-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+              Add-recipe button
+            </p>
+            <p className="mb-3 text-xs text-gray-400 dark:text-gray-500">
+              Where the “+” to add a recipe shows on the Home and Recipes
+              screens. It&apos;s always in the More menu too.
+            </p>
+            <div className="flex items-center rounded-lg border border-gray-200 p-1 max-w-xs dark:border-gray-700">
+              {[
+                { key: 'header', label: 'In header' },
+                { key: 'fab', label: 'Floating' },
+                { key: 'off', label: 'Hidden' },
+              ].map((o) => {
+                const active = (prefs.addButton || 'header') === o.key;
+                return (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => setUserPref({ addButton: o.key })}
+                    className={cn(
+                      'flex-1 flex items-center justify-center h-8 rounded-md text-xs font-medium transition-colors',
+                      active
+                        ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400',
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </AccordionItem>
 
         {/* Recipes & nutrition */}

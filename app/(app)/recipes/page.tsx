@@ -13,6 +13,7 @@ import {
   BulkEditBar,
   type BulkPatch,
 } from '@/components/aftertaste/recipes/BulkSelect';
+import { AddRecipe } from '@/components/aftertaste/AddRecipe';
 import { useFavorites } from '@/components/aftertaste/FavoritesProvider';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
@@ -165,9 +166,12 @@ function MyRecipesContent() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-5">
-        {searchQuery ? `Search: "${searchQuery}"` : 'My Recipes'}
-      </h1>
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          {searchQuery ? `Search: "${searchQuery}"` : 'My Recipes'}
+        </h1>
+        <AddRecipe />
+      </div>
 
       {/* Dish type tabs */}
       <div className="flex flex-wrap gap-2 mb-4">
