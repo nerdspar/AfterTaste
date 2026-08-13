@@ -1,5 +1,6 @@
 import { SectionHeader } from '../SectionHeader';
 import { StepMedia } from './StepMedia';
+import { isGenericStepTitle } from '@/lib/recipe-parser';
 import type { Instruction } from '@/data/sample/recipes';
 
 interface CookingInstructionsProps {
@@ -39,7 +40,7 @@ export function CookingInstructions({ instructions }: CookingInstructionsProps) 
                 <p className="text-[11px] font-bold text-primary-500 dark:text-primary-400 tabular-nums mb-0.5">
                   Step {String(stepNum).padStart(2, '0')}
                 </p>
-                {inst.title && (
+                {!isGenericStepTitle(inst.title) && (
                   <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-0.5">
                     {inst.title}
                   </h4>

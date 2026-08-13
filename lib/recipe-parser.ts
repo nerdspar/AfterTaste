@@ -26,6 +26,14 @@ export interface ParsedRecipe {
   sourceUrl?: string;
 }
 
+// A step "title" that just repeats the automatic number ("Step 1", "1.", "2)")
+// is noise — the UI already numbers steps — so treat those (and blanks) as no
+// title. A real sub-heading like "Make the sauce" is kept.
+const GENERIC_STEP_TITLE = /^\s*(?:step\s*)?\d+\s*[.:)]?\s*$/i;
+export function isGenericStepTitle(title: string | undefined): boolean {
+  return !title || !title.trim() || GENERIC_STEP_TITLE.test(title.trim());
+}
+
 // Recipe sites often embed HTML entities inside their JSON-LD/meta text
 // (e.g. "it&#39;s fast" or "salt &amp; pepper"). Decode them so imported
 // recipes read cleanly. Runs server-side, so it can't rely on the DOM.
@@ -255,10 +263,9 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
           .filter(Boolean);
         if (lines.length <= 1) {
           const body = lines[0] || '';
+          // Keep a real sub-heading; drop names that just echo the number.
           const title =
-            name && name !== body
-              ? name
-              : `Step ${instructions.length + 1}`;
+            name && name !== body && !isGenericStepTitle(name) ? name : '';
           instructions.push({
             step: String(instructions.length + 1).padStart(2, '0'),
             title,
@@ -269,7 +276,7 @@ export function parseRecipeFromJsonLd(html: string): ParsedRecipe | null {
           for (const line of lines) {
             instructions.push({
               step: String(instructions.length + 1).padStart(2, '0'),
-              title: `Step ${instructions.length + 1}`,
+              title: '',
               body: line,
               videoThumb: '',
             });
@@ -691,7 +698,8 @@ export function parseRecipeFromText(
 
   steps.forEach((s, i) => {
     s.step = String(i + 1).padStart(2, '0');
-    s.title = `Step ${i + 1}`;
+    // No generic "Step N" title — the UI numbers steps automatically.
+    s.title = '';
   });
 
   const title =
