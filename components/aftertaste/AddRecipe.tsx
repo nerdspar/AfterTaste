@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { PlusIcon, DownloadIcon, XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,11 @@ export function AddRecipe() {
   const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  // Overlays are portalled to <body> so they escape the app content column's
+  // stacking context (position:relative z-30), which would otherwise let the
+  // bottom tab bar (z-40) cover the sheet.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   if (style === 'off') return null;
 
@@ -31,39 +37,11 @@ export function AddRecipe() {
     setImportOpen(true);
   };
 
-  return (
+  const overlays = (
     <>
-      {style === 'fab' ? (
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          aria-label="Add recipe"
-          className={cn(
-            'fixed right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full md:hidden',
-            'bottom-[calc(5rem+env(safe-area-inset-bottom))]',
-            'bg-primary-500 text-white shadow-lg shadow-primary-500/40 ring-1 ring-white/15',
-            'transition-transform active:scale-95',
-          )}
-        >
-          <PlusIcon className="h-6 w-6" />
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setSheetOpen(true)}
-          aria-label="Add recipe"
-          className={cn(
-            'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full md:hidden',
-            'bg-primary-500 text-white shadow-sm transition-colors hover:bg-primary-600',
-          )}
-        >
-          <PlusIcon className="h-5 w-5" />
-        </button>
-      )}
-
       {sheetOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end bg-black/40 md:hidden"
+          className="fixed inset-0 z-[60] flex items-end bg-black/40 md:hidden"
           onClick={() => setSheetOpen(false)}
         >
           <div
@@ -108,6 +86,40 @@ export function AddRecipe() {
       )}
 
       <ImportRecipeModal open={importOpen} onClose={() => setImportOpen(false)} />
+    </>
+  );
+
+  return (
+    <>
+      {style === 'fab' ? (
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          aria-label="Add recipe"
+          className={cn(
+            'fixed right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full md:hidden',
+            'bottom-[calc(5rem+env(safe-area-inset-bottom))]',
+            'bg-primary-500 text-white shadow-lg shadow-primary-500/40 ring-1 ring-white/15',
+            'transition-transform active:scale-95',
+          )}
+        >
+          <PlusIcon className="h-6 w-6" />
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setSheetOpen(true)}
+          aria-label="Add recipe"
+          className={cn(
+            'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full md:hidden',
+            'bg-primary-500 text-white shadow-sm transition-colors hover:bg-primary-600',
+          )}
+        >
+          <PlusIcon className="h-5 w-5" />
+        </button>
+      )}
+
+      {mounted ? createPortal(overlays, document.body) : null}
     </>
   );
 }
