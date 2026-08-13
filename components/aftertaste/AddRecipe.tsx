@@ -98,7 +98,9 @@ export function AddRecipe() {
           aria-label="Add recipe"
           className={cn(
             'fixed right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full md:hidden',
-            'bottom-[calc(5rem+env(safe-area-inset-bottom))]',
+            // Sit a consistent ~24px above the 72px tab bar (which uses a fixed
+            // pad, not env safe-area — so the FAB shouldn't either, or it floats).
+            'bottom-24',
             'bg-primary-500 text-white shadow-lg shadow-primary-500/40 ring-1 ring-white/15',
             'transition-transform active:scale-95',
           )}
