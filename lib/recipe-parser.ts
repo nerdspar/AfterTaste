@@ -52,6 +52,8 @@ const NAMED_ENTITIES: Record<string, string> = {
   ndash: '–',
   hellip: '…',
   deg: '°',
+  ordm: 'º', // often used for degrees on recipe sites (e.g. "450ºF")
+  ordf: 'ª',
   frac12: '½',
   frac14: '¼',
   frac34: '¾',
@@ -720,7 +722,64 @@ export function parseRecipeFromText(
   });
 }
 
+// Convert a fragment of recipe-notes HTML to readable multi-line text.
+function htmlToText(fragment: string): string {
+  return decodeEntities(
+    fragment
+      .replace(/<\s*br\s*\/?>/gi, '\n')
+      .replace(/<li\b[^>]*>/gi, '\n• ')
+      .replace(/<\/(p|div|li|span|h[1-6]|ul|ol)\s*>/gi, '\n')
+      .replace(/<[^>]+>/g, ' '),
+  )
+    .replace(/[ \t ]+/g, ' ')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+}
+
+// Inner HTML of the element opened at `openEnd`, matching nested `<tag>`s.
+function balancedInner(html: string, openEnd: number, tag: string): string {
+  const re = new RegExp(`<(/?)${tag}\\b`, 'gi');
+  re.lastIndex = openEnd;
+  let depth = 1;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    depth += m[1] ? -1 : 1;
+    if (depth === 0) return html.slice(openEnd, m.index);
+  }
+  return html.slice(openEnd, openEnd + 6000);
+}
+
+// Recipe plugins render "Notes" in the page HTML, not the JSON-LD. Pull the
+// text out of the common note containers (WP Recipe Maker, Tasty Recipes,
+// Mediavine Create) so imports keep the author's notes.
+const NOTE_CLASSES = [
+  'wprm-recipe-notes',
+  'tasty-recipes-notes',
+  'tasty-recipe-notes',
+  'mv-create-notes',
+];
+function extractHtmlNotes(html: string): string | undefined {
+  const tagRe = /<(div|section)\b[^>]*\sclass="([^"]*)"[^>]*>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    const classes = m[2].split(/\s+/);
+    if (!NOTE_CLASSES.some((c) => classes.includes(c))) continue;
+    const text = htmlToText(balancedInner(html, tagRe.lastIndex, m[1]));
+    if (text) return text.slice(0, 4000);
+  }
+  return undefined;
+}
+
 export function parseRecipeFromHtml(html: string): ParsedRecipe | null {
   const parsed = parseRecipeFromJsonLd(html) ?? parseRecipeFromMeta(html);
-  return parsed ? decodeParsed(parsed) : null;
+  if (!parsed) return null;
+  // Notes aren't part of schema.org, so pull them from the page HTML.
+  if (!parsed.recipeNotes) {
+    const notes = extractHtmlNotes(html);
+    if (notes) parsed.recipeNotes = notes;
+  }
+  return decodeParsed(parsed);
 }
