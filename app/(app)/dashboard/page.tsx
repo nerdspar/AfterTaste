@@ -17,9 +17,6 @@ import type { Recipe } from '@/data/sample/recipes';
 
 const DEFAULT_COUNT = 2;
 const MAX_COUNT = 8;
-// How many top-rated matches to rotate through so suggestions vary day to day
-// without ever dropping below the cream of the crop.
-const SUGGEST_ROTATION_POOL = 6;
 
 type MealCategory = 'Breakfast' | 'Lunch' | 'Dinner';
 
@@ -27,6 +24,29 @@ function mealCategoryForHour(hour: number): MealCategory {
   if (hour < 11) return 'Breakfast';
   if (hour < 16) return 'Lunch';
   return 'Dinner';
+}
+
+// Meal-appropriate categories in priority order. The current meal leads; the
+// rest broaden the pool when the meal is sparse — deliberately never putting a
+// Dinner in the morning.
+const MEAL_BROADEN: Record<MealCategory, string[]> = {
+  Breakfast: ['Breakfast', 'Snack', 'Dessert'],
+  Lunch: ['Lunch', 'Dinner', 'Snack'],
+  Dinner: ['Dinner', 'Lunch', 'Snack'],
+};
+
+// A deterministic hash of (recipe id, day) → number, used to shuffle unrated
+// recipes so the suggestions vary day to day but stay stable within a day.
+// FNV-1a over "seed:id" so the seed genuinely reorders (not just a constant
+// offset that leaves the relative order unchanged).
+function seededRank(id: string, seed: number): number {
+  const s = `${seed}:${id}`;
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
 }
 
 export default function DashboardPage() {
@@ -45,7 +65,8 @@ export default function DashboardPage() {
   useEffect(() => setMounted(true), []);
   const now = mounted ? new Date() : null;
   const hour = now ? now.getHours() : 12;
-  const dayOfMonth = now ? now.getDate() : 1;
+  // A value that changes once per day (days since epoch) for the daily shuffle.
+  const daySeed = now ? Math.floor(now.getTime() / 86_400_000) : 0;
 
   // Recently Viewed — the 2 most recent opens, de-duped, mapped back to recipes.
   const recentlyViewed = useMemo(() => {
@@ -67,25 +88,39 @@ export default function DashboardPage() {
       .map((x) => x.r);
   }, [recipes]);
 
-  // Suggested — recipes for the current meal (breakfast/lunch/dinner), best
-  // rated first, with a daily rotation through the top matches for variety.
+  // Suggested — a rotating, meal-appropriate discovery set that's distinct from
+  // Recently Added/Viewed. Ranked by: (1) meal category priority, (2) personal
+  // rating (highest first — the eventual behaviour once things are rated), then
+  // (3) a per-day shuffle so unrated recipes rotate day to day instead of just
+  // echoing the newest ones.
   const suggested = useMemo(() => {
     const meal = mealCategoryForHour(hour);
-    const inMeal = recipes.filter((r) => r.category === meal);
-    const pool =
-      inMeal.length >= DEFAULT_COUNT
-        ? inMeal
-        : [...inMeal, ...recipes.filter((r) => r.category !== meal)];
+    const cats = MEAL_BROADEN[meal];
+    const catRank = new Map(cats.map((c, i) => [c, i] as const));
 
-    const sorted = [...pool].sort(
-      (a, b) => recipePersonalRating(b) - recipePersonalRating(a),
+    // Don't re-show what's already in Recently Viewed / Recently Added.
+    const excluded = new Set<string>([
+      ...viewedIds,
+      ...recentlyAdded.slice(0, MAX_COUNT).map((r) => r.id),
+    ]);
+
+    let pool = recipes.filter(
+      (r) => catRank.has(r.category) && !excluded.has(r.id),
     );
+    // Safety nets so the section never renders empty.
+    if (pool.length < DEFAULT_COUNT)
+      pool = recipes.filter((r) => !excluded.has(r.id));
+    if (pool.length < DEFAULT_COUNT) pool = recipes;
 
-    const head = sorted.slice(0, Math.min(SUGGEST_ROTATION_POOL, sorted.length));
-    const tail = sorted.slice(head.length);
-    const offset = head.length ? dayOfMonth % head.length : 0;
-    return [...head.slice(offset), ...head.slice(0, offset), ...tail];
-  }, [recipes, hour, dayOfMonth]);
+    return [...pool].sort((a, b) => {
+      const ca = catRank.get(a.category) ?? 99;
+      const cb = catRank.get(b.category) ?? 99;
+      if (ca !== cb) return ca - cb; // meal-appropriate first
+      const dr = recipePersonalRating(b) - recipePersonalRating(a);
+      if (dr !== 0) return dr; // higher-rated first
+      return seededRank(a.id, daySeed) - seededRank(b.id, daySeed); // daily shuffle
+    });
+  }, [recipes, hour, daySeed, viewedIds, recentlyAdded]);
 
   function toggleSection(key: string) {
     setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
