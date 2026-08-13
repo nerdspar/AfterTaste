@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/aftertaste/Card';
 import { Button } from '@/components/aftertaste/Button';
@@ -251,12 +251,14 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   // Nutrition estimation from the ingredient list (food-database lookups).
   const [estimating, setEstimating] = useState(false);
   const [estimateNote, setEstimateNote] = useState<string | null>(null);
-  const didAutoEstimate = useRef(false);
-
-  const runEstimate = async (isAuto = false) => {
-    const real = ingredients.filter((i) => !isIngredientSection(i) && i.name.trim());
+  // Opt-in only — never runs automatically, since the database estimate is
+  // rough; the user taps "Estimate from ingredients".
+  const runEstimate = async () => {
+    const real = ingredients.filter(
+      (i) => !isIngredientSection(i) && i.name.trim(),
+    );
     if (real.length === 0) {
-      if (!isAuto) setEstimateNote('Add some ingredients first.');
+      setEstimateNote('Add some ingredients first.');
       return;
     }
     setEstimating(true);
@@ -270,16 +272,6 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
         })),
       );
       if (!est) {
-        // Couldn't match anything — honor "leave blank + notify" on imports.
-        if (isAuto) {
-          setCalories('');
-          setProteinG('');
-          setCarbsG('');
-          setFatG('');
-          setFiberG('');
-          setSugarG('');
-          setSodiumMg('');
-        }
         setEstimateNote(
           "We couldn't estimate nutrition from these ingredients — enter it manually if you like.",
         );
@@ -294,32 +286,13 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       setSodiumMg(est.sodiumMg);
       setNutritionSource('estimated');
       setEstimateNote(
-        `Estimated from ${est.matched} of ${est.total} ingredient${est.total === 1 ? '' : 's'} — please double-check.`,
+        `Rough estimate from ${est.matched} of ${est.total} ingredient${est.total === 1 ? '' : 's'} — please double-check.`,
       );
     } finally {
       setEstimating(false);
     }
   };
 
-  // On a fresh import that carried no nutrition from the source, auto-estimate
-  // from the ingredients once (only when nutrition tracking is on).
-  useEffect(() => {
-    if (didAutoEstimate.current || !nutritionOn) return;
-    const isFreshImport = !!imported && !recipe && !duplicate;
-    const sourceHadNutrition =
-      init.nutritionSource === 'imported' ||
-      init.calories != null ||
-      init.proteinG != null ||
-      init.carbsG != null ||
-      init.fatG != null;
-    const hasIngredients = (init.ingredients?.length ?? 0) > 0;
-    if (isFreshImport && hasIngredients && !sourceHadNutrition) {
-      didAutoEstimate.current = true;
-      void runEstimate(true);
-    }
-    // Mount-only; the seed props are stable for a given form instance.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const [submitError, setSubmitError] = useState('');
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -860,7 +833,7 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
                 )}
                 <button
                   type="button"
-                  onClick={() => runEstimate(false)}
+                  onClick={() => runEstimate()}
                   disabled={estimating}
                   className={cn(
                     'inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors',
