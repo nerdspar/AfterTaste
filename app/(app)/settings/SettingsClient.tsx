@@ -602,8 +602,8 @@ export function SettingsClient({
             />
             <SettingRow
               icon={ClipboardIcon}
-              title="Detect links on clipboard"
-              subtitle="Offer to import a recipe link when you open Import"
+              title="Paste link in Import"
+              subtitle="Show a Paste button in Import to drop in a copied recipe link"
               action={
                 <Toggle
                   checked={clipboardOn}

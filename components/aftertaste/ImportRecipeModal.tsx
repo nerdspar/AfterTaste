@@ -69,6 +69,10 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
       setError('');
       setCroutonResult(null);
       setClipboardDetected(false);
+      // Start fresh each open — the modal stays mounted, so old input would
+      // otherwise linger (e.g. the last URL you imported).
+      setUrl('');
+      setText('');
       if (initialTab) setActiveTab(initialTab);
     }
     return () => {
@@ -76,27 +80,20 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
     };
   }, [open, initialTab]);
 
-  // Auto-detect a recipe link on the clipboard and prefill the URL field.
-  useEffect(() => {
-    if (!open || !clipboardPref || activeTab !== 'url') return;
-    let cancelled = false;
-    (async () => {
-      try {
-        if (!navigator.clipboard?.readText) return;
-        const text = (await navigator.clipboard.readText())?.trim();
-        const match = text?.match(/^https?:\/\/\S+$/);
-        if (!cancelled && match) {
-          setUrl((prev) => prev || match[0]);
-          setClipboardDetected(true);
-        }
-      } catch {
-        // clipboard permission denied / unavailable — ignore
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [open, clipboardPref, activeTab]);
+  // Read the clipboard only when the user explicitly taps "Paste". Auto-reading
+  // on open triggers iOS's native paste-permission callout every time (and drops
+  // in stale links), which reads as a phantom "right click" / double-tap.
+  const pasteFromClipboard = async () => {
+    try {
+      if (!navigator.clipboard?.readText) return;
+      const t = (await navigator.clipboard.readText())?.trim();
+      if (!t) return;
+      setUrl(t);
+      setClipboardDetected(/^https?:\/\/\S+$/.test(t));
+    } catch {
+      // permission denied / unavailable — ignore
+    }
+  };
 
   async function handleCroutonUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -322,15 +319,25 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
               Paste a recipe URL and we&apos;ll extract the title, ingredients,
               instructions, and more.
             </p>
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleUrlImport()}
-              placeholder="https://www.example.com/recipe/..."
-              className={inputClasses}
-              autoFocus
-            />
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleUrlImport()}
+                placeholder="https://www.example.com/recipe/..."
+                className={`${inputClasses} flex-1`}
+              />
+              {clipboardPref && (
+                <button
+                  type="button"
+                  onClick={pasteFromClipboard}
+                  className="flex-shrink-0 rounded-lg border border-gray-200 px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800"
+                >
+                  Paste
+                </button>
+              )}
+            </div>
             {clipboardDetected && (
               <p className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 -mt-1">
                 <ClipboardCheckIcon className="w-3.5 h-3.5" />
