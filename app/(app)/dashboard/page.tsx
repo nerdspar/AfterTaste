@@ -139,6 +139,8 @@ export default function DashboardPage() {
 
   const greeting =
     hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
+  const cookWhen =
+    hour < 12 ? 'this morning' : hour < 17 ? 'this afternoon' : 'tonight';
 
   // Each dashboard section keyed by id. The saved order is the MOBILE order
   // (one column, exactly as configured). On desktop we project that same list
@@ -218,7 +220,7 @@ export default function DashboardPage() {
             Good {greeting}, {firstName}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            What would you like to cook today?
+            What would you like to cook {cookWhen}?
           </p>
         </div>
         <AddRecipe />
