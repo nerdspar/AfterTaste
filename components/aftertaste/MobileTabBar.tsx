@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { NAV_BY_ID } from './nav-items';
 import { useUserPrefs } from './UserPrefsProvider';
 import { MoreSheet } from './MoreSheet';
+import { ImportRecipeModal } from './ImportRecipeModal';
 
 export function MobileTabBar() {
   const pathname = usePathname();
@@ -15,6 +16,7 @@ export function MobileTabBar() {
   const configIds = prefs.tabs;
   const nutritionOn = prefs.nutrition;
   const [moreOpen, setMoreOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const tabs = configIds
     .map((id) => NAV_BY_ID[id])
@@ -85,8 +87,20 @@ export function MobileTabBar() {
       </nav>
 
       {moreOpen && (
-        <MoreSheet barIds={configIds} onClose={() => setMoreOpen(false)} />
+        <MoreSheet
+          barIds={configIds}
+          onClose={() => setMoreOpen(false)}
+          onImport={() => {
+            setMoreOpen(false);
+            setImportOpen(true);
+          }}
+        />
       )}
+
+      <ImportRecipeModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+      />
     </>
   );
 }

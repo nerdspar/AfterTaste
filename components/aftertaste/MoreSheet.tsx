@@ -15,9 +15,11 @@ import { useUserPrefs } from './UserPrefsProvider';
 export function MoreSheet({
   barIds,
   onClose,
+  onImport,
 }: {
   barIds: string[];
   onClose: () => void;
+  onImport: () => void;
 }) {
   const nutritionOn = useUserPrefs().prefs.nutrition;
 
@@ -86,12 +88,12 @@ export function MoreSheet({
             </span>
             <span className="flex-1">Create recipe</span>
           </Link>
-          <Link href="/import" onClick={onClose} className={rowCls}>
+          <button type="button" onClick={onImport} className={cn(rowCls, 'w-full text-left')}>
             <span className={iconWrap}>
               <DownloadIcon className="h-4 w-4" />
             </span>
             <span className="flex-1">Import recipe</span>
-          </Link>
+          </button>
           <Link
             href="/settings#tabs"
             onClick={onClose}
