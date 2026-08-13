@@ -193,8 +193,10 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   const initialServings = base?.servings ?? init.servings ?? 4;
   const toWhole = (perServing: number | null | undefined): number | '' =>
     perServing == null ? '' : Math.round(perServing * initialServings);
+  // Leave calories blank when the source didn't provide it — don't fabricate a
+  // placeholder number (imports were coming in at a phantom "400 kcal").
   const [calories, setCalories] = useState<number | ''>(
-    toWhole(base?.calories ?? init.calories ?? 400),
+    toWhole(base?.calories ?? init.calories),
   );
   const [proteinG, setProteinG] = useState<number | ''>(
     toWhole(base?.proteinG ?? init.proteinG),

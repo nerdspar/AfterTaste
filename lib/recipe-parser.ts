@@ -773,9 +773,84 @@ function extractHtmlNotes(html: string): string | undefined {
   return undefined;
 }
 
+// The <li> texts of the first <ul>/<ol> whose class matches — used to recover
+// ingredients/steps from older sites that mark recipes up with classes or
+// microdata instead of JSON-LD.
+function listItemsByClass(html: string, classSrc: string): string[] {
+  const re = new RegExp(
+    `<(ul|ol)\\b[^>]*class="[^"]*(?:${classSrc})[^"]*"[^>]*>([\\s\\S]*?)</\\1>`,
+    'i',
+  );
+  const m = html.match(re);
+  if (!m) return [];
+  const items: string[] = [];
+  const liRe = /<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+  let li: RegExpExecArray | null;
+  while ((li = liRe.exec(m[2])) !== null) {
+    const t = htmlToText(li[1]);
+    if (t) items.push(t);
+  }
+  return items;
+}
+
+// Recover ingredients / steps / servings straight from the page HTML for sites
+// that have no JSON-LD (e.g. class="ingredients"/"directions" lists).
+function extractHtmlRecipeBody(html: string): {
+  ingredients?: Ingredient[];
+  instructions?: Instruction[];
+  servings?: number;
+} {
+  const out: {
+    ingredients?: Ingredient[];
+    instructions?: Instruction[];
+    servings?: number;
+  } = {};
+
+  const ing = listItemsByClass(html, '\\bingredients?\\b');
+  if (ing.length) {
+    out.ingredients = ing.map((line) => {
+      const { quantity, name } = splitIngredient(line);
+      return { name: name || line, quantity, image: '' };
+    });
+  }
+
+  const steps = listItemsByClass(
+    html,
+    '\\b(?:directions?|instructions?|steps?|method|preparation)\\b',
+  );
+  if (steps.length) {
+    out.instructions = steps.map((body, i) => ({
+      step: String(i + 1).padStart(2, '0'),
+      title: '',
+      body,
+      videoThumb: '',
+    }));
+  }
+
+  // A serving *count* near a recipeYield label ("Serves 4" / "4 servings").
+  const y = html.match(
+    /itemprop=["']recipeYield["'][\s\S]{0,120}?(?:ser(?:ves|ving[s]?)\s*:?\s*(\d+)|(\d+)\s*servings?)/i,
+  );
+  const n = y ? parseInt(y[1] || y[2], 10) : NaN;
+  if (!isNaN(n) && n > 0) out.servings = n;
+
+  return out;
+}
+
 export function parseRecipeFromHtml(html: string): ParsedRecipe | null {
   const parsed = parseRecipeFromJsonLd(html) ?? parseRecipeFromMeta(html);
   if (!parsed) return null;
+  // Fill from the page HTML when structured data was missing/partial (older
+  // sites keep the recipe in class/microdata markup, not JSON-LD).
+  if (!parsed.ingredients || !parsed.instructions || parsed.servings == null) {
+    const body = extractHtmlRecipeBody(html);
+    if (!parsed.ingredients && body.ingredients)
+      parsed.ingredients = body.ingredients;
+    if (!parsed.instructions && body.instructions)
+      parsed.instructions = body.instructions;
+    if (parsed.servings == null && body.servings != null)
+      parsed.servings = body.servings;
+  }
   // Notes aren't part of schema.org, so pull them from the page HTML.
   if (!parsed.recipeNotes) {
     const notes = extractHtmlNotes(html);
