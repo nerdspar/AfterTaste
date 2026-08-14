@@ -183,8 +183,9 @@ function slugId(title: string, uuid: string | undefined, idx: number): string {
   return `${base || 'recipe'}-crouton-${suffix}`;
 }
 
-// Shrink a base64 JPEG so a whole library fits in localStorage.
-function downscaleImage(base64Jpeg: string, maxW = 640): Promise<string> {
+// Shrink a base64 JPEG so a whole library fits in localStorage. Shared with the
+// Paprika importer, which also carries base64 photos.
+export function downscaleImage(base64Jpeg: string, maxW = 640): Promise<string> {
   return new Promise((resolve) => {
     if (typeof document === 'undefined') {
       resolve('');

@@ -9,7 +9,7 @@ import {
   FileTextIcon,
   UploadIcon,
   LoaderIcon,
-  SoupIcon,
+  SmartphoneIcon,
   CheckCircle2Icon,
   ClipboardCheckIcon,
 } from 'lucide-react';
@@ -19,6 +19,7 @@ import { parseRecipeFromText, parseRecipeFromHtml } from '@/lib/recipe-parser';
 import type { ParsedRecipe } from '@/lib/recipe-parser';
 import { useRecipeStore } from './RecipeStoreProvider';
 import { importCroutonFiles } from '@/lib/crouton-import';
+import { importPaprikaFiles } from '@/lib/paprika-import';
 import { useUserPrefs } from './UserPrefsProvider';
 
 interface ImportRecipeModalProps {
@@ -29,13 +30,13 @@ interface ImportRecipeModalProps {
 
 const IMPORT_KEY = 'aftertaste-import-recipe';
 
-type Tab = 'url' | 'text' | 'file' | 'crouton';
+type Tab = 'url' | 'text' | 'file' | 'apps';
 
 const tabs: { key: Tab; label: string; icon: typeof GlobeIcon }[] = [
   { key: 'url', label: 'URL', icon: GlobeIcon },
   { key: 'text', label: 'Text', icon: FileTextIcon },
   { key: 'file', label: 'File', icon: UploadIcon },
-  { key: 'crouton', label: 'Crouton', icon: SoupIcon },
+  { key: 'apps', label: 'Apps', icon: SmartphoneIcon },
 ];
 
 const inputClasses = cn(
@@ -54,20 +55,20 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [croutonResult, setCroutonResult] = useState<{
+  const [bulkResult, setBulkResult] = useState<{
     added: number;
     total: number;
   } | null>(null);
   const [clipboardDetected, setClipboardDetected] = useState(false);
   const clipboardPref = useUserPrefs().prefs.clipboard;
   const fileRef = useRef<HTMLInputElement>(null);
-  const croutonRef = useRef<HTMLInputElement>(null);
+  const appsRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       document.body.style.overflow = 'hidden';
       setError('');
-      setCroutonResult(null);
+      setBulkResult(null);
       setClipboardDetected(false);
       // Start fresh each open — the modal stays mounted, so old input would
       // otherwise linger (e.g. the last URL you imported).
@@ -95,27 +96,35 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
     }
   };
 
-  async function handleCroutonUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // One tab for "another app's export". Route each file to the right importer
+  // by extension — Paprika (.paprikarecipes/.paprikarecipe) vs Crouton
+  // (.zip/.crumb) — so a user can even drop a mix of both at once.
+  async function handleAppsUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     e.target.value = '';
     if (files.length === 0) return;
     setError('');
-    setCroutonResult(null);
+    setBulkResult(null);
     setLoading(true);
     try {
-      const recipes = await importCroutonFiles(files);
+      const paprika = files.filter((f) => /\.paprikarecipes?$/i.test(f.name));
+      const crouton = files.filter((f) => /\.(zip|crumb)$/i.test(f.name));
+      const recipes = [
+        ...(crouton.length ? await importCroutonFiles(crouton) : []),
+        ...(paprika.length ? await importPaprikaFiles(paprika) : []),
+      ];
       if (recipes.length === 0) {
         setError(
-          "No recipes found — pick your Crouton export (.zip) or its .crumb files.",
+          'No recipes found — pick a Paprika (.paprikarecipes) or Crouton (.zip/.crumb) export.',
         );
         return;
       }
       // Recipes save to your account in the background (in batches); this is
       // the number newly added (skipping duplicates already in your box).
       const added = addRecipes(recipes);
-      setCroutonResult({ added, total: recipes.length });
+      setBulkResult({ added, total: recipes.length });
     } catch {
-      setError('Could not read that file. Is it a Crouton export?');
+      setError('Could not read that file. Is it a Paprika or Crouton export?');
     } finally {
       setLoading(false);
     }
@@ -441,20 +450,20 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
           </div>
         )}
 
-        {/* Crouton tab — bulk import */}
-        {activeTab === 'crouton' && (
+        {/* Apps tab — bulk import from another recipe app */}
+        {activeTab === 'apps' && (
           <div className="space-y-4">
-            {croutonResult ? (
+            {bulkResult ? (
               <div className="flex flex-col items-center text-center py-4">
                 <CheckCircle2Icon className="w-10 h-10 text-emerald-500 mb-3" />
                 <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                  Imported {croutonResult.added}{' '}
-                  {croutonResult.added === 1 ? 'recipe' : 'recipes'}
+                  Imported {bulkResult.added}{' '}
+                  {bulkResult.added === 1 ? 'recipe' : 'recipes'}
                 </p>
-                {croutonResult.added < croutonResult.total && (
+                {bulkResult.added < bulkResult.total && (
                   <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                    Skipped {croutonResult.total - croutonResult.added} already
-                    in your collection
+                    Skipped {bulkResult.total - bulkResult.added} already in your
+                    collection
                   </p>
                 )}
                 <Button
@@ -473,21 +482,24 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
             ) : (
               <>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  In Crouton, export your recipes (Settings &rarr; Export) and
-                  upload the <code>.zip</code> here — or select individual{' '}
-                  <code>.crumb</code> files. All of them import at once.
+                  Bulk-import an export from another recipe app. In{' '}
+                  <strong>Paprika</strong>, use Menu &rarr; Export and upload the{' '}
+                  <code>.paprikarecipes</code> file. In <strong>Crouton</strong>,
+                  export (Settings &rarr; Export) and upload the{' '}
+                  <code>.zip</code> or its <code>.crumb</code> files. Everything
+                  imports at once.
                 </p>
                 <input
-                  ref={croutonRef}
+                  ref={appsRef}
                   type="file"
-                  accept=".zip,.crumb"
+                  accept=".paprikarecipes,.paprikarecipe,.zip,.crumb"
                   multiple
-                  onChange={handleCroutonUpload}
+                  onChange={handleAppsUpload}
                   className="hidden"
                 />
                 <button
                   type="button"
-                  onClick={() => croutonRef.current?.click()}
+                  onClick={() => appsRef.current?.click()}
                   disabled={loading}
                   className={cn(
                     'w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors',
@@ -504,12 +516,12 @@ export function ImportRecipeModal({ open, onClose, initialTab }: ImportRecipeMod
                     </>
                   ) : (
                     <>
-                      <SoupIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                      <SmartphoneIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                       <span className="text-sm text-gray-500 dark:text-gray-400">
-                        Choose your Crouton export
+                        Choose your export file
                       </span>
                       <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                        .zip or .crumb files
+                        Paprika (.paprikarecipes) or Crouton (.zip / .crumb)
                       </span>
                     </>
                   )}
