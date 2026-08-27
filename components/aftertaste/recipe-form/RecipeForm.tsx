@@ -294,6 +294,9 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   };
 
   const [submitError, setSubmitError] = useState('');
+  // Cheap "touched" flag for the sticky action bar's hint — flips true on the
+  // first edit to any field (form-level change bubbles from every input).
+  const [dirty, setDirty] = useState(false);
 
   function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -615,7 +618,11 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-3xl space-y-5">
+    <form
+      onSubmit={handleSubmit}
+      onChange={() => !dirty && setDirty(true)}
+      className="max-w-3xl space-y-5 pb-24"
+    >
       {/* Basic Info */}
       <Card>
         <h2 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-4">
@@ -1270,23 +1277,37 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
         </div>
       </Card>
 
-      {/* Actions */}
-      <div className="space-y-3">
-        {submitError && (
-          <p className="text-sm text-red-500">{submitError}</p>
-        )}
-        <div className="flex items-center gap-3">
-          <Button type="submit" variant="primary" size="lg">
-            {isEditing ? 'Save Changes' : 'Create Recipe'}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            onClick={() => router.back()}
-          >
-            Cancel
-          </Button>
+      {/* Actions — a bar fixed to the bottom of the viewport so Save/Cancel are
+          always reachable on a long form. It sits above the mobile tab bar
+          (bottom-[72px]) and flush at the bottom on desktop, clearing the fixed
+          sidebar (md:left-[280px]). fixed (not sticky) because the app root's
+          overflow-x-hidden would break a sticky descendant; the submit button
+          stays inside the <form>, so native submit still works. The form's
+          pb-24 keeps the last field from hiding behind this bar. */}
+      <div className="fixed inset-x-0 bottom-[72px] z-30 border-t border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-slate-900/95 md:bottom-0 md:left-[280px]">
+        <div className="mx-auto max-w-7xl px-4 py-3 md:px-5">
+          {submitError && (
+            <p className="mb-2 text-sm text-red-500">{submitError}</p>
+          )}
+          <div className="flex items-center gap-3">
+            <Button type="submit" variant="primary" size="lg">
+              {isEditing ? 'Save Changes' : 'Create Recipe'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={() => router.back()}
+            >
+              Cancel
+            </Button>
+            {isEditing && dirty && (
+              <span className="ml-auto flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                Unsaved changes
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </form>
