@@ -18,6 +18,7 @@ import {
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { estimateRecipeNutrition } from '@/app/(app)/food-db-actions';
 import { isVideoSource } from '@/lib/media';
+import { fileToDownscaledDataUrl } from '@/lib/image-resize';
 import type { Recipe, Ingredient, Instruction } from '@/data/sample/recipes';
 import type { ParsedRecipe } from '@/lib/recipe-parser';
 import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
@@ -102,7 +103,11 @@ function resolveCategory(value: string | undefined, fallback: string): string {
   return match ?? fallback;
 }
 
-const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
+// Images are downscaled + JPEG-compressed on upload, so we accept large source
+// photos (a normal iPhone photo is several MB) and only reject truly enormous
+// files to avoid decoding something absurd. Videos are stored as-is, so they
+// keep a tighter cap.
+const MAX_RAW_IMAGE_SIZE = 40 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 10 * 1024 * 1024;
 
 // Up/down reorder buttons — touch-friendly (works where drag-and-drop doesn't).
@@ -245,6 +250,7 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       ],
   );
   const [imageError, setImageError] = useState('');
+  const [imageProcessing, setImageProcessing] = useState(false);
   const [stepUploadIndex, setStepUploadIndex] = useState<number | null>(null);
   const [stepImageError, setStepImageError] = useState('');
 
@@ -298,8 +304,9 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   // first edit to any field (form-level change bubbles from every input).
   const [dirty, setDirty] = useState(false);
 
-  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file after an error
     if (!file) return;
     setImageError('');
 
@@ -307,16 +314,24 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       setImageError('Please select an image file.');
       return;
     }
-    if (file.size > MAX_IMAGE_SIZE) {
-      setImageError('Image must be under 2 MB.');
+    if (file.size > MAX_RAW_IMAGE_SIZE) {
+      setImageError('That image is too large — please choose one under 40 MB.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImage(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    // Shrink the photo before storing it (iPhone photos are multi-megapixel).
+    setImageProcessing(true);
+    try {
+      const dataUrl = await fileToDownscaledDataUrl(file);
+      setImage(dataUrl);
+      setDirty(true);
+    } catch {
+      setImageError(
+        "Couldn't process that photo. Try a different one, or save it as JPEG or PNG.",
+      );
+    } finally {
+      setImageProcessing(false);
+    }
   }
 
   function removeImage() {
@@ -330,7 +345,7 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
     stepFileInputRef.current?.click();
   }
 
-  function handleStepMediaUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleStepMediaUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     const index = stepUploadIndex;
     e.target.value = '';
@@ -346,8 +361,22 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
       setStepImageError('Video must be under 10 MB.');
       return;
     }
-    if (isImage && file.size > MAX_IMAGE_SIZE) {
-      setStepImageError('Image must be under 2 MB.');
+    if (isImage && file.size > MAX_RAW_IMAGE_SIZE) {
+      setStepImageError('That image is too large — please choose one under 40 MB.');
+      return;
+    }
+
+    // Downscale step photos too; videos are stored as-is.
+    if (isImage) {
+      try {
+        const dataUrl = await fileToDownscaledDataUrl(file);
+        updateInstruction(index, 'videoThumb', dataUrl);
+        setDirty(true);
+      } catch {
+        setStepImageError(
+          "Couldn't process that photo. Try a different one, or save it as JPEG or PNG.",
+        );
+      }
       return;
     }
 
@@ -692,19 +721,20 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
             ) : (
               <button
                 type="button"
+                disabled={imageProcessing}
                 onClick={() => fileInputRef.current?.click()}
                 className={cn(
                   'w-full h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 transition-colors',
                   'border-gray-200 dark:border-gray-700 hover:border-primary-400 dark:hover:border-primary-500',
-                  'bg-gray-50/50 dark:bg-gray-800/20',
+                  'bg-gray-50/50 dark:bg-gray-800/20 disabled:opacity-60',
                 )}
               >
                 <ImageIcon className="w-6 h-6 text-gray-400 dark:text-gray-500" />
                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                  Click to upload a photo
+                  {imageProcessing ? 'Processing photo…' : 'Click to upload a photo'}
                 </span>
                 <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                  Max 2 MB
+                  Photos are compressed automatically
                 </span>
               </button>
             )}
@@ -1290,23 +1320,25 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
             <p className="mb-2 text-sm text-red-500">{submitError}</p>
           )}
           <div className="flex items-center gap-3">
-            <Button type="submit" variant="primary" size="lg">
-              {isEditing ? 'Save Changes' : 'Create Recipe'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              onClick={() => router.back()}
-            >
-              Cancel
-            </Button>
             {isEditing && dirty && (
-              <span className="ml-auto flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                Unsaved changes
+              <span className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-500" />
+                <span className="truncate">Unsaved changes</span>
               </span>
             )}
+            <div className="ml-auto flex flex-shrink-0 items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => router.back()}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" size="lg">
+                {isEditing ? 'Save Changes' : 'Create Recipe'}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
