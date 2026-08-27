@@ -48,10 +48,75 @@ export function matchesQuery(r: Recipe, query: string): boolean {
   return ts.every((t) => haystack.includes(t));
 }
 
+// How much a match is worth by *where* it lands. A title hit should always beat
+// a hit buried in a step, so searching "dip" surfaces "Spinach Dip" ahead of a
+// recipe whose steps say "dip the bread in the egg".
+const FIELD_WEIGHT: Record<string, number> = {
+  title: 100,
+  tag: 60,
+  category: 55,
+  cuisine: 50,
+  ingredient: 40,
+  source: 30,
+  chef: 30,
+  section: 25,
+  description: 20,
+  notes: 15,
+  step: 10,
+};
+
+function escapeRe(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Whole-word test: "dip" matches "Spinach Dip" but not "dipping".
+function hasWholeWord(lower: string, term: string): boolean {
+  return new RegExp(`\\b${escapeRe(term)}\\b`).test(lower);
+}
+
+/**
+ * A relevance score for ranking. Every query term must appear somewhere (AND
+ * semantics) — a missing term returns -1 (no match). Otherwise each term scores
+ * by its best field, with a bonus for whole-word hits, plus phrase bonuses when
+ * the whole query lands in the title.
+ */
+function scoreRecipe(r: Recipe, ts: string[]): number {
+  const segs = segments(r);
+  const titleLower = r.title.toLowerCase();
+  const phrase = ts.join(' ');
+  let total = 0;
+
+  for (const term of ts) {
+    let best = 0;
+    for (const s of segs) {
+      const lower = s.text.toLowerCase();
+      if (!lower.includes(term)) continue;
+      let w = FIELD_WEIGHT[s.where] ?? 10;
+      if (hasWholeWord(lower, term)) w += 40;
+      if (s.where === 'title' && lower.startsWith(term)) w += 15;
+      if (w > best) best = w;
+    }
+    if (best === 0) return -1; // this term appears nowhere → not a match
+    total += best;
+  }
+
+  if (titleLower === phrase) total += 200;
+  else if (titleLower.includes(phrase)) total += 80;
+  if (titleLower.startsWith(phrase)) total += 40;
+
+  return total;
+}
+
+/** Recipes matching every query word, ranked most-relevant first. */
 export function searchRecipes(recipes: Recipe[], query: string): Recipe[] {
   const q = query.trim();
   if (!q) return recipes;
-  return recipes.filter((r) => matchesQuery(r, q));
+  const ts = terms(q);
+  return recipes
+    .map((r, i) => ({ r, i, score: scoreRecipe(r, ts) }))
+    .filter((x) => x.score >= 0)
+    .sort((a, b) => b.score - a.score || a.i - b.i) // ties keep store order
+    .map((x) => x.r);
 }
 
 /**
