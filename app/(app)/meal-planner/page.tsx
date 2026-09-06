@@ -1,10 +1,12 @@
 'use client';
 
 import { Suspense, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card } from '@/components/aftertaste/Card';
 import { cn } from '@/lib/utils';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
+import { searchRecipes } from '@/lib/recipe-search';
 import {
   useMealPlan,
   parsePlanEntry,
@@ -62,20 +64,21 @@ function MealPlannerContent() {
   const [pendingRecipeId, setPendingRecipeId] = useState<string | null>(null);
   const [pickerQuery, setPickerQuery] = useState('');
   const [noteText, setNoteText] = useState('');
+  // The picker modal is portalled to <body>; guard against SSR where there is
+  // no document to portal into.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
-  const filteredRecipes = useMemo(() => {
-    const q = pickerQuery.trim().toLowerCase();
-    if (!q) return recipes;
-    return recipes.filter(
-      (r) =>
-        r.title.toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q) ||
-        r.cuisine.toLowerCase().includes(q) ||
-        (r.tags ?? []).some((t) => t.toLowerCase().includes(q)),
-    );
-  }, [recipes, pickerQuery]);
+  // Use the same shared search as the global header typeahead so the picker
+  // matches on everything (title, ingredients, steps, notes, cuisine, …) and
+  // ranks results identically — searching "eggplant" here now finds recipes
+  // that only mention it in the ingredients, not just the title.
+  const filteredRecipes = useMemo(
+    () => searchRecipes(recipes, pickerQuery),
+    [recipes, pickerQuery],
+  );
 
   // Arriving from a recipe's "Add to Meal Plan" enters a mode where clicking a
   // slot drops that recipe straight in, instead of opening the recipe picker.
@@ -378,208 +381,224 @@ function MealPlannerContent() {
         </div>
       </Card>
 
-      {/* Picker modal: add a recipe or note to a slot */}
-      {pickingSlot && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={closeSlot}
-            className="absolute inset-0 bg-black/40 animate-in fade-in"
-          />
-          <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-y-auto rounded-t-2xl border border-gray-200 bg-white p-4 shadow-xl animate-in fade-in slide-in-from-bottom-4 dark:border-gray-700 dark:bg-slate-900 sm:max-w-lg sm:rounded-2xl sm:zoom-in-95">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                {slotLabel(pickingSlot)}
-              </h3>
-              <button
-                type="button"
-                onClick={closeSlot}
-                className="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
-              >
-                Done
-              </button>
-            </div>
-
-            {/* What's already in this slot — open or remove each */}
-            {(() => {
-              const entries = slotEntries(pickingSlot);
-              const rEntries = entries.flatMap((e) => {
-                if (e.entry?.type !== 'recipe') return [];
-                const r = getRecipe(e.entry.recipeId);
-                return r ? [{ index: e.index, recipe: r }] : [];
-              });
-              const nEntry = entries.find((e) => e.entry?.type === 'note');
-              if (rEntries.length === 0 && !nEntry) return null;
-              return (
-                <div className="mb-4 space-y-1.5">
-                  {rEntries.map(({ index, recipe }) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-3 rounded-lg border border-gray-200 p-1.5 dark:border-gray-700/40"
-                    >
-                      <Link
-                        href={`/recipes/${recipe.id}`}
-                        onClick={closeSlot}
-                        className="flex min-w-0 flex-1 items-center gap-3"
-                      >
-                        <span className="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-md">
-                          {hasRecipePhoto(recipe.image) ? (
-                            <Image src={recipe.image} alt="" fill className="object-cover" sizes="44px" />
-                          ) : (
-                            <RecipePlaceholder className="absolute inset-0 h-full w-full" />
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
-                          {recipe.title}
-                        </span>
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => removeAt(pickingSlot, index)}
-                        aria-label={`Remove ${recipe.title}`}
-                        className="flex-shrink-0 rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                      >
-                        <XIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                  {nEntry?.entry?.type === 'note' && (
-                    <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-2 dark:border-amber-500/30 dark:bg-amber-500/10">
-                      <StickyNoteIcon className="h-5 w-5 flex-shrink-0 text-amber-500" />
-                      <p className="min-w-0 flex-1 truncate text-sm text-gray-800 dark:text-gray-100">
-                        {nEntry.entry.text}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => removeAt(pickingSlot, nEntry.index)}
-                        aria-label="Remove note"
-                        className="flex-shrink-0 rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                      >
-                        <XIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-          {/* Custom note (e.g. eating out) */}
-          <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-              Eating out or something else? Add a note
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    saveNote();
-                  }
-                }}
-                placeholder="e.g. Dinner out, Leftovers, Order pizza"
-                className={cn(
-                  'flex-1 min-w-0 h-9 px-3 rounded-lg text-sm',
-                  'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
-                  'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
-                )}
-              />
-              <button
-                type="button"
-                onClick={saveNote}
-                disabled={!noteText.trim()}
-                className={cn(
-                  'h-9 px-4 rounded-lg text-sm font-medium transition-colors flex-shrink-0',
-                  'bg-primary-500 text-white hover:bg-primary-700',
-                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary-500',
-                )}
-              >
-                Save
-              </button>
-            </div>
-          </div>
-
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-            Add a recipe
-          </p>
-
-          {/* Recipe search */}
-          <div className="relative mb-3">
-            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              value={pickerQuery}
-              onChange={(e) => setPickerQuery(e.target.value)}
-              placeholder="Search recipes..."
-              className={cn(
-                'w-full h-9 pl-9 pr-3 rounded-lg text-sm',
-                'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
-                'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
-              )}
+      {/* Picker modal: add a recipe or note to a slot. Portalled to <body> so it
+          escapes the app content column's stacking context (position:relative
+          z-30), which would otherwise let the bottom tab bar (z-40) cover the
+          modal's lower rows. */}
+      {mounted &&
+        pickingSlot &&
+        createPortal(
+          <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:p-4">
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={closeSlot}
+              className="absolute inset-0 bg-black/40 animate-in fade-in"
             />
-          </div>
-
-          {filteredRecipes.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-              {filteredRecipes.map((recipe) => {
-                const selected = (plan[pickingSlot] ?? []).includes(recipe.id);
-                return (
+            <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-xl animate-in fade-in slide-in-from-bottom-4 dark:border-gray-700 dark:bg-slate-900 sm:max-w-lg sm:rounded-2xl sm:zoom-in-95">
+              {/* Fixed controls: slot context, note, and search stay put while
+                  the results below scroll. */}
+              <div className="flex-shrink-0 p-4 pb-3">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                    {slotLabel(pickingSlot)}
+                  </h3>
                   <button
                     type="button"
-                    key={recipe.id}
-                    onClick={() => toggleRecipe(pickingSlot, recipe.id)}
-                    aria-pressed={selected}
-                    className={cn(
-                      'overflow-hidden rounded-xl border text-left transition-all',
-                      selected
-                        ? 'border-primary-500 ring-2 ring-primary-500'
-                        : 'border-gray-200 dark:border-gray-700/40 hover:ring-2 hover:ring-primary-500/40',
-                    )}
+                    onClick={closeSlot}
+                    className="text-xs font-medium text-primary-600 dark:text-primary-400 hover:underline"
                   >
-                    <div className="relative h-16">
-                      {hasRecipePhoto(recipe.image) ? (
-                        <Image
-                          src={recipe.image}
-                          alt={recipe.title}
-                          fill
-                          className="object-cover"
-                          sizes="120px"
-                        />
-                      ) : (
-                        <RecipePlaceholder className="absolute inset-0 w-full h-full" />
-                      )}
-                      {selected && (
-                        <>
-                          <div className="absolute inset-0 bg-primary-500/25" />
-                          <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary-500 text-white shadow">
-                            <CheckIcon className="w-3 h-3" />
-                          </span>
-                        </>
-                      )}
-                    </div>
-                    <div className="p-1.5">
-                      <p className="text-[10px] font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
-                        {recipe.title}
-                      </p>
-                      <p className="text-[9px] text-gray-400 mt-0.5">
-                        {recipe.cookTime} · {recipe.calories} kcal
-                      </p>
-                    </div>
+                    Done
                   </button>
-                );
-              })}
+                </div>
+
+                {/* What's already in this slot — open or remove each */}
+                {(() => {
+                  const entries = slotEntries(pickingSlot);
+                  const rEntries = entries.flatMap((e) => {
+                    if (e.entry?.type !== 'recipe') return [];
+                    const r = getRecipe(e.entry.recipeId);
+                    return r ? [{ index: e.index, recipe: r }] : [];
+                  });
+                  const nEntry = entries.find((e) => e.entry?.type === 'note');
+                  if (rEntries.length === 0 && !nEntry) return null;
+                  return (
+                    <div className="mb-4 max-h-40 space-y-1.5 overflow-y-auto overscroll-contain">
+                      {rEntries.map(({ index, recipe }) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-3 rounded-lg border border-gray-200 p-1.5 dark:border-gray-700/40"
+                        >
+                          <Link
+                            href={`/recipes/${recipe.id}`}
+                            onClick={closeSlot}
+                            className="flex min-w-0 flex-1 items-center gap-3"
+                          >
+                            <span className="relative h-11 w-11 flex-shrink-0 overflow-hidden rounded-md">
+                              {hasRecipePhoto(recipe.image) ? (
+                                <Image src={recipe.image} alt="" fill className="object-cover" sizes="44px" />
+                              ) : (
+                                <RecipePlaceholder className="absolute inset-0 h-full w-full" />
+                              )}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900 dark:text-gray-100">
+                              {recipe.title}
+                            </span>
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => removeAt(pickingSlot, index)}
+                            aria-label={`Remove ${recipe.title}`}
+                            className="flex-shrink-0 rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                          >
+                            <XIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      {nEntry?.entry?.type === 'note' && (
+                        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-2 dark:border-amber-500/30 dark:bg-amber-500/10">
+                          <StickyNoteIcon className="h-5 w-5 flex-shrink-0 text-amber-500" />
+                          <p className="min-w-0 flex-1 truncate text-sm text-gray-800 dark:text-gray-100">
+                            {nEntry.entry.text}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => removeAt(pickingSlot, nEntry.index)}
+                            aria-label="Remove note"
+                            className="flex-shrink-0 rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                          >
+                            <XIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Custom note (e.g. eating out) */}
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
+                    Eating out or something else? Add a note
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={noteText}
+                      onChange={(e) => setNoteText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          saveNote();
+                        }
+                      }}
+                      placeholder="e.g. Dinner out, Leftovers, Order pizza"
+                      className={cn(
+                        'flex-1 min-w-0 h-9 px-3 rounded-lg text-sm',
+                        'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
+                        'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
+                      )}
+                    />
+                    <button
+                      type="button"
+                      onClick={saveNote}
+                      disabled={!noteText.trim()}
+                      className={cn(
+                        'h-9 px-4 rounded-lg text-sm font-medium transition-colors flex-shrink-0',
+                        'bg-primary-500 text-white hover:bg-primary-700',
+                        'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-primary-500',
+                      )}
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+
+                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
+                  Add a recipe
+                </p>
+
+                {/* Recipe search */}
+                <div className="relative">
+                  <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={pickerQuery}
+                    onChange={(e) => setPickerQuery(e.target.value)}
+                    placeholder="Search recipes..."
+                    className={cn(
+                      'w-full h-9 pl-9 pr-3 rounded-lg text-sm',
+                      'border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
+                      'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Scrollable results. The bottom padding clears the mobile home
+                  indicator / safe area so the last row isn't flush to the edge. */}
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+                {filteredRecipes.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                    {filteredRecipes.map((recipe) => {
+                      const selected = (plan[pickingSlot] ?? []).includes(
+                        recipe.id,
+                      );
+                      return (
+                        <button
+                          type="button"
+                          key={recipe.id}
+                          onClick={() => toggleRecipe(pickingSlot, recipe.id)}
+                          aria-pressed={selected}
+                          className={cn(
+                            'overflow-hidden rounded-xl border text-left transition-all',
+                            selected
+                              ? 'border-primary-500 ring-2 ring-primary-500'
+                              : 'border-gray-200 dark:border-gray-700/40 hover:ring-2 hover:ring-primary-500/40',
+                          )}
+                        >
+                          <div className="relative h-16">
+                            {hasRecipePhoto(recipe.image) ? (
+                              <Image
+                                src={recipe.image}
+                                alt={recipe.title}
+                                fill
+                                className="object-cover"
+                                sizes="120px"
+                              />
+                            ) : (
+                              <RecipePlaceholder className="absolute inset-0 w-full h-full" />
+                            )}
+                            {selected && (
+                              <>
+                                <div className="absolute inset-0 bg-primary-500/25" />
+                                <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary-500 text-white shadow">
+                                  <CheckIcon className="w-3 h-3" />
+                                </span>
+                              </>
+                            )}
+                          </div>
+                          <div className="p-1.5">
+                            <p className="text-[10px] font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 leading-tight">
+                              {recipe.title}
+                            </p>
+                            <p className="text-[9px] text-gray-400 mt-0.5">
+                              {recipe.cookTime} · {recipe.calories} kcal
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-6">
+                    No recipes match “{pickerQuery}”.
+                  </p>
+                )}
+              </div>
             </div>
-          ) : (
-            <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-6">
-              No recipes match “{pickerQuery}”.
-            </p>
-          )}
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
