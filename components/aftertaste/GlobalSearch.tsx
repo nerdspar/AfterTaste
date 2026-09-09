@@ -6,8 +6,13 @@ import { SearchIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRecipeStore } from './RecipeStoreProvider';
 import { searchRecipes, matchSnippet } from '@/lib/recipe-search';
+import { useRecentlyViewedIds } from '@/lib/recently-viewed';
+import type { Recipe } from '@/data/sample/recipes';
 
 const MAX_RESULTS = 8;
+// Focusing the empty box offers a short jump list rather than nothing — handy
+// mid-cook, when you're flipping between the few recipes for one meal.
+const MAX_RECENT = 5;
 
 const WHERE_LABEL: Record<string, string> = {
   ingredient: 'Ingredient',
@@ -44,7 +49,27 @@ export function GlobalSearch() {
     return q ? searchRecipes(recipes, q).length : 0;
   }, [query, recipes]);
 
-  const showDropdown = open && query.trim().length > 0;
+  // Recently viewed, newest first, mapped back to recipes. The recipe you're
+  // already looking at is skipped — this list is for getting somewhere else.
+  const viewedIds = useRecentlyViewedIds();
+  const currentRecipeId = pathname.startsWith('/recipes/')
+    ? pathname.split('/')[2]
+    : null;
+  const recent = useMemo(() => {
+    const byId = new Map(recipes.map((r) => [r.id, r] as const));
+    return viewedIds
+      .filter((id) => id !== currentRecipeId)
+      .map((id) => byId.get(id))
+      .filter((r): r is Recipe => Boolean(r))
+      .slice(0, MAX_RECENT);
+  }, [recipes, viewedIds, currentRecipeId]);
+
+  const hasQuery = query.trim().length > 0;
+  // Typing replaces the recents with matches; emptying the box brings them
+  // back. With no history there is nothing to offer, so the panel stays shut.
+  const items = hasQuery ? results : recent;
+  const showDropdown = open && (hasQuery || recent.length > 0);
+  const hasSeeAll = hasQuery && total > 0;
 
   // Responsive placeholder (narrow header on small phones).
   useEffect(() => {
@@ -75,7 +100,7 @@ export function GlobalSearch() {
     setOpen(false);
   }, [pathname]);
 
-  useEffect(() => setActive(0), [query]);
+  useEffect(() => setActive(0), [query, open]);
 
   const go = (id: string) => {
     setOpen(false);
@@ -91,16 +116,18 @@ export function GlobalSearch() {
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (!showDropdown) return;
+    // "See all" sits one past the last row, and only while searching.
+    const maxIndex = items.length - 1 + (hasSeeAll ? 1 : 0);
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActive((a) => Math.min(results.length, a + 1)); // last index = "See all"
+      setActive((a) => Math.min(maxIndex, a + 1));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setActive((a) => Math.max(0, a - 1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (active < results.length) go(results[active].id);
-      else seeAll();
+      if (active < items.length) go(items[active].id);
+      else if (hasSeeAll) seeAll();
     } else if (e.key === 'Escape') {
       setOpen(false);
     }
@@ -152,14 +179,21 @@ export function GlobalSearch() {
             'dark:border-gray-700/60 dark:bg-slate-900',
           )}
         >
-          {results.length === 0 ? (
+          {!hasQuery && (
+            <p className="px-4 pb-1 pt-2.5 text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500">
+              Recently viewed
+            </p>
+          )}
+
+          {hasQuery && results.length === 0 ? (
             <p className="px-4 py-6 text-center text-sm text-gray-400 dark:text-gray-500">
               No recipes match “{query.trim()}”.
             </p>
           ) : (
             <ul className="max-h-[70vh] overflow-y-auto py-1.5">
-              {results.map((r, i) => {
-                const snip = matchSnippet(r, query);
+              {items.map((r, i) => {
+                // Only a search has a "where it matched" hint worth showing.
+                const snip = hasQuery ? matchSnippet(r, query) : null;
                 return (
                   <li key={r.id}>
                     <button
@@ -208,16 +242,16 @@ export function GlobalSearch() {
             </ul>
           )}
 
-          {total > 0 && (
+          {hasSeeAll && (
             <button
               type="button"
               role="option"
-              aria-selected={active === results.length}
-              onMouseEnter={() => setActive(results.length)}
+              aria-selected={active === items.length}
+              onMouseEnter={() => setActive(items.length)}
               onClick={seeAll}
               className={cn(
                 'flex w-full items-center justify-between border-t border-gray-100 px-4 py-2.5 text-left text-xs font-medium dark:border-gray-800',
-                active === results.length
+                active === items.length
                   ? 'bg-gray-100 dark:bg-gray-800/60'
                   : '',
               )}
