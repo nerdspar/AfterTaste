@@ -9,6 +9,7 @@ import { IconButton } from '../IconButton';
 import { IngredientIcon } from '../IngredientIcon';
 import { useGroceryStore } from '../GroceryStoreProvider';
 import { guessGroceryCategory } from '@/lib/grocery-category';
+import { scaleQuantity } from '@/lib/quantity';
 import type { Ingredient } from '@/data/sample/recipes';
 
 type ScaleMode = 'amount' | 'serving';
@@ -27,30 +28,6 @@ interface IngredientsPanelProps {
   onScaleValueChange: (value: number) => void;
   recipeId: string;
   recipeTitle: string;
-}
-
-function scaleQuantity(quantity: string, multiplier: number): string {
-  // Match a fraction (1/2) or a plain number (2, 0.5) — never a lone "/", which
-  // otherwise turns e.g. "20g/ 1 1/2 tbsp" into "20gNaN …".
-  return quantity.replace(/\d+\/\d+|\d+(?:\.\d+)?/g, (match) => {
-    if (match.includes('/')) {
-      const [num, den] = match.split('/');
-      const val = (Number(num) / Number(den)) * multiplier;
-      const rounded = Math.round(val * 100) / 100;
-      if (rounded === Math.round(rounded)) return String(Math.round(rounded));
-      // Try to express as simple fraction
-      if (Math.abs(rounded - 1 / 4) < 0.01) return '1/4';
-      if (Math.abs(rounded - 1 / 3) < 0.01) return '1/3';
-      if (Math.abs(rounded - 1 / 2) < 0.01) return '1/2';
-      if (Math.abs(rounded - 2 / 3) < 0.01) return '2/3';
-      if (Math.abs(rounded - 3 / 4) < 0.01) return '3/4';
-      return String(rounded);
-    }
-    const val = Number(match) * multiplier;
-    const rounded = Math.round(val * 100) / 100;
-    if (rounded === Math.round(rounded)) return String(Math.round(rounded));
-    return String(rounded);
-  });
 }
 
 export function IngredientsPanel({
