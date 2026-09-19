@@ -36,6 +36,54 @@ function rnd(v: number | null): number | null {
   return v == null ? null : Math.round(v);
 }
 
+// Both databases carry records with impossible numbers — a salt entry listing
+// 1330 g of carbohydrate per 100 g, a pepper entry listing 167 g. Usually the
+// value was recorded in the wrong unit or against the wrong serving size.
+// Left alone they dwarf every real ingredient in a recipe estimate, so each
+// field is checked against what 100 g of food can physically contain.
+
+/** Nothing edible carries more than ~900 kcal per 100 g (pure fat is 884). */
+const MAX_KCAL_PER_100G = 900;
+/** Pure table salt is ~38,758 mg sodium per 100 g. */
+const MAX_SODIUM_MG_PER_100G = 40000;
+
+function gramsField(v: number | null): number | null {
+  if (v == null) return null;
+  // A gram-per-100 g figure outside 0..100 is not a real measurement.
+  return v < 0 || v > 100 ? null : v;
+}
+
+/**
+ * Drop impossible values from a record, and reject the record outright when
+ * its calories are impossible or its macros do not fit in 100 g of food (a
+ * sign the whole row is scaled wrong). Returns null when unusable.
+ */
+function sanitizeMacros(m: FoodMacros): FoodMacros | null {
+  if (!Number.isFinite(m.calories) || m.calories < 0) return null;
+  if (m.calories > MAX_KCAL_PER_100G) return null;
+
+  const clean: FoodMacros = {
+    calories: m.calories,
+    proteinG: gramsField(m.proteinG),
+    carbsG: gramsField(m.carbsG),
+    fatG: gramsField(m.fatG),
+    fiberG: gramsField(m.fiberG),
+    sugarG: gramsField(m.sugarG),
+    sodiumMg:
+      m.sodiumMg == null || m.sodiumMg < 0 || m.sodiumMg > MAX_SODIUM_MG_PER_100G
+        ? null
+        : m.sodiumMg,
+  };
+
+  // The big three cannot add up to more than 100 g of a 100 g food. A little
+  // slack absorbs rounding and the usual water/ash bookkeeping.
+  const bulk =
+    (clean.proteinG ?? 0) + (clean.carbsG ?? 0) + (clean.fatG ?? 0);
+  if (bulk > 105) return null;
+
+  return clean;
+}
+
 // USDA descriptions are ALL CAPS; make them readable.
 function titleCase(s: string): string {
   return s
@@ -95,20 +143,23 @@ function offToItem(p: OffProduct, fallbackCode?: string): FoodItem | null {
   const code = p.code || fallbackCode;
   const brand = (p.brands || '').split(',')[0].trim();
 
+  const per100 = sanitizeMacros({
+    calories: Math.round(cals),
+    proteinG: rnd(num(n['proteins_100g'])),
+    carbsG: rnd(num(n['carbohydrates_100g'])),
+    fatG: rnd(num(n['fat_100g'])),
+    fiberG: rnd(num(n['fiber_100g'])),
+    sugarG: rnd(num(n['sugars_100g'])),
+    sodiumMg,
+  });
+  if (!per100) return null;
+
   return {
     id: `off:${code || name}`,
     name,
     brand: brand || undefined,
     source: 'off',
-    per100: {
-      calories: Math.round(cals),
-      proteinG: rnd(num(n['proteins_100g'])),
-      carbsG: rnd(num(n['carbohydrates_100g'])),
-      fatG: rnd(num(n['fat_100g'])),
-      fiberG: rnd(num(n['fiber_100g'])),
-      sugarG: rnd(num(n['sugars_100g'])),
-      sodiumMg,
-    },
+    per100,
     servingSizeG: servingG && servingG > 0 ? Math.round(servingG) : undefined,
   };
 }
@@ -165,22 +216,24 @@ function usdaToItem(f: UsdaFood): FoodItem | null {
     byName[fn.nutrientName] = fn.value;
   }
   if (cals == null) return null;
+  const per100 = sanitizeMacros({
+    calories: Math.round(cals),
+    proteinG: rnd(num(byName['Protein'])),
+    carbsG: rnd(num(byName['Carbohydrate, by difference'])),
+    fatG: rnd(num(byName['Total lipid (fat)'])),
+    fiberG: rnd(num(byName['Fiber, total dietary'])),
+    sugarG: rnd(
+      num(byName['Sugars, total including NLEA'] ?? byName['Total Sugars']),
+    ),
+    sodiumMg: rnd(num(byName['Sodium, Na'])),
+  });
+  if (!per100) return null;
   return {
     id: `usda:${f.fdcId}`,
     name: titleCase(name),
     brand: f.brandOwner ? titleCase(f.brandOwner) : undefined,
     source: 'usda',
-    per100: {
-      calories: Math.round(cals),
-      proteinG: rnd(num(byName['Protein'])),
-      carbsG: rnd(num(byName['Carbohydrate, by difference'])),
-      fatG: rnd(num(byName['Total lipid (fat)'])),
-      fiberG: rnd(num(byName['Fiber, total dietary'])),
-      sugarG: rnd(
-        num(byName['Sugars, total including NLEA'] ?? byName['Total Sugars']),
-      ),
-      sodiumMg: rnd(num(byName['Sodium, Na'])),
-    },
+    per100,
   };
 }
 
