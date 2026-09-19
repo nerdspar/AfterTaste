@@ -64,6 +64,14 @@ services:
       AUTH_SECRET: "PASTE_AUTH_SECRET_HERE" # ⬅ AUTH_SECRET
       UPLOADS_DIR: /app/uploads
       NODE_ENV: production
+      # --- Nutrition lookups (recommended) ---------------------------------
+      # USDA FoodData Central holds the generic whole foods that "Estimate
+      # from ingredients" depends on. Free key, no card, takes a minute:
+      # https://fdc.nal.usda.gov/api-key-signup
+      # Leave blank and it falls back to the shared DEMO_KEY, which is capped
+      # per IP and in practice usually exhausted — lookups then return nothing
+      # and ingredients silently go unmatched.
+      FDC_API_KEY: "" # ⬅ FDC_API_KEY (optional, but estimates need it)
       # --- Password-reset emails (optional) --------------------------------
       # Public URL of this app, used to build reset links in emails.
       APP_URL: "https://aftertaste.example.com" # ⬅ APP_URL (your public URL)
