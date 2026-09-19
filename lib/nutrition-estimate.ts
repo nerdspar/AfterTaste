@@ -19,7 +19,11 @@
 // Server-only: imports food-db, which reads process.env and hits external APIs.
 
 import { searchFoods, type FoodItem } from '@/lib/food-db';
-import { weightsFor, isNegligible } from '@/lib/ingredient-weights';
+import {
+  weightsFor,
+  isNegligible,
+  type IngredientWeight,
+} from '@/lib/ingredient-weights';
 
 export interface EstimatedNutrition {
   // Whole-recipe totals (the recipe form enters whole-recipe numbers).
@@ -161,12 +165,32 @@ function cleanFoodName(raw: string): string {
 }
 
 /**
+ * Grams stated inside a parenthetical package size — the "(15 oz)" of
+ * "1 (15 oz) can black beans". Returns null when the bracket holds something
+ * else, so "(about 2 cups chopped)" and "(optional)" are left alone.
+ */
+function parsePackageSize(
+  line: string,
+  weights: IngredientWeight,
+): number | null {
+  const m = line.match(/\(\s*(\d+(?:\.\d+)?)\s*(fl\s*oz|[a-zA-Z]+)\s*\.?\s*\)/);
+  if (!m) return null;
+  const n = parseFloat(m[1]);
+  const unit = normalizeUnit(m[2].replace(/\s+/g, ' '));
+  if (MASS_GRAMS[unit] != null) return n * MASS_GRAMS[unit];
+  if (VOLUME_CUPS[unit] != null) {
+    return n * VOLUME_CUPS[unit] * (weights.perCup ?? DEFAULT_GRAMS_PER_CUP);
+  }
+  return null;
+}
+
+/**
  * Grams for one ingredient line. Returns 0 for a line that names a seasoning
  * without an amount ("salt, to taste"), and null when the line cannot be sized
  * at all — the caller reports that as an unmatched ingredient rather than
  * inventing a weight.
  */
-function gramsForLine(
+export function gramsForLine(
   quantity: string,
   name: string,
   item: FoodItem | null,
@@ -176,12 +200,32 @@ function gramsForLine(
   // real amount is how a pinch of salt became 100 g of it.
   if (isNegligible(line)) return 0;
 
-  const { amount, rest } = parseLeadingAmount(line);
-  if (amount == null) return null; // no number anywhere; nothing to scale
   const weights = weightsFor(name);
+  // "1 (15 oz) can black beans" states its own answer: the parenthetical is the
+  // package size and the leading number is how many packages. Parsed in place
+  // the bracket hid the unit entirely, so the line either could not be sized at
+  // all or silently fell back to the ingredient's per-item weight — which read
+  // "1 (14.5 oz) can diced tomatoes" as a single 123 g tomato.
+  const packageG = parsePackageSize(line, weights);
+  const bare = line.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const { amount, rest } = parseLeadingAmount(bare);
+  if (amount == null) return null; // no number anywhere; nothing to scale
 
   const unitMatch = rest.match(/^([a-zA-Z.]+)\b/);
   const unit = unitMatch ? normalizeUnit(unitMatch[1]) : null;
+
+  // Trust the stated package size only where it is the better figure: against a
+  // container, or a unit we cannot otherwise resolve. An explicit "1 lb carrots
+  // (about 2 cups)" still weighs a pound.
+  const known =
+    unit != null &&
+    (MASS_GRAMS[unit] != null ||
+      VOLUME_CUPS[unit] != null ||
+      COUNT_GRAMS[unit] != null);
+  if (packageG != null && (!known || CONTAINER_UNITS.has(unit))) {
+    return amount * packageG;
+  }
 
   if (unit) {
     if (MASS_GRAMS[unit] != null) return amount * MASS_GRAMS[unit];

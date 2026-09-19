@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Regression check for ingredient -> food-record matching.
+// Regression check for the two halves of the nutrition estimator: how much an
+// ingredient line weighs, and which food record it matches.
 //
 // scoreMatch() is the part of the estimator most likely to be retuned, and the
 // failure mode is silent: a plausible-looking number built on the wrong record.
@@ -10,7 +11,7 @@
 // the same answer every time -- which is the point. Verifying against the live
 // APIs is a separate, slower exercise.
 //
-// Usage: node scripts/check-food-matching.mjs
+// Usage: node scripts/check-estimator.mjs
 // Exits non-zero on the first regression, and prints the ranking that produced it.
 
 import { execFileSync } from 'node:child_process';
@@ -44,6 +45,29 @@ function buildScoreMatch() {
     .replace("'@/lib/ingredient-weights'", "'./ingredient-weights.mjs'"));
   return { entry, cleanup: () => rmSync(out, { recursive: true, force: true }) };
 }
+
+
+// Line sizing. These matter because they fail quietly: a line we cannot size
+// drops out of the total, and one sized against the wrong unit is never
+// flagged. The package-size cases are ordinary American recipe formatting.
+const SIZING = [
+  { line: ['1 (15 oz) can', 'black beans, drained and rinsed'], grams: 425.3,
+    why: 'the bracket is the package size; parsed in place it hid the unit and the line went unmatched' },
+  { line: ['1 (14.5 oz) can', 'diced tomatoes'], grams: 411.1,
+    why: 'without it this silently became one 123 g tomato' },
+  { line: ['2 (15 oz) cans', 'chickpeas'], grams: 850.5, why: 'count x package size' },
+  { line: ['1 (8 oz) package', 'cream cheese'], grams: 226.8, why: 'stated size beats the 250 g default' },
+  { line: ['1 (14 fl oz) can', 'coconut milk'], grams: 427.0, why: 'fluid ounces go through the ingredient density' },
+  { line: ['1 can', 'black beans'], grams: 400, why: 'a can with no stated size falls back to the container' },
+  { line: ['1 lb', 'carrots (about 2 cups chopped)'], grams: 453.6,
+    why: 'an explicit mass still wins over a descriptive bracket' },
+  { line: ['2 cups', 'flour (sifted)'], grams: 240, why: 'a non-numeric bracket is not a size' },
+  { line: ['3', 'cloves garlic'], grams: 9, why: 'a clove is a piece of the ingredient, not a package' },
+  { line: ['2 cups', 'fresh spinach'], grams: 60, why: 'a cup of spinach is 30 g, not 240' },
+  { line: ['1 cup', 'honey'], grams: 340, why: 'and a cup of honey is 340' },
+  { line: ['2', 'onions'], grams: 300, why: 'plural names must still find a weight' },
+  { line: ['', 'salt, to taste'], grams: 0, why: 'named but never measured' },
+];
 
 const CASES = [
   {
@@ -320,14 +344,29 @@ const CASES = [
 ];
 
 const { entry, cleanup } = buildScoreMatch();
-let scoreMatch;
+let scoreMatch, gramsForLine;
 try {
-  ({ scoreMatch } = await import(pathToFileURL(entry).href));
+  ({ scoreMatch, gramsForLine } = await import(pathToFileURL(entry).href));
 } finally {
   cleanup();
 }
 
 let failed = 0;
+
+console.log('Line sizing');
+for (const { line: [quantity, name], grams, why } of SIZING) {
+  const got = gramsForLine(quantity, name, null);
+  if (got != null && Math.abs(got - grams) < 1.5) {
+    console.log(`  ok  ${`${quantity} ${name}`.trim().padEnd(46)} ${got.toFixed(1).padStart(7)} g`);
+    continue;
+  }
+  failed++;
+  console.log(`\nFAIL  ${`${quantity} ${name}`.trim()}`);
+  console.log(`      expected ~${grams} g, got ${got == null ? 'null (line could not be sized)' : `${got.toFixed(1)} g`}`);
+  console.log(`      ${why}\n`);
+}
+
+console.log('\nFood matching');
 for (const { query, expect, why, candidates } of CASES) {
   const ranked = candidates
     .map((c) => ({ c, score: scoreMatch(query, { name: c.name, brand: c.brand, per100: {} }) }))
@@ -346,5 +385,6 @@ for (const { query, expect, why, candidates } of CASES) {
   }
 }
 
-console.log(`\n${CASES.length - failed}/${CASES.length} passed`);
+const total = CASES.length + SIZING.length;
+console.log(`\n${total - failed}/${total} passed`);
 process.exit(failed ? 1 : 0);
