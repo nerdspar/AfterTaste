@@ -68,10 +68,15 @@ services:
       # USDA FoodData Central holds the generic whole foods that "Estimate
       # from ingredients" depends on. Free key, no card, takes a minute:
       # https://fdc.nal.usda.gov/api-key-signup
-      # Leave blank and it falls back to the shared DEMO_KEY, which is capped
+      # Leave unset and it falls back to the shared DEMO_KEY, which is capped
       # per IP and in practice usually exhausted — lookups then return nothing
       # and ingredients silently go unmatched.
-      FDC_API_KEY: "" # ⬅ FDC_API_KEY (optional, but estimates need it)
+      #
+      # Read from the `.env` next to this file (which is gitignored) rather
+      # than pasted here, because THIS file is tracked in git. Put the line
+      #   FDC_API_KEY=your-key-here
+      # in that .env and leave the line below alone.
+      FDC_API_KEY: "${FDC_API_KEY:-}"
       # --- Password-reset emails (optional) --------------------------------
       # Public URL of this app, used to build reset links in emails.
       APP_URL: "https://aftertaste.example.com" # ⬅ APP_URL (your public URL)
