@@ -29,6 +29,7 @@ function buildScoreMatch() {
   try {
     execFileSync('npx', [
       'tsc', 'lib/food-db.ts', 'lib/nutrition-estimate.ts', 'lib/ingredient-weights.ts',
+      'lib/nutrition-lines.ts',
       '--outDir', out, '--module', 'esnext', '--target', 'es2022',
       '--moduleResolution', 'bundler', '--skipLibCheck',
     ], { cwd: repo, stdio: 'pipe' });
@@ -42,7 +43,8 @@ function buildScoreMatch() {
   const entry = join(out, 'nutrition-estimate.mjs');
   writeFileSync(entry, readFileSync(entry, 'utf8')
     .replace("'@/lib/food-db'", "'./food-db.mjs'")
-    .replace("'@/lib/ingredient-weights'", "'./ingredient-weights.mjs'"));
+    .replace("'@/lib/ingredient-weights'", "'./ingredient-weights.mjs'")
+    .replaceAll("'@/lib/nutrition-lines'", "'./nutrition-lines.mjs'"));
   return { entry, cleanup: () => rmSync(out, { recursive: true, force: true }) };
 }
 

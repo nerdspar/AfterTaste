@@ -17,6 +17,13 @@ import {
 } from 'lucide-react';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { estimateRecipeNutrition } from '@/app/(app)/food-db-actions';
+import { EstimateBreakdown } from './EstimateBreakdown';
+import {
+  sumLines,
+  isAccountedFor,
+  type EstimateLine,
+  type NutritionTotals,
+} from '@/lib/nutrition-lines';
 import { isVideoSource } from '@/lib/media';
 import { fileToDownscaledDataUrl } from '@/lib/image-resize';
 import type { Recipe, Ingredient, Instruction } from '@/data/sample/recipes';
@@ -151,6 +158,30 @@ function ReorderControls({
   );
 }
 
+/**
+ * A fingerprint of the real ingredient lines, used to notice when the list has
+ * moved on from the estimate that was made of it.
+ */
+function ingredientSignature(list: Ingredient[]): string {
+  return list
+    .filter((i) => !isIngredientSection(i) && i.name.trim())
+    .map((i) => `${i.quantity}\u0000${i.name}`)
+    .join('\u0001');
+}
+
+/**
+ * The line under the estimate. It has to say how many ingredients were counted,
+ * because the ones that weren't are the whole reason the number can be wrong —
+ * and now they are listed underneath with somewhere to fix them.
+ */
+function estimateSummary(counted: number, total: number): string {
+  const missing = total - counted;
+  const base = `Estimated from ${counted} of ${total} ingredient${total === 1 ? '' : 's'}`;
+  return missing > 0
+    ? `${base} — ${missing} still ${missing === 1 ? 'needs' : 'need'} a weight or a food.`
+    : `${base}. Check the matches below before saving.`;
+}
+
 export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   const isEditing = !!recipe;
   const router = useRouter();
@@ -257,6 +288,37 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
   // Nutrition estimation from the ingredient list (food-database lookups).
   const [estimating, setEstimating] = useState(false);
   const [estimateNote, setEstimateNote] = useState<string | null>(null);
+  // The per-ingredient working-out, kept so the cook can correct it. Held
+  // separately from the macro fields: editing a line re-totals the fields, but
+  // typing in a macro field by hand does not invalidate the breakdown.
+  const [estimateLines, setEstimateLines] = useState<EstimateLine[] | null>(
+    null,
+  );
+  // The ingredient list the breakdown describes. Once the list moves on, the
+  // breakdown is about a recipe that no longer exists — and a stale breakdown
+  // is exactly the kind of quietly-wrong number this whole panel exists to
+  // prevent, so say so rather than letting it sit there looking authoritative.
+  const [estimatedFrom, setEstimatedFrom] = useState<string | null>(null);
+
+  const applyTotals = (t: NutritionTotals) => {
+    setCalories(t.calories);
+    setProteinG(t.proteinG);
+    setCarbsG(t.carbsG);
+    setFatG(t.fatG);
+    setFiberG(t.fiberG);
+    setSugarG(t.sugarG);
+    setSodiumMg(t.sodiumMg);
+    setNutritionSource('estimated');
+  };
+
+  /** A correction re-totals the recipe immediately — no round trip needed. */
+  const onLinesChange = (lines: EstimateLine[]) => {
+    setEstimateLines(lines);
+    applyTotals(sumLines(lines));
+    const counted = lines.filter(isAccountedFor).length;
+    setEstimateNote(estimateSummary(counted, lines.length));
+  };
+
   // Opt-in only — never runs automatically, since the database estimate is
   // rough; the user taps "Estimate from ingredients".
   const runEstimate = async () => {
@@ -278,22 +340,17 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
         })),
       );
       if (!est) {
+        setEstimateLines(null);
+        setEstimatedFrom(null);
         setEstimateNote(
           "We couldn't estimate nutrition from these ingredients — enter it manually if you like.",
         );
         return;
       }
-      setCalories(est.calories);
-      setProteinG(est.proteinG);
-      setCarbsG(est.carbsG);
-      setFatG(est.fatG);
-      setFiberG(est.fiberG);
-      setSugarG(est.sugarG);
-      setSodiumMg(est.sodiumMg);
-      setNutritionSource('estimated');
-      setEstimateNote(
-        `Rough estimate from ${est.matched} of ${est.total} ingredient${est.total === 1 ? '' : 's'} — please double-check.`,
-      );
+      setEstimateLines(est.lines);
+      setEstimatedFrom(ingredientSignature(ingredients));
+      applyTotals(est);
+      setEstimateNote(estimateSummary(est.matched, est.total));
     } finally {
       setEstimating(false);
     }
@@ -892,6 +949,21 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
               <p className="mb-2 text-xs text-primary-700 dark:text-primary-300">
                 {estimateNote}
               </p>
+            )}
+            {estimateLines && (
+              <>
+                {estimatedFrom !== ingredientSignature(ingredients) && (
+                  <p className="mb-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+                    The ingredients changed since this estimate — run it again to
+                    bring these numbers up to date.
+                  </p>
+                )}
+                <EstimateBreakdown
+                  lines={estimateLines}
+                  onChange={onLinesChange}
+                  onReestimate={runEstimate}
+                />
+              </>
             )}
             <p className="mb-2 text-xs text-gray-400 dark:text-gray-500">
               Totals for the whole recipe. We divide by {servings} serving

@@ -113,6 +113,7 @@ model Household {
   groceryItems GroceryItem[]
   mealPlan     MealPlan[]
   invites      HouseholdInvite[]
+  foodMatches  IngredientMatch[]
 
   createdAt DateTime @default(now())
 }
@@ -148,15 +149,15 @@ model Recipe {
   servings         Int     @default(4)
   calories         Int     @default(0) // per serving (kcal)
   // Extended nutrition, all per serving. Null = unknown (distinct from 0).
-  proteinG        Int?
-  carbsG          Int?
-  fatG            Int?
-  fiberG          Int?
-  sugarG          Int?
-  sodiumMg        Int?
+  proteinG         Int?
+  carbsG           Int?
+  fatG             Int?
+  fiberG           Int?
+  sugarG           Int?
+  sodiumMg         Int?
   // How the nutrition was filled in: manual | imported | estimated. Lets the
   // UI badge estimates and avoids clobbering hand-entered values later.
-  nutritionSource String?
+  nutritionSource  String?
   difficulty       String  @default("Medium")
   cost             Int     @default(0)
   cookingClassType String  @default("Cozy Comfort Food")
@@ -232,4 +233,44 @@ model RecentlyViewed {
   viewedAt DateTime @default(now())
 
   @@id([userId, recipeId])
+}
+
+// A household's answer to "what food is this ingredient?", saved the first time
+// someone corrects an estimate. The estimator consults these before it guesses,
+// so a correction made once holds for everyone in the household and for every
+// recipe after it — which is the only thing that makes rough public food data
+// converge on being right for one kitchen.
+//
+// The macros are snapshotted rather than re-fetched: a saved answer should not
+// change under the cook because an upstream database was edited, and a
+// remembered term costs no API call.
+model IngredientMatch {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+
+  /// Normalized search term, e.g. "chicken breast" — NOT the raw ingredient
+  /// line, so "3 cloves garlic, minced" and "2 cloves garlic" share an answer.
+  term   String
+  /// Food-database id, e.g. "usda:1105314" or "off:737628064502".
+  foodId String
+
+  // Snapshot of the chosen record (per 100 g), mirroring FoodItem.
+  foodName     String
+  brand        String?
+  source       String // "usda" | "off"
+  calories     Int
+  proteinG     Int?
+  carbsG       Int?
+  fatG         Int?
+  fiberG       Int?
+  sugarG       Int?
+  sodiumMg     Int?
+  servingSizeG Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([householdId, term])
+  @@index([householdId])
 }

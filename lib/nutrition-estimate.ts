@@ -24,16 +24,21 @@ import {
   isNegligible,
   type IngredientWeight,
 } from '@/lib/ingredient-weights';
+import {
+  sumLines,
+  isAccountedFor,
+  type EstimateLine,
+  type NutritionTotals,
+} from '@/lib/nutrition-lines';
 
-export interface EstimatedNutrition {
-  // Whole-recipe totals (the recipe form enters whole-recipe numbers).
-  calories: number;
-  proteinG: number;
-  carbsG: number;
-  fatG: number;
-  fiberG: number;
-  sugarG: number;
-  sodiumMg: number;
+export type { EstimateLine } from '@/lib/nutrition-lines';
+
+// Whole-recipe totals (the recipe form enters whole-recipe numbers), plus the
+// working-out. The lines are what let the cook see and correct the guess
+// instead of being handed a number and told to double-check it.
+export interface EstimatedNutrition extends NutritionTotals {
+  /** One per real ingredient, in list order. */
+  lines: EstimateLine[];
   /** How many real ingredients we found a food match for. */
   matched: number;
   /** How many real ingredients there were (excludes section headers). */
@@ -245,11 +250,6 @@ export function gramsForLine(
   return amount * perItem;
 }
 
-function scale(per100: number | null, grams: number): number {
-  if (per100 == null) return 0;
-  return (per100 * grams) / 100;
-}
-
 // Small in-process cache so repeated ingredient names (across a recipe or
 // between imports in the same server run) don't re-hit the food APIs.
 const lookupCache = new Map<string, FoodItem | null>();
@@ -386,65 +386,65 @@ async function lookupFood(name: string): Promise<FoodItem | null> {
 }
 
 /**
+ * The food-database search term for an ingredient line, and the key a
+ * household's saved correction is stored under. A line measured in cans or jars
+ * means the packed product — matching "1 can black beans" to dry beans at
+ * 341 kcal/100 g reads 1364 kcal for a tin worth about 300.
+ */
+export function searchTermFor(quantity: string, name: string): string {
+  const base = cleanFoodName(name) || name;
+  const packed = /\b(cans?|jars?|tins?)\b/i.test(`${quantity} ${name}`);
+  const term = packed && !/\bcanned\b/i.test(base) ? `canned ${base}` : base;
+  return term.toLowerCase().trim();
+}
+
+/**
  * Estimate whole-recipe nutrition from an ingredient list. Returns null when
  * nothing could be matched (caller should then leave nutrition blank + notify).
+ *
+ * `saved` carries the household's remembered corrections, keyed by search term.
+ * They win outright over scoring: the cook has already told us what this
+ * ingredient is, and no amount of cleverness should talk us out of it.
  */
 export async function estimateNutrition(
   ingredients: EstimateIngredient[],
+  saved?: ReadonlyMap<string, FoodItem>,
 ): Promise<EstimatedNutrition | null> {
   // Real ingredients only (section headers carry a `section` field).
   const items = ingredients.filter((i) => !i.section && i.name.trim());
   if (items.length === 0) return null;
 
-  const totals = {
-    calories: 0, proteinG: 0, carbsG: 0, fatG: 0, fiberG: 0, sugarG: 0, sodiumMg: 0,
-  };
-  let matched = 0;
-
-  // Look up each ingredient's food (deduped via the cache). A line measured in
-  // cans or jars means the packed product — matching "1 can black beans" to
-  // dry beans at 341 kcal/100 g reads 1364 kcal for a tin worth about 300.
+  const terms = items.map((i) => searchTermFor(i.quantity, i.name));
+  // Only search for the terms we have no answer for.
   const foods = await Promise.all(
-    items.map((i) => {
-      const base = cleanFoodName(i.name) || i.name;
-      const packed = /\b(cans?|jars?|tins?)\b/i.test(`${i.quantity} ${i.name}`);
-      return lookupFood(packed && !/\bcanned\b/i.test(base) ? `canned ${base}` : base);
-    }),
+    terms.map((term) => (saved?.has(term) ? null : lookupFood(term))),
   );
 
-  items.forEach((ing, idx) => {
-    const food = foods[idx];
+  const lines: EstimateLine[] = items.map((ing, idx) => {
+    const term = terms[idx];
+    const remembered = saved?.get(term) ?? null;
+    const food = remembered ?? foods[idx];
     const grams = gramsForLine(ing.quantity, ing.name, food);
-    // null = we could not size the line at all, so it stays unmatched rather
-    // than contributing a guessed weight.
-    if (grams == null) return;
-    // 0 = a seasoning-to-taste or garnish: correctly handled, adds nothing.
-    if (grams === 0) {
-      matched += 1;
-      return;
-    }
-    if (!food) return; // sized, but no nutrition data to scale
-    matched += 1;
-    totals.calories += scale(food.per100.calories, grams);
-    totals.proteinG += scale(food.per100.proteinG, grams);
-    totals.carbsG += scale(food.per100.carbsG, grams);
-    totals.fatG += scale(food.per100.fatG, grams);
-    totals.fiberG += scale(food.per100.fiberG, grams);
-    totals.sugarG += scale(food.per100.sugarG, grams);
-    totals.sodiumMg += scale(food.per100.sodiumMg, grams);
+    // null = we could not size the line at all, so it is reported as unsized
+    // rather than contributing a guessed weight. 0 = a seasoning-to-taste or
+    // garnish: correctly handled, and worth nothing.
+    const status: EstimateLine['status'] =
+      grams == null ? 'unsized' : grams === 0 ? 'negligible' : food ? 'ok' : 'unmatched';
+    return {
+      index: idx,
+      name: ing.name,
+      quantity: ing.quantity,
+      term,
+      grams,
+      food,
+      status,
+      remembered: remembered != null,
+    };
   });
 
+  const matched = lines.filter(isAccountedFor).length;
   if (matched === 0) return null;
+  const totals = sumLines(lines);
 
-  return {
-    calories: Math.round(totals.calories),
-    proteinG: Math.round(totals.proteinG),
-    carbsG: Math.round(totals.carbsG),
-    fatG: Math.round(totals.fatG),
-    fiberG: Math.round(totals.fiberG),
-    sugarG: Math.round(totals.sugarG),
-    sodiumMg: Math.round(totals.sodiumMg),
-    matched,
-    total: items.length,
-  };
+  return { ...totals, lines, matched, total: items.length };
 }
