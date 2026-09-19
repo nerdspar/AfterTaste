@@ -82,10 +82,10 @@ const TABLE: [RegExp, IngredientWeight][] = [
 
   // ---- vegetables (chopped, per cup) + typical whole-item weights ----
   [/\bgarlic\b/, { perCup: 136, perItem: 3 }], // per clove
-  [/\bshallot\b/, { perCup: 160, perItem: 40 }],
-  [/\b(green onion|scallion|spring onion)\b/, { perCup: 100, perItem: 15 }],
-  [/\bonion\b/, { perCup: 160, perItem: 150 }],
-  [/\b(bell pepper|capsicum)\b/, { perCup: 149, perItem: 119 }],
+  [/\bshallots?\b/, { perCup: 160, perItem: 40 }],
+  [/\b(green onions?|scallions?|spring onions?)\b/, { perCup: 100, perItem: 15 }],
+  [/\bonions?\b/, { perCup: 160, perItem: 150 }],
+  [/\b(bell peppers?|capsicums?)\b/, { perCup: 149, perItem: 119 }],
   [/\b(jalape|serrano|chili|chilli|chile)\w*\b/, { perCup: 90, perItem: 14 }],
   [/\bmushrooms?\b/, { perCup: 70, perItem: 18 }],
   [/\bcarrots?\b/, { perCup: 128, perItem: 61 }],
@@ -93,21 +93,21 @@ const TABLE: [RegExp, IngredientWeight][] = [
   [/\b(cherry|grape) tomato\w*\b/, { perCup: 149, perItem: 17 }],
   [/\btomato\w*\b/, { perCup: 180, perItem: 123 }],
   [/\bpotato\w*\b/, { perCup: 150, perItem: 213 }],
-  [/\bzucchini|courgette\b/, { perCup: 124, perItem: 196 }],
-  [/\bcucumber\b/, { perCup: 133, perItem: 201 }],
-  [/\beggplant|aubergine\b/, { perCup: 82, perItem: 458 }],
+  [/\bzucchinis?|courgettes?\b/, { perCup: 124, perItem: 196 }],
+  [/\bcucumbers?\b/, { perCup: 133, perItem: 201 }],
+  [/\beggplants?|aubergines?\b/, { perCup: 82, perItem: 458 }],
   [/\bbroccoli|cauliflower\b/, { perCup: 91, perItem: 500 }],
   [/\b(corn|peas)\b/, { perCup: 145, perItem: 90 }],
-  [/\bcabbage\b/, { perCup: 89, perItem: 900 }],
+  [/\bcabbages?\b/, { perCup: 89, perItem: 900 }],
   [/\bginger\b/, { perCup: 96, perItem: 30 }],
-  [/\bavocado\b/, { perCup: 146, perItem: 150 }],
+  [/\bavocados?\b/, { perCup: 146, perItem: 150 }],
 
   // ---- fruit ----
-  [/\blemon\b/, { perCup: 244, perItem: 84 }],
-  [/\blime\b/, { perCup: 242, perItem: 67 }],
-  [/\borange\b/, { perCup: 248, perItem: 131 }],
-  [/\bbanana\b/, { perCup: 150, perItem: 118 }],
-  [/\bapple\b/, { perCup: 125, perItem: 182 }],
+  [/\blemons?\b/, { perCup: 244, perItem: 84 }],
+  [/\blimes?\b/, { perCup: 242, perItem: 67 }],
+  [/\boranges?\b/, { perCup: 248, perItem: 131 }],
+  [/\bbananas?\b/, { perCup: 150, perItem: 118 }],
+  [/\bapples?\b/, { perCup: 125, perItem: 182 }],
   [/\bberries|strawberr|blueberr|raspberr\w*\b/, { perCup: 145 }],
 
   // ---- nuts, seeds, chocolate ----

@@ -200,21 +200,49 @@ type UsdaFood = {
   foodNutrients?: UsdaNutrient[];
 };
 
+// Energy is not recorded under one name. SR Legacy rows carry a plain "Energy"
+// in both kcal and kJ, but Foundation rows — the modern whole-food entries, and
+// exactly the ones a recipe means — carry no plain "Energy" at all: they report
+// "Energy (Atwater General Factors)". Looking only for "Energy" therefore threw
+// away raw chicken breast and baby spinach before they could be scored, leaving
+// the branded supermarket packet as the only candidate.
+const ENERGY_NAMES = [
+  'Energy',
+  'Energy (Atwater General Factors)',
+  'Energy (Atwater Specific Factors)',
+];
+
+/** Calories per 100 g, preferring the plain figure, then Atwater, then kJ. */
+function energyKcal(nutrients: UsdaNutrient[]): number | null {
+  const kcal = new Map<string, number>();
+  let kj: number | null = null;
+  for (const fn of nutrients) {
+    const name = fn.nutrientName;
+    if (!name || fn.value == null || !ENERGY_NAMES.includes(name)) continue;
+    const unit = (fn.unitName || '').toUpperCase();
+    if (unit === 'KCAL') {
+      if (!kcal.has(name)) kcal.set(name, fn.value);
+    } else if (unit === 'KJ' && kj == null) {
+      kj = fn.value;
+    }
+  }
+  for (const name of ENERGY_NAMES) {
+    const v = kcal.get(name);
+    if (v != null) return v;
+  }
+  return kj == null ? null : kj / 4.184;
+}
+
 function usdaToItem(f: UsdaFood): FoodItem | null {
   const name = (f.description || '').trim();
   if (!name) return null;
+  const nutrients = f.foodNutrients || [];
   const byName: Record<string, number> = {};
-  let cals: number | null = null;
-  for (const fn of f.foodNutrients || []) {
+  for (const fn of nutrients) {
     if (!fn.nutrientName || fn.value == null) continue;
-    if (
-      fn.nutrientName === 'Energy' &&
-      (fn.unitName === 'KCAL' || fn.unitName === 'kcal')
-    ) {
-      cals = fn.value;
-    }
     byName[fn.nutrientName] = fn.value;
   }
+  const cals = energyKcal(nutrients);
   if (cals == null) return null;
   const per100 = sanitizeMacros({
     calories: Math.round(cals),
@@ -237,20 +265,43 @@ function usdaToItem(f: UsdaFood): FoodItem | null {
   };
 }
 
-async function searchUsda(query: string, limit: number): Promise<FoodItem[]> {
+async function searchUsdaSet(
+  query: string,
+  dataType: string,
+  limit: number,
+): Promise<FoodItem[]> {
   const key = process.env.FDC_API_KEY || 'DEMO_KEY';
   const url =
     'https://api.nal.usda.gov/fdc/v1/foods/search?' +
     new URLSearchParams({
       query,
       pageSize: String(limit),
-      dataType: 'Foundation,SR Legacy,Branded',
+      dataType,
       api_key: key,
     });
   const data = (await fetchJson(url)) as { foods?: UsdaFood[] };
   return (data.foods || [])
     .map(usdaToItem)
     .filter((x): x is FoodItem => x != null);
+}
+
+/**
+ * USDA ranks branded products above generic ones, and there are far more of
+ * them, so a single mixed search for "spinach" comes back as fifteen
+ * supermarket bags with "Spinach, raw" nowhere in it — the whole-food record a
+ * recipe means never reached the scorer at all. Asking the generic datasets and
+ * the branded one separately guarantees both are represented.
+ */
+async function searchUsda(query: string, limit: number): Promise<FoodItem[]> {
+  const [generic, branded] = await Promise.all([
+    searchUsdaSet(query, 'Foundation,SR Legacy', limit).catch(
+      () => [] as FoodItem[],
+    ),
+    searchUsdaSet(query, 'Branded', limit).catch(() => [] as FoodItem[]),
+  ]);
+  // Generic first: searchFoods de-dupes by name, so on a tie the whole-food
+  // record should be the one that survives.
+  return [...generic, ...branded];
 }
 
 // ---- public API --------------------------------------------------------------
