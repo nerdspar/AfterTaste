@@ -56,6 +56,8 @@ export function RecipeRatings({ recipe }: RecipeRatingsProps) {
     <>
       <button
         type="button"
+        // Cook mode scrolls here on "I'm done" — the moment they can answer.
+        id="recipe-ratings"
         onClick={() => setOpen(true)}
         className={cn(
           'w-full text-left rounded-2xl border border-gray-200 bg-white p-4',

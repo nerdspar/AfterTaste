@@ -2,6 +2,7 @@
 
 import { use, useEffect, useRef, useState } from 'react';
 import { notFound, useRouter } from 'next/navigation';
+import { UtensilsCrossedIcon } from 'lucide-react';
 import { Breadcrumbs } from '@/components/aftertaste/Breadcrumbs';
 import { RecipeHero } from '@/components/aftertaste/recipe-detail/RecipeHero';
 import { StatsRow } from '@/components/aftertaste/recipe-detail/StatsRow';
@@ -12,6 +13,7 @@ import { CookingInstructions } from '@/components/aftertaste/recipe-detail/Cooki
 import { RecipeNotes } from '@/components/aftertaste/recipe-detail/RecipeNotes';
 import { AIAssistantPanel } from '@/components/aftertaste/recipe-detail/AIAssistantPanel';
 import { CookIntentTracker } from '@/components/aftertaste/recipe-detail/CookIntentTracker';
+import { CookMode } from '@/components/aftertaste/recipe-detail/CookMode';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { recordRecipeView } from '@/lib/recently-viewed';
 import { useKeepAwake } from '@/lib/keep-awake';
@@ -31,6 +33,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const nutritionOn = prefs.nutrition;
   const [scaleMode, setScaleMode] = useState<'amount' | 'serving'>('amount');
   const [scaleValue, setScaleValue] = useState(1);
+  const [cooking, setCooking] = useState(false);
   // Tracks whether this recipe was ever present, so we can tell a freshly
   // deleted recipe (redirect to the list) apart from an unknown id (404).
   const existedRef = useRef(false);
@@ -91,11 +94,42 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
         afterMinutes={prefs.cookNudgeAfterMin}
         enabled={prefs.pushCookNudge}
       />
-      <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-        Details
-      </h1>
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          Details
+        </h1>
+        <button
+          type="button"
+          onClick={() => setCooking(true)}
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary-500 px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+        >
+          <UtensilsCrossedIcon className="h-4 w-4" />
+          Start cooking
+        </button>
+      </div>
 
       <Breadcrumbs items={breadcrumbs} className="mb-5" />
+
+      {cooking && (
+        <CookMode
+          recipeId={recipe.id}
+          title={recipe.title}
+          ingredients={recipe.ingredients}
+          instructions={recipe.instructions}
+          multiplier={
+            scaleMode === 'amount' ? scaleValue : scaleValue / recipe.servings
+          }
+          nudgeEnabled={prefs.pushCookNudge}
+          onClose={() => setCooking(false)}
+          onFinish={() => {
+            setCooking(false);
+            // Straight to the ratings — this is the moment they can answer.
+            document
+              .getElementById('recipe-ratings')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Center column — the wide area gets the ingredients + instructions. */}
