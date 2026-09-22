@@ -10,6 +10,7 @@ import { IngredientIcon } from '../IngredientIcon';
 import { useGroceryStore } from '../GroceryStoreProvider';
 import { guessGroceryCategory } from '@/lib/grocery-category';
 import { scaleQuantity } from '@/lib/quantity';
+import { convertQuantity, type UnitSystem } from '@/lib/units';
 import type { Ingredient } from '@/data/sample/recipes';
 
 type ScaleMode = 'amount' | 'serving';
@@ -28,6 +29,8 @@ interface IngredientsPanelProps {
   onScaleValueChange: (value: number) => void;
   recipeId: string;
   recipeTitle: string;
+  /** Measurement system to display in (Settings → Appearance). */
+  units: UnitSystem;
 }
 
 export function IngredientsPanel({
@@ -39,6 +42,7 @@ export function IngredientsPanel({
   onScaleValueChange,
   recipeId,
   recipeTitle,
+  units,
 }: IngredientsPanelProps) {
   const multiplier =
     scaleMode === 'amount' ? scaleValue : scaleValue / baseServings;
@@ -116,7 +120,7 @@ export function IngredientsPanel({
     const added = addItems(
       chosen.map((ing) => ({
         name: ing.name,
-        quantity: scaleQuantity(ing.quantity, multiplier),
+        quantity: convertQuantity(scaleQuantity(ing.quantity, multiplier), units),
         category: guessGroceryCategory(ing.name),
         recipeId,
         recipeTitle,
@@ -328,7 +332,7 @@ export function IngredientsPanel({
                 {ing.name}
               </span>
               <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums flex-shrink-0 mt-0.5 pl-2 text-right min-w-[3rem]">
-                {scaleQuantity(ing.quantity, multiplier)}
+                {convertQuantity(scaleQuantity(ing.quantity, multiplier), units)}
               </span>
             </>
           );

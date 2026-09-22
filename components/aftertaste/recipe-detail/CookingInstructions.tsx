@@ -1,13 +1,19 @@
 import { SectionHeader } from '../SectionHeader';
 import { StepMedia } from './StepMedia';
 import { isGenericStepTitle } from '@/lib/recipe-parser';
+import { convertText, type UnitSystem } from '@/lib/units';
 import type { Instruction } from '@/data/sample/recipes';
 
 interface CookingInstructionsProps {
   instructions: Instruction[];
+  /** Measurement system to display in (Settings → Appearance). */
+  units: UnitSystem;
 }
 
-export function CookingInstructions({ instructions }: CookingInstructionsProps) {
+export function CookingInstructions({
+  instructions,
+  units,
+}: CookingInstructionsProps) {
   // Step numbering restarts after each section header.
   let stepNum = 0;
 
@@ -46,7 +52,7 @@ export function CookingInstructions({ instructions }: CookingInstructionsProps) 
                   </h4>
                 )}
                 <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap">
-                  {inst.body}
+                  {convertText(inst.body, units)}
                 </p>
               </div>
 

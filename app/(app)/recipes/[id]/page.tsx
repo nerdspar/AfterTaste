@@ -18,6 +18,8 @@ import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { recordRecipeView } from '@/lib/recently-viewed';
 import { useKeepAwake } from '@/lib/keep-awake';
 import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
+import { useCurrentUser } from '@/components/aftertaste/CurrentUserProvider';
+import type { UnitSystem } from '@/lib/units';
 
 interface RecipeDetailPageProps {
   params: Promise<{ id: string }>;
@@ -28,6 +30,10 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const { getRecipe } = useRecipeStore();
   const router = useRouter();
   const { prefs } = useUserPrefs();
+  // Imperial/metric is a profile field, not a pref toggle (Settings →
+  // Appearance). Anything unrecognised falls back to how the recipe was written.
+  const units: UnitSystem =
+    useCurrentUser().units === 'metric' ? 'metric' : 'imperial';
   // Optionally keep the screen awake while viewing a recipe (Settings).
   useKeepAwake(prefs.keepAwake);
   const nutritionOn = prefs.nutrition;
@@ -83,6 +89,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
         onScaleValueChange={setScaleValue}
         recipeId={recipe.id}
         recipeTitle={recipe.title}
+        units={units}
       />
     ) : null;
 
@@ -119,6 +126,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
           multiplier={
             scaleMode === 'amount' ? scaleValue : scaleValue / recipe.servings
           }
+          units={units}
           nudgeEnabled={prefs.pushCookNudge}
           onClose={() => setCooking(false)}
           onFinish={() => {
@@ -146,7 +154,10 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
           </div>
           {ingredientsPanel}
           {recipe.instructions.length > 0 && (
-            <CookingInstructions instructions={recipe.instructions} />
+            <CookingInstructions
+              instructions={recipe.instructions}
+              units={units}
+            />
           )}
           <RecipeNotes recipe={recipe} />
         </div>

@@ -15,6 +15,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { XIcon, CheckIcon, RotateCcwIcon, UtensilsCrossedIcon } from 'lucide-react';
 import { scaleQuantity } from '@/lib/quantity';
+import { convertQuantity, convertText, type UnitSystem } from '@/lib/units';
 import { isGenericStepTitle } from '@/lib/recipe-parser';
 import {
   loadCookProgress,
@@ -33,6 +34,8 @@ interface Props {
   instructions: Instruction[];
   /** Applied to ingredient amounts, so cook mode matches the scaling on the page. */
   multiplier: number;
+  /** Measurement system to display in (Settings → Appearance). */
+  units: UnitSystem;
   /** False when the user has the did-you-make-it nudge turned off. */
   nudgeEnabled: boolean;
   onClose: () => void;
@@ -47,6 +50,7 @@ export function CookMode({
   ingredients,
   instructions,
   multiplier,
+  units,
   nudgeEnabled,
   onClose,
   onFinish,
@@ -206,7 +210,10 @@ export function CookMode({
                       onToggle={() => toggle(setIngChecked, idx)}
                     >
                       <span className="font-medium tabular-nums text-gray-900 dark:text-gray-100">
-                        {scaleQuantity(ing.quantity, multiplier)}
+                        {convertQuantity(
+                          scaleQuantity(ing.quantity, multiplier),
+                          units,
+                        )}
                       </span>{' '}
                       <span className="text-gray-600 dark:text-gray-300">
                         {ing.name}
@@ -253,7 +260,7 @@ export function CookMode({
                           </span>
                         )}
                         <span className="block whitespace-pre-wrap text-gray-600 dark:text-gray-300">
-                          {inst.body}
+                          {convertText(inst.body, units)}
                         </span>
                       </CookRow>
                     </li>
