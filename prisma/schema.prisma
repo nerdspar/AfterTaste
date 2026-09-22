@@ -37,6 +37,24 @@ model User {
   // Add-recipe button placement: "header" | "fab" | "off".
   addButton            String   @default("header")
 
+  // Push notifications. The subscription rows say which devices can be
+  // reached; these say what the user actually wants sent to them.
+  pushNewRecipes    Boolean @default(true)
+  pushCookNudge     Boolean @default(true)
+  /// How long a recipe must stay open, in minutes, before we take it as
+  /// "they're cooking this" and queue the did-you-make-it nudge.
+  cookNudgeAfterMin Int     @default(3)
+  /// How long after that to actually ask, in hours. An hour tends to land
+  /// mid-meal; three gets them after they've eaten.
+  cookNudgeDelayHr  Int     @default(3)
+  /// Quiet hours, local to the user. A nudge falling inside them waits for
+  /// the morning rather than buzzing at midnight.
+  quietFromHour     Int     @default(21)
+  quietToHour       Int     @default(8)
+  /// IANA zone captured from the browser, so quiet hours mean the user's
+  /// evening and not the server's.
+  timeZone          String?
+
   // Personal daily nutrition goals (per user, not household). Null = unset.
   calorieGoal  Int?
   proteinGoalG Int?
@@ -46,12 +64,14 @@ model User {
   household   Household? @relation("HouseholdMembers", fields: [householdId], references: [id])
   householdId String?
 
-  ownedHouseholds Household[]          @relation("HouseholdOwner")
-  createdRecipes  Recipe[]             @relation("RecipeCreator")
+  ownedHouseholds Household[]             @relation("HouseholdOwner")
+  createdRecipes  Recipe[]                @relation("RecipeCreator")
   recentlyViewed  RecentlyViewed[]
-  sentInvites     HouseholdInvite[]    @relation("InviteSender")
+  sentInvites     HouseholdInvite[]       @relation("InviteSender")
   passwordResets  PasswordResetToken[]
   foodLog         FoodLogEntry[]
+  pushSubs        PushSubscription[]
+  scheduledNotes  ScheduledNotification[]
 
   createdAt DateTime @default(now())
 }
@@ -273,4 +293,58 @@ model IngredientMatch {
 
   @@unique([householdId, term])
   @@index([householdId])
+}
+
+// A browser that has agreed to receive push. One row per device, because one
+// person reasonably has a phone and a laptop, and each gets its own endpoint.
+//
+// Rows are disposable: push services expire endpoints, and the only way to
+// learn that is a 404/410 when we try to send, at which point we delete.
+model PushSubscription {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  /// The push service URL. Unique because it IS the device's identity — a
+  /// re-subscribe on the same browser returns the same endpoint.
+  endpoint String  @unique
+  p256dh   String
+  auth     String
+  /// Only to help the owner recognise a device in Settings.
+  label    String?
+
+  createdAt  DateTime  @default(now())
+  lastSentAt DateTime?
+
+  @@index([userId])
+}
+
+// A notification to send later. The "did you make it?" nudge is queued when a
+// recipe has been open long enough to mean someone is cooking, then sent hours
+// afterwards — so it has to outlive the request that created it.
+//
+// Queued, not fired-and-forgotten: by the time it comes due the answer may
+// already be in (they rated it), and then it should quietly not happen.
+model ScheduledNotification {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  kind     String // "cook-nudge"
+  recipeId String
+
+  dueAt         DateTime
+  sentAt        DateTime?
+  /// Set instead of sentAt when the nudge came due but was no longer wanted
+  /// (already rated, recipe deleted, user turned it off). Kept rather than
+  /// deleted so the same recipe does not re-queue the moment it is reopened.
+  skippedAt     DateTime?
+  skippedReason String?
+
+  createdAt DateTime @default(now())
+
+  /// One pending nudge per recipe per person — reopening the recipe while one
+  /// is already queued should push the time back, not stack up a second buzz.
+  @@unique([userId, kind, recipeId])
+  @@index([dueAt, sentAt])
 }

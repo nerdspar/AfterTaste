@@ -69,6 +69,12 @@ export function UserPrefsProvider({
       recipeSort: patch.recipeSort,
       dashboardSections: patch.dashboardSections,
       addButton: patch.addButton,
+      pushNewRecipes: patch.pushNewRecipes,
+      pushCookNudge: patch.pushCookNudge,
+      cookNudgeAfterMin: patch.cookNudgeAfterMin,
+      cookNudgeDelayHr: patch.cookNudgeDelayHr,
+      quietFromHour: patch.quietFromHour,
+      quietToHour: patch.quietToHour,
     }).catch((err) => console.error('[prefs] save failed', err));
   }, []);
 

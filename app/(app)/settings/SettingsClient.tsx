@@ -30,6 +30,12 @@ import { TabCustomizer } from '@/components/aftertaste/TabCustomizer';
 import { DashboardCustomizer } from '@/components/aftertaste/DashboardCustomizer';
 import { AccountSecurity } from '@/components/aftertaste/AccountSecurity';
 import { cn } from '@/lib/utils';
+import { PushSettings } from '@/components/aftertaste/settings/PushSettings';
+import {
+  SubHeading,
+  Toggle,
+  SettingRow,
+} from '@/components/aftertaste/settings/primitives';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { ImportRecipeModal } from '@/components/aftertaste/ImportRecipeModal';
 import { exportRecipesJson } from '@/lib/recipe-export';
@@ -122,49 +128,7 @@ function AccordionItem({
 }
 
 /** Small heading used to introduce a sub-block inside a category. */
-function SubHeading({ title, hint }: { title: string; hint?: string }) {
-  return (
-    <div className="mb-3">
-      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-        {title}
-      </p>
-      {hint && (
-        <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">{hint}</p>
-      )}
-    </div>
-  );
-}
 
-function Toggle({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={cn(
-        'relative w-11 h-6 rounded-full transition-colors flex-shrink-0',
-        checked ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-700',
-      )}
-    >
-      <span
-        className={cn(
-          'absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform',
-          checked && 'translate-x-5',
-        )}
-      />
-    </button>
-  );
-}
 
 const THEMES = [
   { key: 'light', label: 'Light', icon: SunIcon },
@@ -725,6 +689,7 @@ export function SettingsClient({
               }
             />
           </div>
+          <PushSettings />
           <div className="mt-4 border-t border-gray-100 pt-4 dark:border-gray-800">
             <SubHeading
               title="Share to AfterTaste"
@@ -768,29 +733,3 @@ export function SettingsClient({
   );
 }
 
-function SettingRow({
-  icon: Icon,
-  title,
-  subtitle,
-  action,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  subtitle: string;
-  action: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-      <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
-        <Icon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {title}
-        </p>
-        <p className="text-xs text-gray-400 dark:text-gray-500">{subtitle}</p>
-      </div>
-      <div className="flex-shrink-0">{action}</div>
-    </div>
-  );
-}

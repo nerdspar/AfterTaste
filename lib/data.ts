@@ -299,6 +299,17 @@ export interface UserPrefs {
   dashboardSections: string[];
   /** Add-recipe button placement: 'header' | 'fab' | 'off'. */
   addButton: string;
+  /** Push a notification to the household when someone adds a recipe. */
+  pushNewRecipes: boolean;
+  /** Ask, hours later, whether a recipe that was open for a while got made. */
+  pushCookNudge: boolean;
+  /** Minutes a recipe must stay open before that counts as cooking it. */
+  cookNudgeAfterMin: number;
+  /** Hours to wait before asking. */
+  cookNudgeDelayHr: number;
+  /** Quiet hours, in the user's own timezone. Equal values = always allowed. */
+  quietFromHour: number;
+  quietToHour: number;
 }
 
 /** Load the signed-in user's profile + preferences. */
@@ -325,6 +336,12 @@ export async function loadUserProfile(): Promise<UserProfile> {
       recipeSort: true,
       dashboardSections: true,
       addButton: true,
+      pushNewRecipes: true,
+      pushCookNudge: true,
+      cookNudgeAfterMin: true,
+      cookNudgeDelayHr: true,
+      quietFromHour: true,
+      quietToHour: true,
     },
   });
   if (!u) redirect('/login');
@@ -355,6 +372,12 @@ export async function loadUserProfile(): Promise<UserProfile> {
           ? u.dashboardSections
           : DEFAULT_DASHBOARD_SECTIONS,
       addButton: u.addButton || 'header',
+      pushNewRecipes: u.pushNewRecipes,
+      pushCookNudge: u.pushCookNudge,
+      cookNudgeAfterMin: u.cookNudgeAfterMin,
+      cookNudgeDelayHr: u.cookNudgeDelayHr,
+      quietFromHour: u.quietFromHour,
+      quietToHour: u.quietToHour,
     },
   };
 }

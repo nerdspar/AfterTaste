@@ -77,6 +77,23 @@ services:
       #   FDC_API_KEY=your-key-here
       # in that .env and leave the line below alone.
       FDC_API_KEY: "${FDC_API_KEY:-}"
+      # --- Push notifications (optional) -----------------------------------
+      # Generate ONCE, then keep them: changing the keys invalidates every
+      # device anyone has already enabled notifications on.
+      #   npx web-push generate-vapid-keys
+      # Put both in the `.env` next to this file (gitignored):
+      #   VAPID_PUBLIC_KEY=...
+      #   VAPID_PRIVATE_KEY=...
+      # Leave them unset and push is simply off — Settings says so rather than
+      # showing a toggle that does nothing.
+      #
+      # Push also needs HTTPS. Over a plain http://<nas-ip>:8300 address the
+      # browser blocks service workers outright, so use the reverse proxy or
+      # the Cloudflare Tunnel below.
+      VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY:-}"
+      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY:-}"
+      # Contact address the push services can reach you at, per the VAPID spec.
+      VAPID_SUBJECT: "${VAPID_SUBJECT:-mailto:admin@example.com}"
       # --- Password-reset emails (optional) --------------------------------
       # Public URL of this app, used to build reset links in emails.
       APP_URL: "https://aftertaste.example.com" # ⬅ APP_URL (your public URL)

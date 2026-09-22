@@ -11,6 +11,7 @@ import { IngredientsPanel } from '@/components/aftertaste/recipe-detail/Ingredie
 import { CookingInstructions } from '@/components/aftertaste/recipe-detail/CookingInstructions';
 import { RecipeNotes } from '@/components/aftertaste/recipe-detail/RecipeNotes';
 import { AIAssistantPanel } from '@/components/aftertaste/recipe-detail/AIAssistantPanel';
+import { CookIntentTracker } from '@/components/aftertaste/recipe-detail/CookIntentTracker';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { recordRecipeView } from '@/lib/recently-viewed';
 import { useKeepAwake } from '@/lib/keep-awake';
@@ -84,6 +85,12 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
 
   return (
     <div className="max-w-7xl mx-auto">
+      {/* Watches how long this stays on screen, to ask about it later. */}
+      <CookIntentTracker
+        recipeId={recipe.id}
+        afterMinutes={prefs.cookNudgeAfterMin}
+        enabled={prefs.pushCookNudge}
+      />
       <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
         Details
       </h1>

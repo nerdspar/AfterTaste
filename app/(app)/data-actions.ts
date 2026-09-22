@@ -8,6 +8,7 @@ import {
   parseSlotValue,
 } from '@/lib/data';
 import { notifyHousehold } from '@/lib/realtime';
+import { notifyRecipesAdded } from '@/lib/push-events';
 import {
   persistRecipeImages,
   persistRecipeUpdateImages,
@@ -30,6 +31,7 @@ export async function createRecipeAction(recipe: Recipe): Promise<void> {
     data: recipeToCreateData(persisted, householdId, userId),
   });
   await notifyHousehold(householdId, 'recipes', userId);
+  await notifyRecipesAdded(householdId, userId, [recipe.title]);
 }
 
 export async function createRecipesAction(recipes: Recipe[]): Promise<void> {
@@ -41,6 +43,11 @@ export async function createRecipesAction(recipes: Recipe[]): Promise<void> {
     skipDuplicates: true,
   });
   await notifyHousehold(householdId, 'recipes', userId);
+  await notifyRecipesAdded(
+    householdId,
+    userId,
+    recipes.map((r) => r.title),
+  );
 }
 
 export async function updateRecipeAction(

@@ -108,6 +108,40 @@ join when they sign up with the invited email).
 
 ---
 
+## Push notifications (optional)
+
+Generate the VAPID keypair **once** and keep it — changing it silently
+invalidates every device that has already turned notifications on:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Put both keys in the `.env` beside `docker-compose.yml`:
+
+```
+VAPID_PUBLIC_KEY=...
+VAPID_PRIVATE_KEY=...
+VAPID_SUBJECT=mailto:you@example.com
+```
+
+Leave them out and push stays off; Settings explains that rather than offering
+a toggle that does nothing.
+
+Two things to know before testing:
+
+- **HTTPS is required.** Service workers don't run on a plain
+  `http://<nas-ip>:8300` address, so set up the reverse proxy or the Cloudflare
+  Tunnel below first. `localhost` is the one exception.
+- **On iPhone and iPad, AfterTaste must be added to the Home Screen** (iOS
+  16.4+). Push does not work in a Safari tab — the APIs aren't there at all.
+  Open the installed app, then turn notifications on from Settings. Removing
+  and re-adding the app loses the subscription, so it has to be turned on
+  again.
+
+Each device is enabled separately. Settings has a **Send a test** button to
+confirm it end to end.
+
 ## HTTPS / custom domain
 
 Point a reverse proxy (TrueNAS built-in, Nginx Proxy Manager, Traefik, Caddy…)

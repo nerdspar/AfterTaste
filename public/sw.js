@@ -1,5 +1,5 @@
-// Minimal service worker: enables PWA install + basic offline via a
-// network-first runtime cache. Registered only in production (see AppShell).
+// Service worker: PWA install, basic offline via a network-first runtime
+// cache, and web push. Registered only in production (see AppShell).
 const CACHE = 'aftertaste-v1';
 
 self.addEventListener('install', () => {
@@ -37,6 +37,58 @@ self.addEventListener('fetch', (event) => {
         const cached = await caches.match(req);
         return cached || Response.error();
       }
+    })(),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Push
+// ---------------------------------------------------------------------------
+
+// The payload is JSON from lib/push-server. Defaults cover the case where a
+// push service delivers an empty message — some send a bare wake-up, and the
+// spec requires a visible notification regardless, or the browser shows its
+// own "this site was updated in the background" instead.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = {};
+  }
+  const title = data.title || 'AfterTaste';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || '',
+      icon: '/app-icon/192',
+      badge: '/static/favicons/android-chrome-96x96.png',
+      tag: data.tag || 'aftertaste',
+      // A replaced notification should not buzz a second time.
+      renotify: false,
+      data: { url: data.url || '/' },
+    }),
+  );
+});
+
+// Focus an already-open tab rather than piling up new ones, and navigate it to
+// wherever the notification points.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
+      for (const client of all) {
+        if (new URL(client.url).origin === self.location.origin) {
+          await client.focus();
+          if ('navigate' in client) await client.navigate(target).catch(() => {});
+          return;
+        }
+      }
+      await self.clients.openWindow(target);
     })(),
   );
 });

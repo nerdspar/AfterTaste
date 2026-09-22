@@ -26,6 +26,12 @@ export interface UserPrefsInput {
   recipeSort?: string;
   dashboardSections?: string[];
   addButton?: string;
+  pushNewRecipes?: boolean;
+  pushCookNudge?: boolean;
+  cookNudgeAfterMin?: number;
+  cookNudgeDelayHr?: number;
+  quietFromHour?: number;
+  quietToHour?: number;
 }
 
 /** Persist the signed-in user's profile / preferences. */
@@ -60,6 +66,18 @@ export async function updateUserPrefs(input: UserPrefsInput): Promise<void> {
   if (input.dashboardSections !== undefined)
     data.dashboardSections = input.dashboardSections;
   if (input.addButton !== undefined) data.addButton = input.addButton;
+  if (input.pushNewRecipes !== undefined) data.pushNewRecipes = input.pushNewRecipes;
+  if (input.pushCookNudge !== undefined) data.pushCookNudge = input.pushCookNudge;
+  // Clamped so a hand-edited request cannot queue a nudge years out or spam
+  // one every few seconds.
+  if (input.cookNudgeAfterMin !== undefined)
+    data.cookNudgeAfterMin = Math.min(60, Math.max(1, input.cookNudgeAfterMin));
+  if (input.cookNudgeDelayHr !== undefined)
+    data.cookNudgeDelayHr = Math.min(24, Math.max(1, input.cookNudgeDelayHr));
+  if (input.quietFromHour !== undefined)
+    data.quietFromHour = Math.min(23, Math.max(0, input.quietFromHour));
+  if (input.quietToHour !== undefined)
+    data.quietToHour = Math.min(23, Math.max(0, input.quietToHour));
   if (Object.keys(data).length === 0) return;
 
   await prisma.user.update({ where: { id: userId }, data });
