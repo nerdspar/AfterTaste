@@ -13,7 +13,14 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { XIcon, CheckIcon, RotateCcwIcon, UtensilsCrossedIcon } from 'lucide-react';
+import {
+  XIcon,
+  CheckIcon,
+  RotateCcwIcon,
+  UtensilsCrossedIcon,
+  TimerIcon,
+  BellRingIcon,
+} from 'lucide-react';
 import { scaleQuantity } from '@/lib/quantity';
 import { convertQuantity, convertText, type UnitSystem } from '@/lib/units';
 import { isGenericStepTitle } from '@/lib/recipe-parser';
@@ -24,6 +31,12 @@ import {
 } from '@/lib/cook-session';
 import { scheduleCookNudge } from '@/app/(app)/push-actions';
 import { useKeepAwake } from '@/lib/keep-awake';
+import {
+  findDurations,
+  formatClock,
+  formatDurationLabel,
+} from '@/lib/step-timers';
+import { useKitchenTimers, type KitchenTimer } from './useKitchenTimers';
 import { cn } from '@/lib/utils';
 import type { Ingredient, Instruction } from '@/data/sample/recipes';
 
@@ -67,6 +80,7 @@ export function CookMode({
 
   // Cooking is exactly when the phone must not sleep.
   useKeepAwake(true);
+  const { timers, start, dismiss, remaining } = useKitchenTimers();
 
   useEffect(() => {
     const p = loadCookProgress(recipeId);
@@ -187,6 +201,23 @@ export function CookMode({
         </div>
       </div>
 
+      {/* Running timers — pinned, because the step that started one is usually
+          scrolled away by the time it matters. */}
+      {timers.length > 0 && (
+        <div className="flex-shrink-0 border-b border-gray-100 px-4 py-2 dark:border-gray-800">
+          <div className="mx-auto flex max-w-2xl flex-wrap gap-2">
+            {timers.map((t) => (
+              <TimerChip
+                key={t.id}
+                timer={t}
+                secondsLeft={remaining(t)}
+                onDismiss={() => dismiss(t.id)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Body */}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-28">
         <div className="mx-auto max-w-2xl space-y-6">
@@ -259,9 +290,10 @@ export function CookMode({
                             {inst.title}
                           </span>
                         )}
-                        <span className="block whitespace-pre-wrap text-gray-600 dark:text-gray-300">
-                          {convertText(inst.body, units)}
-                        </span>
+                        <StepText
+                          text={convertText(inst.body, units)}
+                          onStartTimer={start}
+                        />
                       </CookRow>
                     </li>
                   );
@@ -294,8 +326,103 @@ export function CookMode({
   );
 }
 
-/** One tickable line. The whole row is the target — precision is not available
- *  to someone holding a wooden spoon. */
+/**
+ * Step text with its durations turned into buttons. "Simmer for 20 minutes"
+ * already contains a timer; this just makes it tappable.
+ *
+ * The button sits inside a row that is itself a tick target, so the click has
+ * to be stopped from bubbling — otherwise setting a timer would also tick the
+ * step off as done.
+ */
+function StepText({
+  text,
+  onStartTimer,
+}: {
+  text: string;
+  onStartTimer: (label: string, seconds: number) => void;
+}) {
+  const durations = findDurations(text);
+  if (durations.length === 0) {
+    return (
+      <span className="block whitespace-pre-wrap text-gray-600 dark:text-gray-300">
+        {text}
+      </span>
+    );
+  }
+
+  const parts: React.ReactNode[] = [];
+  let cursor = 0;
+  durations.forEach((d, i) => {
+    if (d.start > cursor) parts.push(text.slice(cursor, d.start));
+    parts.push(
+      <button
+        key={`t-${i}`}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onStartTimer(formatDurationLabel(d.seconds), d.seconds);
+        }}
+        className="mx-0.5 inline-flex items-center gap-1 rounded-md bg-primary-50 px-1.5 py-0.5 align-baseline text-primary-700 transition-colors hover:bg-primary-100 dark:bg-primary-500/15 dark:text-primary-300 dark:hover:bg-primary-500/25"
+        title={`Start a ${formatDurationLabel(d.seconds)} timer`}
+      >
+        <TimerIcon className="h-3.5 w-3.5" />
+        {d.text}
+      </button>,
+    );
+    cursor = d.end;
+  });
+  if (cursor < text.length) parts.push(text.slice(cursor));
+
+  return (
+    <span className="block whitespace-pre-wrap text-gray-600 dark:text-gray-300">
+      {parts}
+    </span>
+  );
+}
+
+/** One running or finished timer. */
+function TimerChip({
+  timer,
+  secondsLeft,
+  onDismiss,
+}: {
+  timer: KitchenTimer;
+  secondsLeft: number;
+  onDismiss: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onDismiss}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium tabular-nums transition-colors',
+        timer.done
+          ? 'animate-pulse bg-primary-500 text-white'
+          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700',
+      )}
+      title={timer.done ? 'Dismiss' : 'Cancel this timer'}
+    >
+      {timer.done ? (
+        <BellRingIcon className="h-4 w-4" />
+      ) : (
+        <TimerIcon className="h-4 w-4" />
+      )}
+      <span>{timer.done ? `${timer.label} done` : formatClock(secondsLeft)}</span>
+      <XIcon className="h-3.5 w-3.5 opacity-60" />
+    </button>
+  );
+}
+
+/**
+ * One tickable line. The whole row is the target — precision is not available
+ * to someone holding a wooden spoon.
+ *
+ * A div with role="button" rather than a real <button>, because the step text
+ * inside it contains timer buttons of its own. Nesting one button in another is
+ * invalid HTML and React warns that it breaks hydration; stopPropagation makes
+ * it behave, but does not make it legal. Keyboard handling is reinstated by
+ * hand since a div does not come with it.
+ */
 function CookRow({
   checked,
   onToggle,
@@ -306,13 +433,20 @@ function CookRow({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onToggle}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onToggle();
+        }
+      }}
       aria-pressed={checked}
       className={cn(
-        'flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left text-sm transition-colors',
-        'hover:bg-gray-50 dark:hover:bg-gray-800/60',
+        'flex w-full cursor-pointer items-start gap-3 rounded-xl px-3 py-3 text-left text-sm transition-colors',
+        'hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 dark:hover:bg-gray-800/60',
         checked && 'opacity-45',
       )}
     >
@@ -329,6 +463,6 @@ function CookRow({
       <span className={cn('min-w-0 flex-1', checked && 'line-through')}>
         {children}
       </span>
-    </button>
+    </div>
   );
 }
