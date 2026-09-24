@@ -39,8 +39,13 @@ const BLOCKER_TEXT: Record<NonNullable<PushBlocker>, string> = {
     'This server has no notification keys set (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY). See DEPLOY.md.',
 };
 
+// No fixed height: a select sized to h-8 clips its own text on a phone, and
+// clips it badly once iOS text size is turned up. Padding lets it grow with
+// whatever font the device is actually using. The extra padding on the right
+// is for the native dropdown arrow, which otherwise draws straight over the
+// last character.
 const selectCls = cn(
-  'h-8 rounded-lg border border-gray-200 bg-white px-2 text-sm',
+  'rounded-lg border border-gray-200 bg-white py-1.5 pl-2.5 pr-7 text-sm leading-normal',
   'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
   'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
 );
@@ -231,19 +236,24 @@ export function PushSettings() {
         <div className="mt-3 rounded-lg bg-gray-50 px-3 py-3 dark:bg-gray-800/40">
           <p className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-sm text-gray-700 dark:text-gray-300">
             <span>If a recipe stays open for</span>
-            <select
-              aria-label="Minutes a recipe must stay open"
-              className={selectCls}
-              value={prefs.cookNudgeAfterMin}
-              onChange={(e) => set({ cookNudgeAfterMin: Number(e.target.value) })}
-            >
-              {[1, 2, 3, 5, 10, 15, 20, 30].map((m) => (
-                <option key={m} value={m}>
-                  {m} min
-                </option>
-              ))}
-            </select>
-            <span>, ask me about it</span>
+            <span className="inline-flex items-center whitespace-nowrap">
+              <select
+                aria-label="Minutes a recipe must stay open"
+                className={selectCls}
+                value={prefs.cookNudgeAfterMin}
+                onChange={(e) =>
+                  set({ cookNudgeAfterMin: Number(e.target.value) })
+                }
+              >
+                {[1, 2, 3, 5, 10, 15, 20, 30].map((m) => (
+                  <option key={m} value={m}>
+                    {m} min
+                  </option>
+                ))}
+              </select>
+              ,
+            </span>
+            <span>ask me about it</span>
             <select
               aria-label="Hours to wait before asking"
               className={selectCls}
