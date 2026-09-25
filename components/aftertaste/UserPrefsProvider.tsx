@@ -69,6 +69,7 @@ export function UserPrefsProvider({
       recipeSort: patch.recipeSort,
       dashboardSections: patch.dashboardSections,
       addButton: patch.addButton,
+      cookButton: patch.cookButton,
       pushNewRecipes: patch.pushNewRecipes,
       pushCookNudge: patch.pushCookNudge,
       cookNudgeAfterMin: patch.cookNudgeAfterMin,

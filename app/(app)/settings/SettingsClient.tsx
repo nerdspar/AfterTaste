@@ -523,6 +523,39 @@ export function SettingsClient({
               })}
             </div>
           </div>
+          <div className="border-t border-gray-100 px-4 py-4 dark:border-gray-800">
+            <p className="mb-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+              Start-cooking button
+            </p>
+            <p className="mb-3 text-xs text-gray-400 dark:text-gray-500">
+              A floating play button on a recipe, so you don&apos;t have to
+              scroll back up to start cooking. It&apos;s always at the top of
+              the recipe and in its “…” menu too.
+            </p>
+            <div className="flex items-center rounded-lg border border-gray-200 p-1 max-w-xs dark:border-gray-700">
+              {[
+                { key: 'fab', label: 'Floating' },
+                { key: 'off', label: 'Hidden' },
+              ].map((o) => {
+                const active = (prefs.cookButton || 'fab') === o.key;
+                return (
+                  <button
+                    key={o.key}
+                    type="button"
+                    onClick={() => setUserPref({ cookButton: o.key })}
+                    className={cn(
+                      'flex-1 flex items-center justify-center h-8 rounded-md text-xs font-medium transition-colors',
+                      active
+                        ? 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+                        : 'text-gray-500 hover:text-gray-700 dark:text-gray-400',
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </AccordionItem>
 
         {/* Recipes & nutrition */}

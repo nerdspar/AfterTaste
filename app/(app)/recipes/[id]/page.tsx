@@ -2,7 +2,8 @@
 
 import { use, useEffect, useRef, useState } from 'react';
 import { notFound, useRouter } from 'next/navigation';
-import { UtensilsCrossedIcon } from 'lucide-react';
+import { UtensilsCrossedIcon, PlayIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Breadcrumbs } from '@/components/aftertaste/Breadcrumbs';
 import { RecipeHero } from '@/components/aftertaste/recipe-detail/RecipeHero';
 import { StatsRow } from '@/components/aftertaste/recipe-detail/StatsRow';
@@ -40,6 +41,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const [scaleMode, setScaleMode] = useState<'amount' | 'serving'>('amount');
   const [scaleValue, setScaleValue] = useState(1);
   const [cooking, setCooking] = useState(false);
+  const cookFab = prefs.cookButton !== 'off';
   // Tracks whether this recipe was ever present, so we can tell a freshly
   // deleted recipe (redirect to the list) apart from an unknown id (404).
   const existedRef = useRef(false);
@@ -108,7 +110,12 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
         <button
           type="button"
           onClick={() => setCooking(true)}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary-500 px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+          className={cn(
+            'h-9 items-center gap-1.5 rounded-lg bg-primary-500 px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-700',
+            // With the floating button on, this would be a second copy of
+            // itself on a phone; desktop has no floating button, so it stays.
+            cookFab ? 'hidden md:inline-flex' : 'inline-flex',
+          )}
         >
           <UtensilsCrossedIcon className="h-4 w-4" />
           Start cooking
@@ -116,6 +123,24 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
       </div>
 
       <Breadcrumbs items={breadcrumbs} className="mb-5" />
+
+      {/* Floating start-cooking button. Mobile only, mirroring the add-recipe
+          one: the point is not having to scroll back to the header once you
+          are halfway down a recipe. */}
+      {cookFab && !cooking && (
+        <button
+          type="button"
+          onClick={() => setCooking(true)}
+          aria-label="Start cooking"
+          className={cn(
+            'fixed right-4 bottom-24 z-40 flex h-12 w-12 items-center justify-center rounded-full md:hidden',
+            'bg-primary-500 text-white shadow-lg shadow-primary-500/40 ring-1 ring-white/15',
+            'transition-transform active:scale-95',
+          )}
+        >
+          <PlayIcon className="h-6 w-6 translate-x-0.5" />
+        </button>
+      )}
 
       {cooking && (
         <CookMode
@@ -142,7 +167,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Center column — the wide area gets the ingredients + instructions. */}
         <div className="lg:col-span-2 space-y-5">
-          <RecipeHero recipe={recipe} />
+          <RecipeHero recipe={recipe} onStartCooking={() => setCooking(true)} />
           <StatsRow recipe={recipe} servings={currentServings} />
           {/* On mobile these sit up here near the stats; on desktop they move
               to the right rail so ingredients can fill the wide center column. */}

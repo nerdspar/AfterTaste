@@ -36,6 +36,10 @@ model User {
   dashboardSections    String[] @default([])
   // Add-recipe button placement: "header" | "fab" | "off".
   addButton            String   @default("header")
+  /// Floating "start cooking" button on a recipe: "fab" | "off". The header
+  /// button and the actions menu are always there; this is the one that saves
+  /// scrolling back up mid-recipe.
+  cookButton           String   @default("fab")
 
   // Push notifications. The subscription rows say which devices can be
   // reached; these say what the user actually wants sent to them.

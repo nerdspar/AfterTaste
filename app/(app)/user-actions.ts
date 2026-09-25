@@ -26,6 +26,7 @@ export interface UserPrefsInput {
   recipeSort?: string;
   dashboardSections?: string[];
   addButton?: string;
+  cookButton?: string;
   pushNewRecipes?: boolean;
   pushCookNudge?: boolean;
   cookNudgeAfterMin?: number;
@@ -66,6 +67,7 @@ export async function updateUserPrefs(input: UserPrefsInput): Promise<void> {
   if (input.dashboardSections !== undefined)
     data.dashboardSections = input.dashboardSections;
   if (input.addButton !== undefined) data.addButton = input.addButton;
+  if (input.cookButton !== undefined) data.cookButton = input.cookButton;
   if (input.pushNewRecipes !== undefined) data.pushNewRecipes = input.pushNewRecipes;
   if (input.pushCookNudge !== undefined) data.pushCookNudge = input.pushCookNudge;
   // Clamped so a hand-edited request cannot queue a nudge years out or spam

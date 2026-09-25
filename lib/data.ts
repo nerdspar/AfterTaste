@@ -299,6 +299,8 @@ export interface UserPrefs {
   dashboardSections: string[];
   /** Add-recipe button placement: 'header' | 'fab' | 'off'. */
   addButton: string;
+  /** Floating start-cooking button on a recipe: 'fab' | 'off'. */
+  cookButton: string;
   /** Push a notification to the household when someone adds a recipe. */
   pushNewRecipes: boolean;
   /** Ask, hours later, whether a recipe that was open for a while got made. */
@@ -336,6 +338,7 @@ export async function loadUserProfile(): Promise<UserProfile> {
       recipeSort: true,
       dashboardSections: true,
       addButton: true,
+      cookButton: true,
       pushNewRecipes: true,
       pushCookNudge: true,
       cookNudgeAfterMin: true,
@@ -372,6 +375,7 @@ export async function loadUserProfile(): Promise<UserProfile> {
           ? u.dashboardSections
           : DEFAULT_DASHBOARD_SECTIONS,
       addButton: u.addButton || 'header',
+      cookButton: u.cookButton || 'fab',
       pushNewRecipes: u.pushNewRecipes,
       pushCookNudge: u.pushCookNudge,
       cookNudgeAfterMin: u.cookNudgeAfterMin,

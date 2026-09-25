@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronDownIcon, CheckIcon, ListPlusIcon, XIcon } from 'lucide-react';
+import {
+  ChevronDownIcon,
+  CheckIcon,
+  ListPlusIcon,
+  XIcon,
+  PlusIcon,
+  MinusIcon,
+} from 'lucide-react';
 import { Card } from '../Card';
 import { Button } from '../Button';
 import { IconButton } from '../IconButton';
@@ -14,6 +21,51 @@ import { convertQuantity, type UnitSystem } from '@/lib/units';
 import type { Ingredient } from '@/data/sample/recipes';
 
 type ScaleMode = 'amount' | 'serving';
+
+// The fractions people actually halve and quarter things by. A third is here
+// because thirds turn up in baking; three-quarters because a 4-serving recipe
+// for 3 is common. Values are exact so scaleQuantity's own fraction formatting
+// lands on clean amounts rather than decimals.
+const MULTIPLIERS: { label: string; value: number }[] = [
+  { label: '¼', value: 0.25 },
+  { label: '⅓', value: 1 / 3 },
+  { label: '½', value: 0.5 },
+  { label: '¾', value: 0.75 },
+  { label: '1', value: 1 },
+  { label: '1½', value: 1.5 },
+  { label: '2', value: 2 },
+  { label: '3', value: 3 },
+];
+
+/** A −/+ button for the servings stepper. */
+function StepButton({
+  label,
+  onClick,
+  disabled,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'flex h-9 w-9 items-center justify-center rounded-lg transition-colors',
+        'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100',
+        'dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700 dark:hover:bg-gray-800',
+        'disabled:opacity-40 disabled:hover:bg-white dark:disabled:hover:bg-gray-900',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 /** True when an item is a section header (a divider) rather than an ingredient. */
 function isIngredientSection(ing: Ingredient): boolean {
@@ -57,6 +109,29 @@ export function IngredientsPanel({
   const sliderStep = scaleMode === 'amount' ? 0.5 : 1;
 
   const [scaleOpen, setScaleOpen] = useState(false);
+
+  // The servings field is text, not a number input, so it can be empty mid-edit
+  // — see the input below. It follows the real value whenever that changes from
+  // elsewhere (a multiplier chip, the stepper).
+  const [servingsDraft, setServingsDraft] = useState(String(currentServings));
+  useEffect(() => {
+    setServingsDraft(String(currentServings));
+  }, [currentServings]);
+
+  const setServings = (n: number) => {
+    onScaleModeChange('serving');
+    onScaleValueChange(Math.min(999, Math.max(1, Math.round(n))));
+  };
+
+  /** Take what was typed, or put the real value back if it was nonsense. */
+  const commitServings = () => {
+    const n = Math.round(Number(servingsDraft.trim()));
+    if (!servingsDraft.trim() || !Number.isFinite(n) || n < 1) {
+      setServingsDraft(String(currentServings));
+      return;
+    }
+    setServings(n);
+  };
 
   const { addItems } = useGroceryStore();
   const [selectMode, setSelectMode] = useState(false);
@@ -218,72 +293,92 @@ export function IngredientsPanel({
               Scale
             </p>
 
-            {/* Mode toggle */}
-            <div className="flex items-center gap-1 mb-3">
-              <button
-                type="button"
-                onClick={() => {
-                  onScaleModeChange('amount');
-                  onScaleValueChange(1);
-                }}
-                className={cn(
-                  'h-7 px-3 rounded-full text-xs font-medium transition-colors',
-                  scaleMode === 'amount'
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600',
-                )}
-              >
-                Amount
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onScaleModeChange('serving');
-                  onScaleValueChange(baseServings);
-                }}
-                className={cn(
-                  'h-7 px-3 rounded-full text-xs font-medium transition-colors',
-                  scaleMode === 'serving'
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-200 text-gray-600 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-400 dark:hover:bg-gray-600',
-                )}
-              >
-                Serving
-              </button>
+            {/* Quick multipliers. These replaced a slider that ran from 0.5 in
+                steps of 0.5 — it simply could not express a quarter, which is
+                a normal thing to want. Fractions are what cooks actually scale
+                in, so they are the control rather than a continuous range. */}
+            <div className="flex flex-wrap gap-1.5">
+              {MULTIPLIERS.map(({ label, value }) => {
+                const active = Math.abs(multiplier - value) < 0.005;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => {
+                      onScaleModeChange('amount');
+                      onScaleValueChange(value);
+                    }}
+                    aria-pressed={active}
+                    className={cn(
+                      'h-9 min-w-[2.5rem] rounded-full px-3 text-sm font-medium tabular-nums transition-colors',
+                      active
+                        ? 'bg-primary-500 text-white'
+                        : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700 dark:hover:bg-gray-800',
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Slider + number input */}
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min={sliderMin}
-                max={sliderMax}
-                step={sliderStep}
-                value={scaleValue}
-                onChange={(e) => onScaleValueChange(Number(e.target.value))}
-                className="flex-1 h-1.5 accent-primary-500 cursor-pointer"
-              />
-              <input
-                type="number"
-                min={sliderMin}
-                max={sliderMax}
-                step={sliderStep}
-                value={scaleValue}
-                onChange={(e) => {
-                  const v = Number(e.target.value);
-                  if (v >= sliderMin && v <= sliderMax) {
-                    onScaleValueChange(v);
-                  }
-                }}
-                className={cn(
-                  'w-16 h-8 rounded-lg border border-gray-200 bg-white px-2 text-center text-sm tabular-nums',
-                  'dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100',
-                  'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
-                )}
-              />
-              <span className="text-[11px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
-                {scaleMode === 'amount' ? 'x' : 'servings'}
+            {/* ...or say how many servings you want, and let the multiplier
+                follow. Both controls drive the same number from either end. */}
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                Servings
               </span>
+              <div className="flex items-center gap-1">
+                <StepButton
+                  label="One fewer serving"
+                  disabled={currentServings <= 1}
+                  onClick={() => setServings(currentServings - 1)}
+                >
+                  <MinusIcon className="h-4 w-4" />
+                </StepButton>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  aria-label="Servings"
+                  value={servingsDraft}
+                  // Held as text while editing so the field can be empty. Bound
+                  // straight to a number it rejects its own cleared state, and
+                  // the only way to change it is to select the digits first —
+                  // which is what made this annoying to use on a phone.
+                  onChange={(e) => setServingsDraft(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onBlur={commitServings}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  className={cn(
+                    'w-14 rounded-lg border border-gray-200 bg-white py-1.5 text-center text-sm tabular-nums',
+                    'dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100',
+                    'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
+                  )}
+                />
+                <StepButton
+                  label="One more serving"
+                  onClick={() => setServings(currentServings + 1)}
+                >
+                  <PlusIcon className="h-4 w-4" />
+                </StepButton>
+              </div>
+              {multiplier !== 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onScaleModeChange('amount');
+                    onScaleValueChange(1);
+                  }}
+                  className="ml-auto text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
+                >
+                  Reset
+                </button>
+              )}
             </div>
           </div>
         </div>

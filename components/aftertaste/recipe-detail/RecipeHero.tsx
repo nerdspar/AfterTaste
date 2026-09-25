@@ -7,6 +7,7 @@ import { hasRecipePhoto } from '@/lib/recipe-image';
 import { useRouter } from 'next/navigation';
 import {
   EllipsisVerticalIcon,
+  PlayIcon,
   PencilIcon,
   TagsIcon,
   CopyIcon,
@@ -33,9 +34,12 @@ import type { Recipe } from '@/data/sample/recipes';
 
 interface RecipeHeroProps {
   recipe: Recipe;
+  /** Opens cook mode. Also reachable from the header and the floating button —
+   *  three ways in, because which one is nearest depends where you've scrolled. */
+  onStartCooking?: () => void;
 }
 
-export function RecipeHero({ recipe }: RecipeHeroProps) {
+export function RecipeHero({ recipe, onStartCooking }: RecipeHeroProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [tagsModalOpen, setTagsModalOpen] = useState(false);
@@ -82,6 +86,18 @@ export function RecipeHero({ recipe }: RecipeHeroProps) {
     destructive?: boolean;
     action: () => void | Promise<void>;
   }> = [
+    ...(onStartCooking
+      ? [
+          {
+            label: 'Start cooking',
+            icon: PlayIcon,
+            action: () => {
+              setMenuOpen(false);
+              onStartCooking();
+            },
+          },
+        ]
+      : []),
     {
       label: favorited ? 'Remove from Favorites' : 'Add to Favorites',
       icon: HeartIcon,
