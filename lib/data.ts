@@ -299,7 +299,7 @@ export interface UserPrefs {
   dashboardSections: string[];
   /** Add-recipe button placement: 'header' | 'fab' | 'off'. */
   addButton: string;
-  /** Floating start-cooking button on a recipe: 'fab' | 'off'. */
+  /** Start-cooking button placement: 'header' | 'fab' | 'off'. */
   cookButton: string;
   /** Push a notification to the household when someone adds a recipe. */
   pushNewRecipes: boolean;

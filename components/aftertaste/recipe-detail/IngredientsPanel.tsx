@@ -22,20 +22,46 @@ import type { Ingredient } from '@/data/sample/recipes';
 
 type ScaleMode = 'amount' | 'serving';
 
-// The fractions people actually halve and quarter things by. A third is here
-// because thirds turn up in baking; three-quarters because a 4-serving recipe
-// for 3 is common. Values are exact so scaleQuantity's own fraction formatting
-// lands on clean amounts rather than decimals.
+// The amounts people actually scale by. Values are exact so scaleQuantity's
+// own fraction formatting lands on clean amounts rather than decimals.
 const MULTIPLIERS: { label: string; value: number }[] = [
   { label: '¼', value: 0.25 },
   { label: '⅓', value: 1 / 3 },
   { label: '½', value: 0.5 },
+  { label: '⅔', value: 2 / 3 },
   { label: '¾', value: 0.75 },
   { label: '1', value: 1 },
   { label: '1½', value: 1.5 },
   { label: '2', value: 2 },
   { label: '3', value: 3 },
+  { label: '4', value: 4 },
+  { label: '5', value: 5 },
 ];
+
+/** Close enough to count as that preset — thirds are never exact. */
+const isSameMultiplier = (a: number, b: number) => Math.abs(a - b) < 0.005;
+
+/**
+ * Whatever was typed into Custom. Accepts a decimal or a fraction, because
+ * someone scaling a recipe by an eighth is more likely to write "1/8" than
+ * "0.125".
+ */
+function parseMultiplier(raw: string): number | null {
+  const t = raw.trim();
+  if (!t) return null;
+  const mixed = t.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixed) {
+    const d = Number(mixed[3]);
+    return d ? Number(mixed[1]) + Number(mixed[2]) / d : null;
+  }
+  const frac = t.match(/^(\d+)\/(\d+)$/);
+  if (frac) {
+    const d = Number(frac[2]);
+    return d ? Number(frac[1]) / d : null;
+  }
+  const n = Number(t);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 
 /** A −/+ button for the servings stepper. */
 function StepButton({
@@ -117,6 +143,27 @@ export function IngredientsPanel({
   useEffect(() => {
     setServingsDraft(String(currentServings));
   }, [currentServings]);
+
+  // Custom is open either because the cook asked for it, or because the
+  // current multiplier is not one of the presets — arriving at 1.25 via the
+  // servings stepper should not leave every chip looking unselected with no
+  // explanation of what the recipe is actually scaled to.
+  const matchesPreset = MULTIPLIERS.some((m) =>
+    isSameMultiplier(multiplier, m.value),
+  );
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customDraft, setCustomDraft] = useState('');
+  const customActive = customOpen || !matchesPreset;
+
+  const commitCustom = () => {
+    const n = parseMultiplier(customDraft);
+    if (n === null) {
+      setCustomDraft('');
+      return;
+    }
+    onScaleModeChange('amount');
+    onScaleValueChange(Math.min(50, Math.max(0.05, n)));
+  };
 
   const setServings = (n: number) => {
     onScaleModeChange('serving');
@@ -320,7 +367,54 @@ export function IngredientsPanel({
                   </button>
                 );
               })}
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomDraft(
+                    matchesPreset ? '' : String(Number(multiplier.toFixed(3))),
+                  );
+                  setCustomOpen((o) => !o);
+                }}
+                aria-pressed={customActive}
+                className={cn(
+                  'h-9 rounded-full px-3 text-sm font-medium transition-colors',
+                  customActive
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-white text-gray-600 ring-1 ring-gray-200 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-300 dark:ring-gray-700 dark:hover:bg-gray-800',
+                )}
+              >
+                Custom
+              </button>
             </div>
+
+            {customActive && (
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoFocus={customOpen}
+                  aria-label="Custom multiplier"
+                  placeholder="e.g. 2.5 or 1/8"
+                  value={customDraft}
+                  onChange={(e) => setCustomDraft(e.target.value)}
+                  onBlur={commitCustom}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  className={cn(
+                    'w-32 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm tabular-nums',
+                    'dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100',
+                    'focus:outline-none focus:ring-2 focus:ring-primary-500/30',
+                  )}
+                />
+                <span className="text-xs text-gray-400 dark:text-gray-500">
+                  × the recipe
+                </span>
+              </div>
+            )}
 
             {/* ...or say how many servings you want, and let the multiplier
                 follow. Both controls drive the same number from either end. */}

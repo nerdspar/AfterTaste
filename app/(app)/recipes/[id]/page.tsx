@@ -41,7 +41,13 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const [scaleMode, setScaleMode] = useState<'amount' | 'serving'>('amount');
   const [scaleValue, setScaleValue] = useState(1);
   const [cooking, setCooking] = useState(false);
-  const cookFab = prefs.cookButton !== 'off';
+  // Placement of the start-cooking button, mirroring the add-recipe setting:
+  //   'header' — the button at the top of the recipe
+  //   'fab'    — a floating play button above the tab bar (mobile); the header
+  //              button stays on desktop, which has no floating one
+  //   'off'    — neither; starting a cook lives only in the "..." menu
+  const cookStyle = prefs.cookButton || 'fab';
+  const cookFab = cookStyle === 'fab';
   // Tracks whether this recipe was ever present, so we can tell a freshly
   // deleted recipe (redirect to the list) apart from an unknown id (404).
   const existedRef = useRef(false);
@@ -112,9 +118,13 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
           onClick={() => setCooking(true)}
           className={cn(
             'h-9 items-center gap-1.5 rounded-lg bg-primary-500 px-3 text-sm font-semibold text-white transition-colors hover:bg-primary-700',
-            // With the floating button on, this would be a second copy of
-            // itself on a phone; desktop has no floating button, so it stays.
-            cookFab ? 'hidden md:inline-flex' : 'inline-flex',
+            cookStyle === 'header'
+              ? 'inline-flex'
+              : // The floating button covers mobile, so this would be a second
+                // copy of itself there; desktop has no floating one, so it stays.
+                cookStyle === 'fab'
+                ? 'hidden md:inline-flex'
+                : 'hidden',
           )}
         >
           <UtensilsCrossedIcon className="h-4 w-4" />

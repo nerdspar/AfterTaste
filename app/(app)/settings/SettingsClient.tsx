@@ -528,12 +528,13 @@ export function SettingsClient({
               Start-cooking button
             </p>
             <p className="mb-3 text-xs text-gray-400 dark:text-gray-500">
-              A floating play button on a recipe, so you don&apos;t have to
-              scroll back up to start cooking. It&apos;s always at the top of
-              the recipe and in its “…” menu too.
+              Where the button to start cooking shows on a recipe. Floating
+              saves scrolling back up mid-recipe. It&apos;s always in the
+              recipe&apos;s “…” menu too.
             </p>
             <div className="flex items-center rounded-lg border border-gray-200 p-1 max-w-xs dark:border-gray-700">
               {[
+                { key: 'header', label: 'In header' },
                 { key: 'fab', label: 'Floating' },
                 { key: 'off', label: 'Hidden' },
               ].map((o) => {
