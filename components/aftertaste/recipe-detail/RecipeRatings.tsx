@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { PencilIcon } from 'lucide-react';
 import { TagsRatingsModal } from './TagsRatingsModal';
@@ -51,6 +52,22 @@ interface RecipeRatingsProps {
 
 export function RecipeRatings({ recipe }: RecipeRatingsProps) {
   const [open, setOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // "?rate=1" comes from the did-you-make-it notification, which exists to
+  // collect a rating — so it opens the ratings rather than dropping you on the
+  // recipe to go looking. The parameter is cleared straight away so a refresh,
+  // or a back-navigation later, doesn't reopen it.
+  useEffect(() => {
+    if (searchParams.get('rate') !== '1') return;
+    setOpen(true);
+    const rest = new URLSearchParams(searchParams.toString());
+    rest.delete('rate');
+    const query = rest.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [searchParams, router, pathname]);
 
   return (
     <>

@@ -99,7 +99,10 @@ export async function runDueNotifications(now = new Date()): Promise<number> {
       const count = await sendToUser(job.user.id, {
         title: `Did you make ${recipe.title}?`,
         body: 'Tap to rate it while it is fresh in your mind.',
-        url: `/recipes/${job.recipeId}`,
+        // ?rate=1 opens the ratings straight away. The whole point of this
+        // notification is the rating, so landing on the recipe and making them
+        // find it is most of the way to not bothering.
+        url: `/recipes/${job.recipeId}?rate=1`,
         tag: `cook-nudge-${job.recipeId}`,
       });
       if (count === 0) {

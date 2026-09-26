@@ -70,23 +70,69 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// Focus an already-open tab rather than piling up new ones, and navigate it to
+// Focus an already-open window rather than piling up new ones, and get it to
 // wherever the notification points.
+//
+// Getting there is the fiddly part. client.navigate() is unreliable inside an
+// installed iOS PWA — it can reject, or resolve without moving — and an earlier
+// version swallowed that failure, so tapping a notification focused the app and
+// then visibly did nothing. There are three ways in, tried in order of how
+// dependable they are:
+//   1. postMessage, and let the app's own router handle it. Works whenever the
+//      page is alive and listening, and it is a client-side route so it keeps
+//      the app's state.
+//   2. client.navigate(), for a page too old to be listening.
+//   3. openWindow(), when there is no window at all.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const target = (event.notification.data && event.notification.data.url) || '/';
+
   event.waitUntil(
     (async () => {
       const all = await self.clients.matchAll({
         type: 'window',
         includeUncontrolled: true,
       });
-      for (const client of all) {
-        if (new URL(client.url).origin === self.location.origin) {
-          await client.focus();
-          if ('navigate' in client) await client.navigate(target).catch(() => {});
+      const client = all.find(
+        (c) => new URL(c.url).origin === self.location.origin,
+      );
+
+      if (!client) {
+        await self.clients.openWindow(target);
+        return;
+      }
+
+      // Focus first: on iOS the window has to be foregrounded before anything
+      // it does is visible.
+      await client.focus().catch(() => {});
+
+      // Ask the page to route itself, and wait briefly for it to confirm.
+      const routed = await new Promise((resolve) => {
+        const channel = new MessageChannel();
+        const timer = setTimeout(() => resolve(false), 600);
+        channel.port1.onmessage = (e) => {
+          clearTimeout(timer);
+          resolve(!!(e.data && e.data.ok));
+        };
+        try {
+          client.postMessage({ type: 'aftertaste:navigate', url: target }, [
+            channel.port2,
+          ]);
+        } catch {
+          clearTimeout(timer);
+          resolve(false);
+        }
+      });
+      if (routed) return;
+
+      // Nobody answered — fall back to a hard navigation, then to a new window.
+      try {
+        if ('navigate' in client) {
+          await client.navigate(target);
           return;
         }
+      } catch {
+        // fall through
       }
       await self.clients.openWindow(target);
     })(),
