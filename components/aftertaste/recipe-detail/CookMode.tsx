@@ -188,7 +188,8 @@ export function CookMode({
             type="button"
             onClick={onClose}
             className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
-            aria-label="Close cook mode"
+            aria-label="Close cook mode — your ticks are kept"
+            title="Close — your ticks are kept"
           >
             <XIcon className="h-5 w-5" />
           </button>
@@ -292,6 +293,11 @@ export function CookMode({
                         )}
                         <StepText
                           text={convertText(inst.body, units)}
+                          stepLabel={
+                            isGenericStepTitle(inst.title)
+                              ? `Step ${String(n).padStart(2, '0')}`
+                              : inst.title
+                          }
                           onStartTimer={start}
                         />
                       </CookRow>
@@ -304,23 +310,29 @@ export function CookMode({
         </div>
       </div>
 
-      {/* Finish bar */}
-      <div className="absolute inset-x-0 bottom-0 border-t border-gray-100 bg-white/95 px-4 py-3 backdrop-blur dark:border-gray-800 dark:bg-slate-950/95">
-        <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <p className="flex-1 text-xs text-gray-400">
-            {pct === 100
-              ? 'All done — how was it?'
-              : 'Ticks are kept on this device while you cook.'}
-          </p>
-          <button
-            type="button"
-            onClick={finish}
-            className="h-10 rounded-lg bg-primary-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
-          >
-            I&apos;m done
-          </button>
+      {/* Finishing bar. Only once something is ticked: before that there is
+          nothing to finish, and it was previously sitting there permanently
+          explaining where ticks are stored, which nobody asked.
+
+          This is not the same as the X, which closes and keeps your place —
+          this one ends the session and takes you to the ratings, so it says
+          which of the two it is. */}
+      {doneCount > 0 && (
+        <div className="absolute inset-x-0 bottom-0 border-t border-gray-100 bg-white/95 px-4 py-3 backdrop-blur dark:border-gray-800 dark:bg-slate-950/95">
+          <div className="mx-auto flex max-w-2xl items-center gap-3">
+            <p className="flex-1 text-xs text-gray-400">
+              {pct === 100 ? 'All done — how was it?' : null}
+            </p>
+            <button
+              type="button"
+              onClick={finish}
+              className="h-10 rounded-lg bg-primary-500 px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-700"
+            >
+              Finish &amp; rate
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>,
     document.body,
   );
@@ -336,10 +348,13 @@ export function CookMode({
  */
 function StepText({
   text,
+  stepLabel,
   onStartTimer,
 }: {
   text: string;
-  onStartTimer: (label: string, seconds: number) => void;
+  /** Names any timer started from this step. */
+  stepLabel: string;
+  onStartTimer: (name: string, label: string, seconds: number) => void;
 }) {
   const durations = findDurations(text);
   if (durations.length === 0) {
@@ -360,7 +375,7 @@ function StepText({
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          onStartTimer(formatDurationLabel(d.seconds), d.seconds);
+          onStartTimer(stepLabel, formatDurationLabel(d.seconds), d.seconds);
         }}
         className="mx-0.5 inline-flex items-center gap-1 rounded-md bg-primary-50 px-1.5 py-0.5 align-baseline text-primary-700 transition-colors hover:bg-primary-100 dark:bg-primary-500/15 dark:text-primary-300 dark:hover:bg-primary-500/25"
         title={`Start a ${formatDurationLabel(d.seconds)} timer`}
@@ -400,15 +415,22 @@ function TimerChip({
           ? 'animate-pulse bg-primary-500 text-white'
           : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700',
       )}
-      title={timer.done ? 'Dismiss' : 'Cancel this timer'}
+      title={
+        timer.done
+          ? `${timer.name} · ${timer.label} — done. Tap to dismiss.`
+          : `${timer.name} · ${timer.label} — tap to cancel`
+      }
     >
       {timer.done ? (
-        <BellRingIcon className="h-4 w-4" />
+        <BellRingIcon className="h-4 w-4 flex-shrink-0" />
       ) : (
-        <TimerIcon className="h-4 w-4" />
+        <TimerIcon className="h-4 w-4 flex-shrink-0" />
       )}
-      <span>{timer.done ? `${timer.label} done` : formatClock(secondsLeft)}</span>
-      <XIcon className="h-3.5 w-3.5 opacity-60" />
+      <span className="max-w-[9rem] truncate font-normal opacity-80">
+        {timer.name}
+      </span>
+      <span>{timer.done ? 'done' : formatClock(secondsLeft)}</span>
+      <XIcon className="h-3.5 w-3.5 flex-shrink-0 opacity-60" />
     </button>
   );
 }

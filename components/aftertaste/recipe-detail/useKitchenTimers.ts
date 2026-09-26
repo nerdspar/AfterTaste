@@ -16,6 +16,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface KitchenTimer {
   id: string;
+  /** Which step it came from — "Soften the garlic", or "Step 02". Without it
+   *  two running timers are two identical countdowns and you have to guess. */
+  name: string;
+  /** How long it was set for, e.g. "20 min". */
   label: string;
   /** Epoch ms when it finishes. */
   endsAt: number;
@@ -52,19 +56,21 @@ function beep(): void {
 }
 
 /** Raise a system notification for a finished timer, if allowed. */
-async function notifyDone(label: string): Promise<void> {
+async function notifyDone(name: string, label: string): Promise<void> {
   try {
     if (typeof Notification === 'undefined') return;
     if (Notification.permission !== 'granted') return;
     const reg = await navigator.serviceWorker?.getRegistration();
-    const body = `${label} — time's up.`;
+    // Names the step, because the whole point of a notification is arriving
+    // when you are not looking at the app.
+    const body = `${name} · ${label} — time's up.`;
     // Through the service worker when there is one, so it still shows with the
     // app in the background; otherwise a plain page notification.
     if (reg) {
       await reg.showNotification('Timer finished', {
         body,
         icon: '/app-icon/192',
-        tag: `timer-${label}`,
+        tag: `timer-${name}-${label}`,
       });
     } else {
       new Notification('Timer finished', { body });
@@ -102,7 +108,7 @@ export function useKitchenTimers() {
         // Marked before the effects run, so a re-entrant tick cannot double up.
         for (const t of justDone) firedRef.current.add(t.id);
         beep();
-        justDone.forEach((t) => void notifyDone(t.label));
+        justDone.forEach((t) => void notifyDone(t.name, t.label));
         setTimers((prev) =>
           prev.map((t) =>
             justDone.some((d) => d.id === t.id) ? { ...t, done: true } : t,
@@ -114,13 +120,23 @@ export function useKitchenTimers() {
     return () => clearInterval(id);
   }, [running]);
 
-  const start = useCallback((label: string, seconds: number) => {
-    const id = `${label}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    setTimers((prev) => [
-      ...prev,
-      { id, label, endsAt: Date.now() + seconds * 1000, totalSeconds: seconds, done: false },
-    ]);
-  }, []);
+  const start = useCallback(
+    (name: string, label: string, seconds: number) => {
+      const id = `${name}-${label}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      setTimers((prev) => [
+        ...prev,
+        {
+          id,
+          name,
+          label,
+          endsAt: Date.now() + seconds * 1000,
+          totalSeconds: seconds,
+          done: false,
+        },
+      ]);
+    },
+    [],
+  );
 
   const dismiss = useCallback((id: string) => {
     firedRef.current.delete(id);
