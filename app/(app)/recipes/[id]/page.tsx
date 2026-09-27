@@ -9,6 +9,7 @@ import { RecipeHero } from '@/components/aftertaste/recipe-detail/RecipeHero';
 import { StatsRow } from '@/components/aftertaste/recipe-detail/StatsRow';
 import { NutritionPanel } from '@/components/aftertaste/recipe-detail/NutritionPanel';
 import { RecipeRatings } from '@/components/aftertaste/recipe-detail/RecipeRatings';
+import { TagsRatingsModal } from '@/components/aftertaste/recipe-detail/TagsRatingsModal';
 import { IngredientsPanel } from '@/components/aftertaste/recipe-detail/IngredientsPanel';
 import { CookingInstructions } from '@/components/aftertaste/recipe-detail/CookingInstructions';
 import { RecipeNotes } from '@/components/aftertaste/recipe-detail/RecipeNotes';
@@ -41,6 +42,29 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const [scaleMode, setScaleMode] = useState<'amount' | 'serving'>('amount');
   const [scaleValue, setScaleValue] = useState(1);
   const [cooking, setCooking] = useState(false);
+
+  // "?rate=1" arrives from the did-you-make-it notification and should land on
+  // the ratings, not merely on the recipe.
+  //
+  // Read straight off the address bar and cleared with history.replaceState,
+  // deliberately not through useSearchParams + router.replace: that remounted
+  // the page, which reset the very state it had just set, so the modal opened
+  // and vanished within a frame. It is also handled here rather than inside
+  // RecipeRatings because that component is rendered twice — once for mobile,
+  // once for desktop — and only one of the pair is ever visible.
+  const [rateOpen, setRateOpen] = useState(false);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('rate') !== '1') return;
+    setRateOpen(true);
+    params.delete('rate');
+    const query = params.toString();
+    window.history.replaceState(
+      null,
+      '',
+      window.location.pathname + (query ? `?${query}` : ''),
+    );
+  }, []);
   // Placement of the start-cooking button, mirroring the add-recipe setting:
   //   'header' — the button at the top of the recipe
   //   'fab'    — a floating play button above the tab bar (mobile); the header
@@ -150,6 +174,16 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
         >
           <PlayIcon className="h-6 w-6 translate-x-0.5" />
         </button>
+      )}
+
+      {/* One ratings dialog for the deep link, owned by the page so the two
+          RecipeRatings cards don't each try to open their own. */}
+      {recipe && (
+        <TagsRatingsModal
+          recipe={recipe}
+          open={rateOpen}
+          onClose={() => setRateOpen(false)}
+        />
       )}
 
       {cooking && (

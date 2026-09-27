@@ -28,8 +28,10 @@ export interface ParsedRecipe {
 
 // A step "title" that just repeats the automatic number ("Step 1", "1.", "2)")
 // is noise — the UI already numbers steps — so treat those (and blanks) as no
-// title. A real sub-heading like "Make the sauce" is kept.
-const GENERIC_STEP_TITLE = /^\s*(?:step\s*)?\d+\s*[.:)]?\s*$/i;
+// title. A bare "Step" counts too: it carries even less than "Step 1" does,
+// and left alone it ends up naming a timer "Step" instead of "Step 02".
+// A real sub-heading like "Make the sauce" is kept.
+const GENERIC_STEP_TITLE = /^\s*(?:step\s*\d*|\d+)\s*[.:)]?\s*$/i;
 export function isGenericStepTitle(title: string | undefined): boolean {
   return !title || !title.trim() || GENERIC_STEP_TITLE.test(title.trim());
 }
