@@ -28,7 +28,7 @@ export function MobileTabBar() {
 
   const tabCls = (active: boolean) =>
     cn(
-      'flex flex-1 flex-col items-center justify-center gap-[3px] text-[10px] font-medium transition-colors',
+      'flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors',
       active
         ? 'text-primary-600 dark:text-primary-400'
         : 'text-gray-400 dark:text-gray-500',
