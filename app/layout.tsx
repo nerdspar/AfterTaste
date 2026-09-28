@@ -21,9 +21,12 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#f97316',
-  // Extend under the notch/home indicator so env(safe-area-inset-*) is
-  // non-zero — the bottom tab bar relies on it to clear the home indicator.
-  viewportFit: 'cover',
+  // Deliberately NOT viewportFit: 'cover'. With cover the web view spans the whole
+  // screen and iOS 26+/27 paints its uncloseable "Liquid Glass" blur over the top
+  // edge of a standalone PWA; without it, iOS keeps content inside the safe area
+  // (below the status bar) so the ramp has nothing to fall on. That zeros
+  // env(safe-area-inset-bottom), so globals.css reserves the home-indicator height
+  // (--sa-bottom) in standalone. The .status-tint strip below is the top insurance.
 };
 
 export default function RootLayout({
@@ -38,6 +41,14 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: accentInitScript() }} />
       </head>
       <body className="bg-white text-black antialiased dark:bg-gray-950 dark:text-white min-h-screen">
+        {/* Status-bar tint strip: a fixed opaque element at the very top edge that
+            iOS samples as solid chrome to suppress the top blur ramp (standalone +
+            portrait only, see globals.css). Background matches the app shell so it
+            blends; display:none in a browser tab. */}
+        <div
+          className="status-tint bg-gray-50 dark:bg-[#0B1220]"
+          aria-hidden="true"
+        />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
         </ThemeProvider>

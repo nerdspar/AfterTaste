@@ -101,7 +101,7 @@ export function BarcodeScanner({
       </div>
 
       {/* Manual entry — always available */}
-      <div className="flex gap-2 bg-black px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="flex gap-2 bg-black px-4 py-4 pb-[max(1rem,var(--sa-bottom))]">
         <input
           value={manual}
           onChange={(e) => setManual(e.target.value.replace(/\D/g, ''))}

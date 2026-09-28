@@ -18,6 +18,19 @@
   :root {
     --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
       'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    /* PWA chrome (matches the Seek/TrueWeb recipe). --sa-bottom gets a standalone
+       override below: dropping viewport-fit=cover to kill the iOS top blur forces
+       env(safe-area-inset-bottom) to 0, so the home indicator needs reserving.
+       The composite tokens read --sa-bottom lazily, so they pick up the override —
+       the tab bar, the content padding, the FABs and the action bar all stay in
+       step with the bar's real footprint. */
+    --sa-bottom: env(safe-area-inset-bottom, 0px);
+    --tabbar-h: 3.5rem; /* 56px content band — the tab bar's h-14 */
+    --tabbar-footprint: calc(var(--tabbar-h) + var(--sa-bottom));
+    --content-pad-b: calc(var(--tabbar-footprint) + 0.5rem); /* main: clear the bar + breathe */
+    --fab-bottom: calc(var(--tabbar-footprint) + 1rem); /* floating buttons: ~16px above the bar */
+    --status-tint-h: calc(env(safe-area-inset-top, 0px) + 10px);
   }
 
   *,
@@ -28,6 +41,35 @@
 
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold;
+  }
+}
+
+/* Installed PWA only: no viewport-fit=cover means env(safe-area-inset-bottom) is
+   0, so reserve the iOS portrait home-indicator height. max() yields to a larger
+   real inset if cover ever returns. Every bottom-anchored element reads --sa-bottom
+   (directly or via the composite tokens), so this one override fixes them all. */
+@media (display-mode: standalone) {
+  :root {
+    --sa-bottom: max(env(safe-area-inset-bottom, 0px), 34px);
+  }
+}
+
+/* Status-bar tint strip (element in app/layout.tsx). Invisible except in an
+   installed PWA in portrait, where a real opaque element pinned to the top edge
+   makes iOS 26+/27 sample it as solid status-bar chrome and drop the top blur
+   ramp — the tight fix, not a content push. Its background comes from Tailwind
+   classes on the element so it tracks light/dark. */
+.status-tint {
+  display: none;
+}
+@media (display-mode: standalone) and (orientation: portrait) {
+  .status-tint {
+    display: block;
+    position: fixed;
+    inset: 0 0 auto 0;
+    height: var(--status-tint-h);
+    z-index: 30; /* above page content, below sheets/toasts (z-50/60) */
+    pointer-events: none;
   }
 }
 

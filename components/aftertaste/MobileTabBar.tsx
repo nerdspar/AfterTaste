@@ -41,9 +41,10 @@ export function MobileTabBar() {
           'fixed inset-x-0 bottom-0 z-40 md:hidden',
           'border-t border-gray-200/70 dark:border-white/10',
           'bg-white/75 backdrop-blur-xl dark:bg-slate-900/55',
-          // A fixed gap below the content band, in place of the full
-          // home-indicator safe area (which made the bar sit too tall).
-          'pb-4',
+          // Reserve the home indicator below the content band. --sa-bottom is the
+          // real inset, or the iOS home-indicator height in an installed PWA where
+          // dropping viewport-fit=cover zeros env() (see globals.css).
+          'pb-[var(--sa-bottom)]',
         )}
       >
         {/* Fixed 56px content band (iOS tab bars are ~49pt), items centered. */}
