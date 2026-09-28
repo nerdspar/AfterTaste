@@ -21,6 +21,19 @@ export function AppShell({ children }: AppShellProps) {
     if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
+
+    // Cold-launch only: iOS composites its top "Liquid Glass" scroll-edge ramp
+    // over the first painted frame before the no-cover/tint suppression settles,
+    // so the header/search bar looks faintly blurred until the first navigation
+    // forces a recompute. The scroll-edge effect is scroll-driven, so nudge the
+    // window 1px and back (across two frames, position restored) to make iOS
+    // recompute immediately instead of leaving it blurred until the user moves.
+    const raf1 = requestAnimationFrame(() => {
+      const y = window.scrollY;
+      window.scrollTo(0, y + 1);
+      requestAnimationFrame(() => window.scrollTo(0, y));
+    });
+    return () => cancelAnimationFrame(raf1);
   }, []);
 
   return (
