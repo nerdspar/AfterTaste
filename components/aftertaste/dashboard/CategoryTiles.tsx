@@ -6,14 +6,19 @@ import { categories } from '@/data/sample/recipes';
 
 export function CategoryTiles() {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 pt-1 pb-1">
+    // Six across at every width. At 375px that leaves ~54px a tile, and
+    // "Breakfast" — the longest label — needs 47px of that, so the gap and
+    // tracking below are not cosmetic: at gap-1.5 it was one pixel over and
+    // truncated to "Breakf…".
+    <div className="grid grid-cols-6 gap-1 sm:gap-3 pt-1 pb-1">
       {categories.map((cat) => (
         <Link
           key={cat.slug}
           href={cat.slug === 'favorites' ? '/recipes?tab=Favorites' : `/recipes?tab=${cat.label}`}
+          title={cat.label}
           className={cn(
-            'flex flex-col items-center justify-center',
-            'h-16 rounded-2xl',
+            'flex flex-col items-center justify-center px-0.5',
+            'h-14 sm:h-16 rounded-xl sm:rounded-2xl',
             'border border-gray-200 bg-white',
             'dark:border-gray-700/40 dark:bg-slate-900',
             'hover:border-primary-300 hover:-translate-y-0.5',
@@ -22,8 +27,8 @@ export function CategoryTiles() {
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary-500/30',
           )}
         >
-          <span className="text-xl mb-0.5">{cat.icon}</span>
-          <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          <span className="text-lg sm:text-xl leading-none mb-1">{cat.icon}</span>
+          <span className="w-full truncate text-center text-[10px] tracking-tight sm:text-xs sm:tracking-normal font-medium text-gray-700 dark:text-gray-300">
             {cat.label}
           </span>
         </Link>

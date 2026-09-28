@@ -3,6 +3,11 @@
 // here is the default order; users can reorder (within a column) and hide
 // sections, stored as a list of visible ids in the `dashboardSections` pref
 // (empty = this default).
+//
+// The category shortcuts are deliberately NOT here: they are pinned to the top
+// of the dashboard, where they replaced the greeting. An old saved pref may
+// still name 'categoryTiles' — the page filters ids it has no section for, so
+// that does no harm.
 
 export type DashboardColumn = 'main' | 'rail';
 
@@ -17,7 +22,6 @@ export interface DashboardSectionMeta {
 }
 
 export const DASHBOARD_SECTIONS: DashboardSectionMeta[] = [
-  { id: 'categoryTiles', label: 'Browse by Category', hint: 'Quick category shortcuts', column: 'main' },
   { id: 'recentlyViewed', label: 'Recently Viewed', hint: 'Recipes you opened lately', column: 'main' },
   { id: 'recentlyAdded', label: 'Recently Added', hint: 'Your newest recipes', column: 'main' },
   { id: 'suggested', label: 'Suggested Recipes', hint: 'Picks for the time of day', column: 'main' },

@@ -7,7 +7,6 @@ import { RecipeCard } from '@/components/aftertaste/dashboard/RecipeCard';
 import { TodaysMeals } from '@/components/aftertaste/dashboard/TodaysMeals';
 import { GroceryListWidget } from '@/components/aftertaste/dashboard/GroceryListWidget';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
-import { useFirstName } from '@/components/aftertaste/CurrentUserProvider';
 import { useUserPrefs } from '@/components/aftertaste/UserPrefsProvider';
 import { AddRecipe } from '@/components/aftertaste/AddRecipe';
 import { useRecentlyViewedIds } from '@/lib/recently-viewed';
@@ -52,7 +51,6 @@ function seededRank(id: string, seed: number): number {
 
 export default function DashboardPage() {
   const { recipes } = useRecipeStore();
-  const firstName = useFirstName();
   const { prefs } = useUserPrefs();
   const viewedIds = useRecentlyViewedIds();
   const [expandedSections, setExpandedSections] = useState<
@@ -137,11 +135,6 @@ export default function DashboardPage() {
     return expandedSections[sectionKey] ? 'See less' : 'See more';
   }
 
-  const greeting =
-    hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening';
-  const cookWhen =
-    hour < 12 ? 'this morning' : hour < 17 ? 'this afternoon' : 'tonight';
-
   // Each dashboard section keyed by id. The saved order is the MOBILE order
   // (one column, exactly as configured). On desktop we project that same list
   // into two columns — rail sections peel off to the side panel — so the
@@ -175,7 +168,6 @@ export default function DashboardPage() {
   );
 
   const sectionNodes: Record<string, React.ReactNode> = {
-    categoryTiles: <CategoryTiles />,
     recentlyViewed: recipeSection(
       'Recently Viewed',
       'recentlyViewed',
@@ -213,17 +205,22 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Greeting */}
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-            Good {greeting}, {firstName}
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-            What would you like to cook {cookWhen}?
-          </p>
-        </div>
+      {/* The greeting that used to sit here cost two lines of the most valuable
+          space on the screen to say nothing you didn't know. The category
+          shortcuts (a reorderable section, normally first) now lead instead.
+
+          This row is only still here to hold the add-recipe button, and only
+          when that button is set to live in the header — as a floating button
+          it is position:fixed and as "hidden" it renders nothing, so in both
+          of those cases this collapses to nothing. */}
+      <div className="mb-2 flex justify-end gap-3 empty:hidden">
         <AddRecipe />
+      </div>
+
+      {/* Pinned, not one of the reorderable sections any more: it took the
+          greeting's place at the top, and "at the top" is the whole point. */}
+      <div className="mb-5">
+        <CategoryTiles />
       </div>
 
       {/* Mobile: one column in the exact saved order (rail sections can lead). */}
