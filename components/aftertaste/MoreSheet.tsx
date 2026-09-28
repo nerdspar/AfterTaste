@@ -39,7 +39,7 @@ export function MoreSheet({
       onClick={onClose}
     >
       <div
-        className="max-h-[80vh] w-full overflow-y-auto rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-xl dark:bg-slate-900"
+        className="max-h-[80vh] w-full overflow-y-auto rounded-t-2xl bg-white pb-[var(--sa-bottom)] shadow-xl dark:bg-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">

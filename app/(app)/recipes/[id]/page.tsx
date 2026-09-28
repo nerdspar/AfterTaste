@@ -167,7 +167,9 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
           onClick={() => setCooking(true)}
           aria-label="Start cooking"
           className={cn(
-            'fixed right-4 bottom-24 z-40 flex h-12 w-12 items-center justify-center rounded-full md:hidden',
+            // --fab-bottom tracks the tab bar's real footprint (globals.css), so the
+            // Start-cook button clears the home indicator like the Add FAB.
+            'fixed right-4 bottom-[var(--fab-bottom)] z-40 flex h-12 w-12 items-center justify-center rounded-full md:hidden',
             'bg-primary-500 text-white shadow-lg shadow-primary-500/40 ring-1 ring-white/15',
             'transition-transform active:scale-95',
           )}

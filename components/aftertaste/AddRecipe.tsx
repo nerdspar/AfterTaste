@@ -45,7 +45,7 @@ export function AddRecipe() {
           onClick={() => setSheetOpen(false)}
         >
           <div
-            className="w-full rounded-t-2xl bg-white pb-[env(safe-area-inset-bottom)] shadow-xl dark:bg-slate-900"
+            className="w-full rounded-t-2xl bg-white pb-[var(--sa-bottom)] shadow-xl dark:bg-slate-900"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800">
@@ -98,9 +98,9 @@ export function AddRecipe() {
           aria-label="Add recipe"
           className={cn(
             'fixed right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full md:hidden',
-            // Sit a consistent ~24px above the 72px tab bar (which uses a fixed
-            // pad, not env safe-area — so the FAB shouldn't either, or it floats).
-            'bottom-24',
+            // ~16px above the tab bar, tracking its real footprint (band +
+            // home-indicator cushion) via --fab-bottom (globals.css).
+            'bottom-[var(--fab-bottom)]',
             'bg-primary-500 text-white shadow-lg shadow-primary-500/40 ring-1 ring-white/15',
             'transition-transform active:scale-95',
           )}

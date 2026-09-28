@@ -536,7 +536,7 @@ function MealPlannerContent() {
 
               {/* Scrollable results. The bottom padding clears the mobile home
                   indicator / safe area so the last row isn't flush to the edge. */}
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(1rem+var(--sa-bottom))]">
                 {filteredRecipes.length > 0 ? (
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
                     {filteredRecipes.map((recipe) => {

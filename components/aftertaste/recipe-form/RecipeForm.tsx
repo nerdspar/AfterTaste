@@ -1381,12 +1381,12 @@ export function RecipeForm({ recipe, imported, duplicate }: RecipeFormProps) {
 
       {/* Actions — a bar fixed to the bottom of the viewport so Save/Cancel are
           always reachable on a long form. It sits above the mobile tab bar
-          (bottom-[72px]) and flush at the bottom on desktop, clearing the fixed
+          (bottom-[var(--tabbar-footprint)]) and flush at the bottom on desktop, clearing the fixed
           sidebar (md:left-[280px]). fixed (not sticky) because the app root's
           overflow-x-hidden would break a sticky descendant; the submit button
           stays inside the <form>, so native submit still works. The form's
           pb-24 keeps the last field from hiding behind this bar. */}
-      <div className="fixed inset-x-0 bottom-[72px] z-30 border-t border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-slate-900/95 md:bottom-0 md:left-[280px]">
+      <div className="fixed inset-x-0 bottom-[var(--tabbar-footprint)] z-30 border-t border-gray-200 bg-white/95 backdrop-blur dark:border-gray-800 dark:bg-slate-900/95 md:bottom-0 md:left-[280px]">
         <div className="mx-auto max-w-7xl px-4 py-3 md:px-5">
           {submitError && (
             <p className="mb-2 text-sm text-red-500">{submitError}</p>
