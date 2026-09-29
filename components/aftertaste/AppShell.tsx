@@ -8,6 +8,7 @@ import { MobileTabBar } from './MobileTabBar';
 import { PullToRefresh } from './PullToRefresh';
 import { initInstallCapture } from '@/lib/pwa-install';
 import { NotificationRouter } from './NotificationRouter';
+import { ActiveTimersBar } from './ActiveTimersBar';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -27,6 +28,8 @@ export function AppShell({ children }: AppShellProps) {
     <div className="min-h-screen overflow-x-hidden bg-gray-50 dark:bg-[#0B1220] transition-colors">
       {/* Listens for a tapped notification and routes the app there. */}
       <NotificationRouter />
+      {/* Timers still running, shown everywhere except inside cook mode. */}
+      <ActiveTimersBar />
       {/* Desktop sidebar (fixed). On mobile, navigation lives in the bottom bar
           + More sheet, so there's no drawer/hamburger. */}
       <aside

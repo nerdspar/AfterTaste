@@ -28,6 +28,7 @@ import {
   loadCookProgress,
   saveCookProgress,
   clearCookProgress,
+  saveActiveCook,
 } from '@/lib/cook-session';
 import { scheduleCookNudge } from '@/app/(app)/push-actions';
 import { useKeepAwake } from '@/lib/keep-awake';
@@ -36,7 +37,10 @@ import {
   formatClock,
   formatDurationLabel,
 } from '@/lib/step-timers';
-import { useKitchenTimers, type KitchenTimer } from './useKitchenTimers';
+import {
+  useCookTimers,
+  type KitchenTimer,
+} from '@/components/aftertaste/CookTimersProvider';
 import { cn } from '@/lib/utils';
 import type { Ingredient, Instruction } from '@/data/sample/recipes';
 
@@ -80,7 +84,23 @@ export function CookMode({
 
   // Cooking is exactly when the phone must not sleep.
   useKeepAwake(true);
-  const { timers, start, dismiss, remaining } = useKitchenTimers();
+  // Timers come from the app-level provider, not from here, so leaving this
+  // screen — deliberately or by mis-swiping — leaves them running.
+  const { timers, start, dismiss, remaining, setCookModeOpen } = useCookTimers();
+
+  // Tell the rest of the app this is on screen, so the floating timer bar
+  // stays out of the way while the in-screen strip is showing.
+  useEffect(() => {
+    setCookModeOpen(true);
+    return () => setCookModeOpen(false);
+  }, [setCookModeOpen]);
+
+  // Remember that this recipe is the one being cooked. Cleared only by an
+  // explicit close or finish below — so navigating away by accident leaves it
+  // set, and coming back to the recipe picks up where you left off.
+  useEffect(() => {
+    saveActiveCook(recipeId);
+  }, [recipeId]);
 
   useEffect(() => {
     const p = loadCookProgress(recipeId);
@@ -109,10 +129,11 @@ export function CookMode({
   // Escape closes, matching every other overlay in the app.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') close();
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose]);
 
   const realIngredients = useMemo(
@@ -123,6 +144,9 @@ export function CookMode({
     () => instructions.filter((i) => !isSection(i)).length,
     [instructions],
   );
+  // Timers from other recipes keep running, but they belong to the floating
+  // bar, not to this recipe's strip.
+  const ownTimers = timers.filter((t) => t.recipeId === recipeId);
   const doneCount = ingChecked.size + stepChecked.size;
   const totalCount = realIngredients + realSteps;
   const pct = totalCount === 0 ? 0 : Math.round((doneCount / totalCount) * 100);
@@ -149,7 +173,15 @@ export function CookMode({
 
   const finish = () => {
     clearCookProgress(recipeId);
+    saveActiveCook(null);
     onFinish();
+  };
+
+  /** The X: leaving on purpose, so stop offering to resume. Ticks and any
+   *  running timers are kept either way. */
+  const close = () => {
+    saveActiveCook(null);
+    onClose();
   };
 
   let stepNum = 0;
@@ -186,7 +218,7 @@ export function CookMode({
           </button>
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
             className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
             aria-label="Close cook mode — your ticks are kept"
             title="Close — your ticks are kept"
@@ -204,10 +236,10 @@ export function CookMode({
 
       {/* Running timers — pinned, because the step that started one is usually
           scrolled away by the time it matters. */}
-      {timers.length > 0 && (
+      {ownTimers.length > 0 && (
         <div className="flex-shrink-0 border-b border-gray-100 px-4 py-2 dark:border-gray-800">
           <div className="mx-auto flex max-w-2xl flex-wrap gap-2">
-            {timers.map((t) => (
+            {ownTimers.map((t) => (
               <TimerChip
                 key={t.id}
                 timer={t}
@@ -298,7 +330,9 @@ export function CookMode({
                               ? `Step ${String(n).padStart(2, '0')}`
                               : inst.title
                           }
-                          onStartTimer={start}
+                          onStartTimer={(name, label, seconds) =>
+                            start({ name, label, seconds, recipeId, recipeTitle: title })
+                          }
                         />
                       </CookRow>
                     </li>

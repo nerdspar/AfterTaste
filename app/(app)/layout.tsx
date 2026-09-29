@@ -9,6 +9,7 @@ import { RealtimeSync } from '@/components/aftertaste/RealtimeSync';
 import { CurrentUserProvider } from '@/components/aftertaste/CurrentUserProvider';
 import { UserPrefsProvider } from '@/components/aftertaste/UserPrefsProvider';
 import { PrefsInitializer } from '@/components/aftertaste/PrefsInitializer';
+import { CookTimersProvider } from '@/components/aftertaste/CookTimersProvider';
 import { loadHouseholdState, loadUserProfile } from '@/lib/data';
 
 export default async function AppLayout({
@@ -34,7 +35,11 @@ export default async function AppLayout({
               <RecipeActionsProvider>
                 <RecentlyViewedHydrator ids={state.recentlyViewed} />
                 <RealtimeSync />
-                <AppShell>{children}</AppShell>
+                {/* Above AppShell on purpose: timers have to outlive the page
+                    you started them from. */}
+                <CookTimersProvider>
+                  <AppShell>{children}</AppShell>
+                </CookTimersProvider>
               </RecipeActionsProvider>
             </MealPlanStoreProvider>
           </GroceryStoreProvider>

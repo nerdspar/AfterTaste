@@ -81,12 +81,22 @@ export function formatClock(totalSeconds: number): string {
   return hours > 0 ? `${hours}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-/** Short label for the button that starts it, e.g. "25 min". */
+/**
+ * Short label for the button that starts it, e.g. "25 min".
+ *
+ * Rounding to the nearest minute made a 90-second timer call itself "2 min",
+ * which is both wrong and — when another timer really is two minutes —
+ * indistinguishable from it. Part-minutes are spelled out instead.
+ */
 export function formatDurationLabel(totalSeconds: number): string {
   if (totalSeconds >= 3600) {
     const h = totalSeconds / 3600;
-    return `${Number.isInteger(h) ? h : h.toFixed(1)} hr`;
+    return `${Number.isInteger(h) ? h : Number(h.toFixed(1))} hr`;
   }
-  if (totalSeconds >= 60) return `${Math.round(totalSeconds / 60)} min`;
+  if (totalSeconds >= 60) {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return secs === 0 ? `${mins} min` : `${mins}m ${secs}s`;
+  }
   return `${totalSeconds} sec`;
 }

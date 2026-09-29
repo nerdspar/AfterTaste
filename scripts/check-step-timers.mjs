@@ -92,6 +92,11 @@ fmt(formatClock, 0, '0:00');
 
 console.log('\nButton labels');
 fmt(formatDurationLabel, 1200, '20 min');
+// A part-minute is spelled out: rounding made 90s read "2 min", which collides
+// with a timer that really is two minutes.
+fmt(formatDurationLabel, 90, '1m 30s');
+fmt(formatDurationLabel, 150, '2m 30s');
+fmt(formatDurationLabel, 60, '1 min');
 fmt(formatDurationLabel, 3600, '1 hr');
 fmt(formatDurationLabel, 5400, '1.5 hr');
 fmt(formatDurationLabel, 30, '30 sec');

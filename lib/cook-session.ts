@@ -67,3 +67,92 @@ export function clearCookProgress(recipeId: string): void {
     // ignore
   }
 }
+
+// ---------------------------------------------------------------------------
+// Running timers, and which recipe you are cooking
+// ---------------------------------------------------------------------------
+//
+// These outlive the cook mode screen on purpose. Swiping back by accident, or
+// stepping into another recipe to check something, used to take every running
+// timer with it — the timers lived in the component, so unmounting it was the
+// same as cancelling them.
+//
+// They survive a full reload too, which works because a timer stores the
+// instant it ends rather than a countdown: restoring it is just reading the
+// number back, and the remaining time is still correct however long the app
+// was closed.
+
+const TIMERS_KEY = 'aftertaste-timers';
+const ACTIVE_COOK_KEY = 'aftertaste-cooking';
+
+export interface StoredTimer {
+  id: string;
+  /** The step it came from, e.g. "Soften the garlic" or "Step 02". */
+  name: string;
+  /** How long it was set for, e.g. "20 min". */
+  label: string;
+  recipeId: string;
+  recipeTitle: string;
+  /** Epoch ms. */
+  endsAt: number;
+  totalSeconds: number;
+  done: boolean;
+}
+
+/** A finished timer older than this is yesterday's problem. */
+const TIMER_KEEP_MS = 2 * 60 * 60 * 1000;
+
+export function loadTimers(): StoredTimer[] {
+  try {
+    const raw = localStorage.getItem(TIMERS_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const now = Date.now();
+    return (parsed as StoredTimer[])
+      .filter(
+        (t) =>
+          t &&
+          typeof t.id === 'string' &&
+          typeof t.endsAt === 'number' &&
+          now - t.endsAt < TIMER_KEEP_MS,
+      )
+      // One that ran out while the app was closed comes back already finished,
+      // so it still gets seen — but see the provider: it does not re-sound the
+      // alarm for something that rang hours ago.
+      .map((t) => ({ ...t, done: t.done || t.endsAt <= now }));
+  } catch {
+    return [];
+  }
+}
+
+export function saveTimers(timers: StoredTimer[]): void {
+  try {
+    if (timers.length === 0) localStorage.removeItem(TIMERS_KEY);
+    else localStorage.setItem(TIMERS_KEY, JSON.stringify(timers));
+  } catch {
+    // Storage full or blocked — timers just won't survive a reload.
+  }
+}
+
+/**
+ * The recipe cook mode is open for, remembered so that leaving the screen by
+ * accident is undoable. Cleared only on an explicit close or finish, which is
+ * what separates "I'm done here" from "I swiped the wrong way".
+ */
+export function loadActiveCook(): string | null {
+  try {
+    return localStorage.getItem(ACTIVE_COOK_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveActiveCook(recipeId: string | null): void {
+  try {
+    if (recipeId) localStorage.setItem(ACTIVE_COOK_KEY, recipeId);
+    else localStorage.removeItem(ACTIVE_COOK_KEY);
+  } catch {
+    // ignore
+  }
+}

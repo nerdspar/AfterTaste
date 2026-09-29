@@ -16,6 +16,7 @@ import { RecipeNotes } from '@/components/aftertaste/recipe-detail/RecipeNotes';
 import { AIAssistantPanel } from '@/components/aftertaste/recipe-detail/AIAssistantPanel';
 import { CookIntentTracker } from '@/components/aftertaste/recipe-detail/CookIntentTracker';
 import { CookMode } from '@/components/aftertaste/recipe-detail/CookMode';
+import { loadActiveCook } from '@/lib/cook-session';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { recordRecipeView } from '@/lib/recently-viewed';
 import { useKeepAwake } from '@/lib/keep-awake';
@@ -42,6 +43,7 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const [scaleMode, setScaleMode] = useState<'amount' | 'serving'>('amount');
   const [scaleValue, setScaleValue] = useState(1);
   const [cooking, setCooking] = useState(false);
+
 
   // "?rate=1" arrives from the did-you-make-it notification and should land on
   // the ratings, not merely on the recipe.
@@ -79,6 +81,27 @@ export default function RecipeDetailPage({ params }: RecipeDetailPageProps) {
   const recipe = getRecipe(id);
   if (recipe) existedRef.current = true;
   const recipeId = recipe?.id;
+  // Reopen cook mode when you come back to a recipe you were cooking.
+  //
+  // This is the mis-swipe case: closing with the X or finishing clears the
+  // marker, so those stay closed. Anything else — a back gesture, wandering
+  // off to another recipe — leaves it set, and returning picks up where you
+  // were, ticks and all. "?cook=1" is the floating timer bar's way in.
+  useEffect(() => {
+    if (!recipeId) return;
+    const wanted = new URLSearchParams(window.location.search).get('cook') === '1';
+    if (wanted || loadActiveCook() === recipeId) setCooking(true);
+    if (wanted) {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('cook');
+      const query = params.toString();
+      window.history.replaceState(
+        null,
+        '',
+        window.location.pathname + (query ? `?${query}` : ''),
+      );
+    }
+  }, [recipeId]);
 
   useEffect(() => {
     if (!recipe && existedRef.current) {
