@@ -14,7 +14,42 @@ env:
   IMAGE_NAME: ${{ github.repository }} # metadata-action lowercases this
 
 jobs:
+  # Gate the publish on the same checks Claude and the Stop hook run locally.
+  # Pushing to main deploys, so a red test must stop the image, not follow it.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22 # matches the Dockerfile's node:22-slim
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # tsc resolves @prisma/client from generated output, which npm ci does
+      # not produce on its own (there is no postinstall). No database needed:
+      # generate reads the schema only.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # Deliberately not `npm run lint` — that script carries --fix for local
+      # use, which would quietly rewrite files and pass instead of failing.
+      - name: Lint
+        run: npx next lint --dir app --dir components --dir lib
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
   build-and-push:
+    needs: test # no image unless the checks above are green
     runs-on: ubuntu-latest
     permissions:
       contents: read
