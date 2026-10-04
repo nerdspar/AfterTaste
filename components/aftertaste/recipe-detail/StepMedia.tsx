@@ -91,7 +91,7 @@ export function StepMedia({ src, title }: StepMediaProps) {
             {isVideo ? (
               <video
                 src={src}
-                className="max-h-[85vh] max-w-full rounded-lg shadow-2xl"
+                className="max-h-[85dvh] max-w-full rounded-lg shadow-2xl"
                 controls
                 autoPlay
                 playsInline
@@ -101,7 +101,7 @@ export function StepMedia({ src, title }: StepMediaProps) {
               <img
                 src={src}
                 alt={title}
-                className="max-h-[85vh] max-w-full rounded-lg object-contain shadow-2xl"
+                className="max-h-[85dvh] max-w-full rounded-lg object-contain shadow-2xl"
               />
             )}
           </div>

@@ -395,7 +395,7 @@ function MealPlannerContent() {
               onClick={closeSlot}
               className="absolute inset-0 bg-black/40 animate-in fade-in"
             />
-            <div className="relative z-10 flex max-h-[85vh] w-full flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-xl animate-in fade-in slide-in-from-bottom-4 dark:border-gray-700 dark:bg-slate-900 sm:max-w-lg sm:rounded-2xl sm:zoom-in-95">
+            <div className="relative z-10 flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-xl animate-in fade-in slide-in-from-bottom-4 dark:border-gray-700 dark:bg-slate-900 sm:max-w-lg sm:rounded-2xl sm:zoom-in-95">
               {/* Fixed controls: slot context, note, and search stay put while
                   the results below scroll. */}
               <div className="flex-shrink-0 p-4 pb-3">

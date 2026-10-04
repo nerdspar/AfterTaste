@@ -190,7 +190,7 @@ export function GlobalSearch() {
               No recipes match “{query.trim()}”.
             </p>
           ) : (
-            <ul className="max-h-[70vh] overflow-y-auto py-1.5">
+            <ul className="max-h-[70dvh] overflow-y-auto py-1.5">
               {items.map((r, i) => {
                 // Only a search has a "where it matched" hint worth showing.
                 const snip = hasQuery ? matchSnippet(r, query) : null;

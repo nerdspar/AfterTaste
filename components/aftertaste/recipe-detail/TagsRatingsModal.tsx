@@ -181,7 +181,7 @@ export function TagsRatingsModal({
       />
       <div
         className={cn(
-          'relative w-full max-w-md max-h-[85vh] overflow-y-auto',
+          'relative w-full max-w-md max-h-[85dvh] overflow-y-auto',
           'rounded-2xl border border-gray-200 bg-white shadow-xl p-5',
           'dark:border-gray-700 dark:bg-slate-900',
           'animate-in fade-in zoom-in-95 duration-200',
