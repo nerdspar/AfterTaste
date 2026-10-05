@@ -40,6 +40,8 @@ export interface PartyTaskView {
   assigneeId: string | null;
   done: boolean;
   position: number;
+  /** Which list this step came from, when it came from one. */
+  fromList: PartyListName | null;
 }
 
 export interface PartyListItemView {
@@ -54,6 +56,8 @@ export interface PartyListItemView {
   edited: boolean;
   done: boolean;
   position: number;
+  /** Set when this line is also a step in the run of show. */
+  taskId: string | null;
 }
 
 export interface PartyNoteView {

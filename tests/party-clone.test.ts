@@ -48,6 +48,7 @@ const item = (over: Partial<ClonableItem> & Pick<ClonableItem, 'id' | 'label'>):
   dishId: null,
   edited: false,
   position: 0,
+  taskId: null,
   ...over,
 });
 
@@ -185,6 +186,31 @@ describe('planning a party clone', () => {
     expect(plan.guests[0].confirmed).toBe(false);
     // Last year's lesson is a prompt against this year's plan, not a tick.
     expect(plan.notes[0].applied).toBe(false);
+  });
+
+  it('keeps a scheduled prep line attached to its step', () => {
+    const plan = planClone(
+      party({
+        tasks: [task({ id: 't1', label: 'Make the gravy base', dayOffset: -1, at: '19:00' })],
+        items: [item({ id: 'i1', label: 'Make the gravy base', list: 'prep', taskId: 't1' })],
+      }),
+      INPUT,
+      ids(),
+    );
+
+    // One job, not two — and still one job next year.
+    expect(plan.items[0].taskId).toBe(plan.tasks[0].id);
+    expect(plan.items[0].taskId).not.toBe('t1');
+  });
+
+  it('drops a link whose step did not come across', () => {
+    const plan = planClone(
+      party({ items: [item({ id: 'i1', label: 'Orphan', taskId: 'gone' })] }),
+      INPUT,
+      ids(),
+    );
+
+    expect(plan.items[0].taskId).toBeNull();
   });
 
   it('keeps an edited line protected after the clone', () => {

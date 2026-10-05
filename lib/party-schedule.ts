@@ -268,3 +268,55 @@ export function packRows(tasks: ScheduledTask[]): ScheduledTask[][] {
   }
   return rows;
 }
+
+export interface DayOption {
+  dayOffset: number;
+  /** "Party day", "The day before", "Thu 19 Nov — 2 days before". */
+  label: string;
+  short: string;
+}
+
+/** Shift a local YYYY-MM-DD by whole days, staying in local time. */
+export function shiftDate(iso: string, days: number): Date | null {
+  const [y, m, d] = iso.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d + days);
+}
+
+function relative(offset: number): string {
+  if (offset === 0) return 'Party day';
+  if (offset === -1) return 'The day before';
+  if (offset > 0) return `${offset} ${offset === 1 ? 'day' : 'days'} after`;
+  return `${Math.abs(offset)} days before`;
+}
+
+/**
+ * The days a party plan can reach back to.
+ *
+ * A fortnight, because the real answer is "whenever you start" — stock gets
+ * ordered, a turkey gets bought, cranberry sauce gets made a week out — and a
+ * planner that stops at the day before quietly tells you those are not part of
+ * the plan. Any day already in use is kept even if it falls outside the
+ * window, since the data has the final say on how early someone started.
+ */
+export function dayOptions(partyDate: string, used: number[] = [], back = 14): DayOption[] {
+  const offsets = new Set<number>(used);
+  for (let i = -back; i <= 0; i += 1) offsets.add(i);
+
+  return [...offsets]
+    .sort((a, b) => a - b)
+    .map((dayOffset) => {
+      const date = shiftDate(partyDate, dayOffset);
+      const when = relative(dayOffset);
+      const stamp = date
+        ? date.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+        : null;
+      return {
+        dayOffset,
+        // The weekday is what people actually plan against — "the Thursday"
+        // means more than "minus two".
+        label: stamp && dayOffset !== 0 ? `${stamp} — ${when.toLowerCase()}` : when,
+        short: stamp ?? when,
+      };
+    });
+}

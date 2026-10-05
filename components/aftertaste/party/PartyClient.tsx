@@ -10,7 +10,7 @@ import { ChevronLeftIcon, UsersIcon, PlusIcon, XIcon } from 'lucide-react';
 import {
   updateParty, addDish, updateDish, deleteDish, addGuest, deleteGuest,
   addListItem, updateListItem, deleteListItem, setListItemsDone, clearListDone,
-  deriveShopping, addTask, updateTask, deleteTask,
+  deriveShopping, addTask, updateTask, deleteTask, scheduleListItem,
 } from '@/app/(app)/party-actions';
 import type {
   PartyView, PartyDishView, PartyListItemView, PartyTaskView, PartyListName, DishStatus,
@@ -114,9 +114,13 @@ export function PartyClient({ initial }: { initial: PartyView }) {
 
   const onToggleItems = (itemIds: string[], done: boolean) => {
     const ids = new Set(itemIds);
+    const taskIds = new Set(
+      party.items.filter((i) => ids.has(i.id) && i.taskId).map((i) => i.taskId as string),
+    );
     setParty((p) => ({
       ...p,
       items: p.items.map((i) => (ids.has(i.id) ? { ...i, done } : i)),
+      tasks: p.tasks.map((t) => (taskIds.has(t.id) ? { ...t, done } : t)),
     }));
     run(() => setListItemsDone(party.id, itemIds, done));
   };
@@ -126,6 +130,25 @@ export function PartyClient({ initial }: { initial: PartyView }) {
     const doomed = new Set([itemId, ...descendantIds(party.items, itemId)]);
     setParty((p) => ({ ...p, items: p.items.filter((i) => !doomed.has(i.id)) }));
     run(() => deleteListItem(party.id, itemId));
+  };
+
+  /**
+   * Promote a list line into the run of show. It lands on the party day with
+   * no time yet — picking the day is the cook's call, and an invented time
+   * would be a guess sitting in the schedule looking like a decision.
+   */
+  const onScheduleItem = (itemId: string) => {
+    run(async () => {
+      const { task, item } = await scheduleListItem(party.id, itemId, {
+        dayOffset: 0,
+        at: null,
+      });
+      setParty((p) => ({
+        ...p,
+        tasks: p.tasks.some((t) => t.id === task.id) ? p.tasks : [...p.tasks, task],
+        items: p.items.map((i) => (i.id === item.id ? item : i)),
+      }));
+    });
   };
 
   const onClearDone = (list: PartyListName) => {
@@ -159,6 +182,11 @@ export function PartyClient({ initial }: { initial: PartyView }) {
     setParty((p) => ({
       ...p,
       tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)),
+      // The same job on the list, when it is also there.
+      items:
+        patch.done === undefined
+          ? p.items
+          : p.items.map((i) => (i.taskId === taskId ? { ...i, done: patch.done as boolean } : i)),
     }));
     run(() => updateTask(party.id, taskId, patch));
   };
@@ -319,6 +347,7 @@ export function PartyClient({ initial }: { initial: PartyView }) {
           onDelete={onDeleteItem}
           onDerive={onDerive}
           onClearDone={onClearDone}
+          onSchedule={onScheduleItem}
         />
       )}
 
@@ -328,6 +357,7 @@ export function PartyClient({ initial }: { initial: PartyView }) {
           dishes={party.dishes}
           guests={party.guests}
           serveTime={party.serveTime}
+          partyDate={party.date}
           onAdd={onAddTask}
           onUpdate={onUpdateTask}
           onDelete={onDeleteTask}

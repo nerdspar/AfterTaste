@@ -21,6 +21,7 @@ import {
   CheckIcon,
   HourglassIcon,
   WandSparklesIcon,
+  LinkIcon,
 } from 'lucide-react';
 import {
   parseClock,
@@ -32,6 +33,7 @@ import {
   barGeometry,
   packRows,
   layBackFrom,
+  dayOptions,
   type ScheduledTask,
 } from '@/lib/party-schedule';
 import type { PartyTaskView, PartyDishView, PartyGuestView } from '@/lib/party-types';
@@ -42,6 +44,7 @@ interface Props {
   dishes: PartyDishView[];
   guests: PartyGuestView[];
   serveTime: string;
+  partyDate: string;
   onAdd: (input: { label: string; dayOffset: number; at: string | null; dishId: string | null }) => void;
   onUpdate: (taskId: string, patch: Partial<PartyTaskView>) => void;
   onDelete: (taskId: string) => void;
@@ -53,18 +56,6 @@ const RESOURCES = [
   { value: 'burner', label: 'Burner' },
   { value: 'mixer', label: 'Mixer' },
 ];
-
-const DAY_OFFSETS = [
-  { value: -2, label: 'Two days before' },
-  { value: -1, label: 'The day before' },
-  { value: 0, label: 'Party day' },
-];
-
-function dayLabel(offset: number): string {
-  const known = DAY_OFFSETS.find((d) => d.value === offset);
-  if (known) return known.label;
-  return offset < 0 ? `${Math.abs(offset)} days before` : `${offset} days after`;
-}
 
 /** The view rows as the scheduling maths needs to see them. */
 function toScheduled(tasks: PartyTaskView[], dishes: PartyDishView[]): ScheduledTask[] {
@@ -84,12 +75,15 @@ function toScheduled(tasks: PartyTaskView[], dishes: PartyDishView[]): Scheduled
 }
 
 export function PartySchedule({
-  tasks, dishes, guests, serveTime, onAdd, onUpdate, onDelete,
+  tasks, dishes, guests, serveTime, partyDate, onAdd, onUpdate, onDelete,
 }: Props) {
   const [draft, setDraft] = useState('');
   const [draftDay, setDraftDay] = useState(0);
   const [draftAt, setDraftAt] = useState('');
   const [open, setOpen] = useState<string | null>(null);
+  // Which oven block the cook is reading. A short bar cannot hold its own
+  // label, so the detail goes under the chart where there is room for it.
+  const [focusedBar, setFocusedBar] = useState<string | null>(null);
 
   const scheduled = toScheduled(tasks, dishes);
   const clashes = findClashes(scheduled);
@@ -98,6 +92,12 @@ export function PartySchedule({
   const lanes = ovenLanes(dayOf);
   const window = timelineWindow(dayOf.filter((t) => t.resource === 'oven'), serveMin);
   const byId = new Map(tasks.map((t) => [t.id, t]));
+  // A fortnight of lead time, plus any day already in use — the data has the
+  // final say on how early someone started.
+  const days = dayOptions(partyDate, tasks.map((t) => t.dayOffset));
+  const dayLabel = (offset: number) =>
+    days.find((d) => d.dayOffset === offset)?.label ?? `${Math.abs(offset)} days before`;
+  const focused = focusedBar ? scheduled.find((t) => t.id === focusedBar) : null;
 
   const submit = () => {
     const label = draft.trim();
@@ -197,15 +197,33 @@ export function PartySchedule({
                       {row.map((t) => {
                         const geo = barGeometry(t, window);
                         if (!geo) return null;
+                        const active = focusedBar === t.id;
                         return (
-                          <span
+                          <button
                             key={t.id}
-                            title={`${t.label} — ${formatClock(t.startMin as number)}`}
+                            type="button"
+                            // A fifteen-minute bar is too narrow to hold its
+                            // own name, so it has to be askable: tap on a
+                            // phone, hover at a desk. Always sets rather than
+                            // toggles — with a mouse, hover has already
+                            // focused it by the time the click lands, and a
+                            // toggle would cancel what the hover just did.
+                            onClick={() => setFocusedBar(t.id)}
+                            onMouseEnter={() => setFocusedBar(t.id)}
+                            onFocus={() => setFocusedBar(t.id)}
+                            aria-label={`${t.label}, ${formatClock(t.startMin as number)}${
+                              t.ovenTempF != null ? `, ${t.ovenTempF} degrees` : ''
+                            }`}
                             style={{ left: `${geo.leftPct}%`, width: `${geo.widthPct}%` }}
-                            className="absolute inset-y-0 flex items-center overflow-hidden rounded-md bg-primary-500 px-1.5 text-[10px] font-medium text-white"
+                            className={cn(
+                              'absolute inset-y-0 flex items-center overflow-hidden rounded-md px-1.5 text-left text-[10px] font-medium text-white',
+                              active
+                                ? 'bg-primary-700 ring-2 ring-gray-900 dark:ring-gray-100'
+                                : 'bg-primary-500',
+                            )}
                           >
                             <span className="truncate">{t.dishName ?? t.label}</span>
-                          </span>
+                          </button>
                         );
                       })}
                       {/* The serve time, so you can see the work converge on it. */}
@@ -219,6 +237,34 @@ export function PartySchedule({
                     </div>
                   </div>
                 )),
+              )}
+            </div>
+
+            {/* The readout keeps the last block read, rather than emptying
+                as soon as the pointer moves — you are reading it, not
+                hovering over it. */}
+            <div className="mt-2 border-t border-gray-100 pt-2 dark:border-gray-800">
+              {focused ? (
+                <p className="flex flex-wrap items-baseline gap-x-2 text-xs text-gray-700 dark:text-gray-200">
+                  <span className="font-semibold">{focused.label}</span>
+                  {focused.dishName && (
+                    <span className="text-gray-400">{focused.dishName}</span>
+                  )}
+                  <span className="tabular-nums text-gray-500 dark:text-gray-400">
+                    {formatClock(focused.startMin as number)}–
+                    {formatClock((focused.startMin as number) + focused.durationMin)}
+                  </span>
+                  {focused.ovenTempF != null && (
+                    <span className="text-primary-600 dark:text-primary-400">
+                      {focused.ovenTempF}°
+                    </span>
+                  )}
+                  <span className="text-gray-400">{focused.durationMin}m</span>
+                </p>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  Tap a block to see what it is.
+                </p>
               )}
             </div>
           </div>
@@ -262,6 +308,7 @@ export function PartySchedule({
                     task={task}
                     dishName={s.dishName}
                     guests={guests}
+                    days={days}
                     expanded={open === task.id}
                     onExpand={() => setOpen(open === task.id ? null : task.id)}
                     onUpdate={(patch) => onUpdate(task.id, patch)}
@@ -295,8 +342,8 @@ export function PartySchedule({
           aria-label="Day"
           className="h-10 flex-none rounded-lg border border-gray-200 bg-white px-2 pr-7 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         >
-          {DAY_OFFSETS.map((d) => (
-            <option key={d.value} value={d.value}>{d.label}</option>
+          {days.map((d) => (
+            <option key={d.dayOffset} value={d.dayOffset}>{d.label}</option>
           ))}
         </select>
         <button
@@ -313,11 +360,12 @@ export function PartySchedule({
 }
 
 function TaskRow({
-  task, dishName, guests, expanded, onExpand, onUpdate, onDelete,
+  task, dishName, guests, days, expanded, onExpand, onUpdate, onDelete,
 }: {
   task: PartyTaskView;
   dishName?: string;
   guests: PartyGuestView[];
+  days: { dayOffset: number; label: string }[];
   expanded: boolean;
   onExpand: () => void;
   onUpdate: (patch: Partial<PartyTaskView>) => void;
@@ -380,6 +428,15 @@ function TaskRow({
                 hands off
               </span>
             )}
+            {task.fromList && (
+              <span
+                className="inline-flex items-center gap-0.5 rounded px-1 text-[10px] text-primary-700 dark:text-primary-300"
+                title={`Also on the ${task.fromList === 'prep' ? 'prep' : 'to-do'} list — ticking either ticks both`}
+              >
+                <LinkIcon className="h-2.5 w-2.5" />
+                {task.fromList === 'prep' ? 'prep' : 'to-do'}
+              </span>
+            )}
           </span>
         </button>
 
@@ -406,6 +463,17 @@ function TaskRow({
             />
             min
           </label>
+
+          <select
+            value={task.dayOffset}
+            onChange={(e) => onUpdate({ dayOffset: Number(e.target.value) })}
+            aria-label="Day"
+            className="h-7 rounded-md border border-gray-200 bg-white px-1.5 pr-6 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          >
+            {days.map((d) => (
+              <option key={d.dayOffset} value={d.dayOffset}>{d.label}</option>
+            ))}
+          </select>
 
           <select
             value={task.resource}

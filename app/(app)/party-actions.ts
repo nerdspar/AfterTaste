@@ -54,7 +54,10 @@ export async function loadParty(partyId: string): Promise<PartyView | null> {
     include: {
       guests: { orderBy: { name: 'asc' } },
       dishes: { orderBy: [{ course: 'asc' }, { position: 'asc' }] },
-      tasks: { orderBy: [{ dayOffset: 'asc' }, { position: 'asc' }] },
+      tasks: {
+        orderBy: [{ dayOffset: 'asc' }, { position: 'asc' }],
+        include: { listItem: { select: { list: true } } },
+      },
       items: { orderBy: { position: 'asc' } },
       partyNotes: { orderBy: { position: 'asc' } },
     },
@@ -78,12 +81,9 @@ export async function loadParty(partyId: string): Promise<PartyView | null> {
       equipment: d.equipment, status: asDishStatus(d.status),
       broughtById: d.broughtById,
     })),
-    tasks: p.tasks.map((t) => ({
-      id: t.id, label: t.label, dayOffset: t.dayOffset, at: t.at,
-      durationMin: t.durationMin, passive: t.passive, resource: t.resource,
-      ovenTempF: t.ovenTempF, dishId: t.dishId, instance: t.instance,
-      assigneeId: t.assigneeId, done: t.done, position: t.position,
-    })),
+    tasks: p.tasks.map((t) =>
+      asTaskView(t, t.listItem ? asListName(t.listItem.list) : null),
+    ),
     items: p.items.map(asItemView),
     partyNotes: p.partyNotes.map((n) => ({
       id: n.id, text: n.text, scope: asNoteScope(n.scope),
@@ -277,12 +277,7 @@ export async function addTask(
       position: count,
     },
   });
-  return {
-    id: t.id, label: t.label, dayOffset: t.dayOffset, at: t.at,
-    durationMin: t.durationMin, passive: t.passive, resource: t.resource,
-    ovenTempF: t.ovenTempF, dishId: t.dishId, instance: t.instance,
-    assigneeId: t.assigneeId, done: t.done, position: t.position,
-  };
+  return asTaskView(t);
 }
 
 export async function updateTask(
@@ -295,7 +290,18 @@ export async function updateTask(
   },
 ): Promise<void> {
   await ownParty(partyId);
-  await prisma.partyTask.updateMany({ where: { id: taskId, partyId }, data: patch });
+  await prisma.$transaction([
+    prisma.partyTask.updateMany({ where: { id: taskId, partyId }, data: patch }),
+    // The other half of the same job, when there is one.
+    ...(patch.done === undefined
+      ? []
+      : [
+          prisma.partyListItem.updateMany({
+            where: { partyId, taskId },
+            data: { done: patch.done },
+          }),
+        ]),
+  ]);
 }
 
 export async function deleteTask(partyId: string, taskId: string): Promise<void> {
@@ -384,11 +390,28 @@ function asItemView(i: {
   id: string; list: string; label: string; parentId: string | null;
   quantity: string | null; category: string | null; store: string | null;
   dishId: string | null; edited: boolean; done: boolean; position: number;
+  taskId: string | null;
 }): PartyListItemView {
   return {
     id: i.id, list: asListName(i.list), label: i.label, parentId: i.parentId,
     quantity: i.quantity, category: i.category, store: i.store,
     dishId: i.dishId, edited: i.edited, done: i.done, position: i.position,
+    taskId: i.taskId,
+  };
+}
+
+/** One run-of-show step as the screens read it. */
+function asTaskView(t: {
+  id: string; label: string; dayOffset: number; at: string | null;
+  durationMin: number; passive: boolean; resource: string; ovenTempF: number | null;
+  dishId: string | null; instance: number; assigneeId: string | null;
+  done: boolean; position: number;
+}, fromList: PartyListName | null = null): PartyTaskView {
+  return {
+    id: t.id, label: t.label, dayOffset: t.dayOffset, at: t.at,
+    durationMin: t.durationMin, passive: t.passive, resource: t.resource,
+    ovenTempF: t.ovenTempF, dishId: t.dishId, instance: t.instance,
+    assigneeId: t.assigneeId, done: t.done, position: t.position, fromList,
   };
 }
 
@@ -422,19 +445,88 @@ export async function setListItemsDone(
 ): Promise<void> {
   await ownParty(partyId);
   if (itemIds.length === 0) return;
-  await prisma.partyListItem.updateMany({
-    where: { partyId, id: { in: itemIds } },
-    data: { done },
+
+  // A line that is also a step in the run of show is one job, not two. Ticking
+  // it in the kitchen has to tick it on the list, or the two drift and both
+  // stop being trusted.
+  const linked = await prisma.partyListItem.findMany({
+    where: { partyId, id: { in: itemIds }, taskId: { not: null } },
+    select: { taskId: true },
   });
+  const taskIds = linked.map((l) => l.taskId as string);
+
+  await prisma.$transaction([
+    prisma.partyListItem.updateMany({
+      where: { partyId, id: { in: itemIds } },
+      data: { done },
+    }),
+    ...(taskIds.length > 0
+      ? [prisma.partyTask.updateMany({ where: { partyId, id: { in: taskIds } }, data: { done } })]
+      : []),
+  ]);
+}
+
+/**
+ * Give a list line a place in the run of show.
+ *
+ * "Make the gravy base" lives on the prep list and also happens at 7pm on the
+ * Friday — writing it twice means ticking it twice and, eventually, two
+ * versions of the plan. So the line keeps its place on the list and gains a
+ * step, and the two stay the same job.
+ */
+export async function scheduleListItem(
+  partyId: string,
+  itemId: string,
+  input: { dayOffset: number; at: string | null },
+): Promise<{ task: PartyTaskView; item: PartyListItemView }> {
+  await ownParty(partyId);
+  const item = await prisma.partyListItem.findFirst({
+    where: { id: itemId, partyId },
+  });
+  if (!item) throw new Error('Item not found');
+  if (item.taskId) {
+    const existing = await prisma.partyTask.findFirst({ where: { id: item.taskId, partyId } });
+    if (existing) {
+      return { task: asTaskView(existing, asListName(item.list)), item: asItemView(item) };
+    }
+  }
+
+  const count = await prisma.partyTask.count({ where: { partyId } });
+  const task = await prisma.partyTask.create({
+    data: {
+      partyId,
+      label: item.label,
+      dayOffset: input.dayOffset,
+      at: input.at,
+      dishId: item.dishId,
+      done: item.done,
+      position: count,
+    },
+  });
+  const linked = await prisma.partyListItem.update({
+    where: { id: item.id },
+    data: { taskId: task.id },
+  });
+  return { task: asTaskView(task, asListName(item.list)), item: asItemView(linked) };
 }
 
 /** Clear the ticks on one list, for the next shop or the next party. */
 export async function clearListDone(partyId: string, list: PartyListName): Promise<void> {
   await ownParty(partyId);
-  await prisma.partyListItem.updateMany({
-    where: { partyId, list, done: true },
-    data: { done: false },
+  const linked = await prisma.partyListItem.findMany({
+    where: { partyId, list, done: true, taskId: { not: null } },
+    select: { taskId: true },
   });
+  const taskIds = linked.map((l) => l.taskId as string);
+  await prisma.$transaction([
+    prisma.partyListItem.updateMany({
+      where: { partyId, list, done: true },
+      data: { done: false },
+    }),
+    ...(taskIds.length > 0
+      ? [prisma.partyTask.updateMany({ where: { partyId, id: { in: taskIds } }, data: { done: false } })]
+      : []),
+  ]);
 }
 
 /**

@@ -65,6 +65,7 @@ export interface ClonableItem {
   dishId: string | null;
   edited: boolean;
   position: number;
+  taskId: string | null;
 }
 
 export interface ClonableNote {
@@ -119,6 +120,7 @@ export interface ClonePlan {
     id: string; partyId: string; list: string; label: string; parentId: string | null;
     quantity: string | null; category: string | null; store: string | null;
     dishId: string | null; edited: boolean; done: boolean; position: number;
+    taskId: string | null;
   }[];
   notes: {
     id: string; partyId: string; text: string; scope: string; target: string | null;
@@ -190,8 +192,12 @@ export function planClone(
     };
   });
 
-  const tasks = src.tasks.map((t) => ({
-    id: newId(),
+  const taskIds = new Map<string, string>();
+  const tasks = src.tasks.map((t) => {
+    const id = newId();
+    taskIds.set(t.id, id);
+    return {
+    id,
     partyId,
     label: t.label,
     // The timings are the point of cloning, so they come across untouched.
@@ -206,7 +212,8 @@ export function planClone(
     assigneeId: t.assigneeId, // a user, not a party row
     done: false,
     position: t.position,
-  }));
+    };
+  });
 
   // Parents first: a child's parentId can only be rebased once the parent has
   // an id, and the write order has to satisfy the self-reference too.
@@ -231,6 +238,9 @@ export function planClone(
       // An edit made last year is still a decision; it keeps protecting the
       // line from being recomputed away.
       edited: i.edited,
+      // A prep line that was scheduled stays scheduled: the step came across
+      // with its timing, so the line should still point at it.
+      taskId: rebase(i.taskId, taskIds),
       done: false,
       position: i.position,
     };

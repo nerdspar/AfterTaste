@@ -496,6 +496,9 @@ model PartyTask {
   done     Boolean @default(false)
   position Int     @default(0)
 
+  /// The list line this step came from, if it came from one.
+  listItem PartyListItem?
+
   @@index([partyId])
   @@index([partyId, dayOffset])
 }
@@ -530,6 +533,12 @@ model PartyListItem {
   dishId String?
   /// True once a person has touched it, so a re-derive leaves it alone.
   edited Boolean    @default(false)
+
+  /// Set when this line is also a step in the run of show. "Make the gravy
+  /// base" is one job whether you met it on the prep list or at 7pm on the
+  /// Friday page, so the two rows stay one thing: tick either and both tick.
+  task   PartyTask? @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  taskId String?    @unique
 
   done     Boolean @default(false)
   position Int     @default(0)

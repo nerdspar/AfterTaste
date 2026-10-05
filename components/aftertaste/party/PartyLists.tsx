@@ -20,6 +20,8 @@ import {
   CornerDownRightIcon,
   RotateCcwIcon,
   CheckIcon,
+  CalendarPlusIcon,
+  LinkIcon,
 } from 'lucide-react';
 import { buildListTree, groupShopping, listProgress, descendantIds, type ListNode } from '@/lib/party-lists';
 import type { PartyListItemView, PartyListName, PartyDishView } from '@/lib/party-types';
@@ -36,6 +38,8 @@ interface Props {
   onDelete: (itemId: string) => void;
   onDerive: () => Promise<number>;
   onClearDone: (list: PartyListName) => void;
+  /** Give a line a place in the run of show, keeping the two the same job. */
+  onSchedule: (itemId: string) => void;
 }
 
 const TABS: { key: PartyListName; label: string }[] = [
@@ -46,6 +50,7 @@ const TABS: { key: PartyListName; label: string }[] = [
 
 export function PartyLists({
   partyId, items, dishes, onAdd, onUpdate, onToggle, onDelete, onDerive, onClearDone,
+  onSchedule,
 }: Props) {
   const [list, setList] = useState<PartyListName>('shopping');
   const [draft, setDraft] = useState('');
@@ -208,6 +213,7 @@ export function PartyLists({
               onToggle={toggle}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              onSchedule={onSchedule}
             />
           ))}
         </ul>
@@ -330,7 +336,7 @@ function ShoppingRow({
 /** One job, and whatever it decomposes into. */
 function TaskRow({
   node, depth, addingUnder, childDraft, setChildDraft,
-  onAddUnder, onSubmitChild, onToggle, onUpdate, onDelete,
+  onAddUnder, onSubmitChild, onToggle, onUpdate, onDelete, onSchedule,
 }: {
   node: ListNode;
   depth: number;
@@ -342,6 +348,7 @@ function TaskRow({
   onToggle: (item: PartyListItemView) => void;
   onUpdate: (itemId: string, patch: Partial<PartyListItemView>) => void;
   onDelete: (itemId: string) => void;
+  onSchedule: (itemId: string) => void;
 }) {
   const { item, children } = node;
 
@@ -366,6 +373,26 @@ function TaskRow({
               : 'text-gray-900 dark:text-gray-100',
           )}
         />
+        {children.length === 0 && (
+          item.taskId ? (
+            <span
+              className="flex-none rounded p-1 text-primary-600 dark:text-primary-400"
+              title="In the run of show — ticking either ticks both"
+            >
+              <LinkIcon className="h-3.5 w-3.5" />
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onSchedule(item.id)}
+              aria-label={`Put ${item.label} in the run of show`}
+              title="Give it a time in the run of show"
+              className="flex-none rounded p-1 text-gray-300 hover:text-primary-600 dark:text-gray-600 dark:hover:text-primary-400"
+            >
+              <CalendarPlusIcon className="h-3.5 w-3.5" />
+            </button>
+          )
+        )}
         {depth < 2 && (
           <button
             type="button"
@@ -418,6 +445,7 @@ function TaskRow({
           onToggle={onToggle}
           onUpdate={onUpdate}
           onDelete={onDelete}
+          onSchedule={onSchedule}
         />
       ))}
     </>

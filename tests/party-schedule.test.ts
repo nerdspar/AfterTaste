@@ -9,6 +9,8 @@ import {
   timelineWindow,
   barGeometry,
   packRows,
+  dayOptions,
+  shiftDate,
   type ScheduledTask,
 } from '@/lib/party-schedule';
 
@@ -278,5 +280,57 @@ describe('packing the oven lanes', () => {
 
   it('leaves out anything with no time', () => {
     expect(packRows([task({ id: 'a', label: 'Someday' })])).toEqual([]);
+  });
+});
+
+describe('how far back a plan can reach', () => {
+  // Saturday 21 November 2026.
+  const PARTY = '2026-11-21';
+
+  it('goes back a fortnight, not two days', () => {
+    // Stock gets made, a turkey gets ordered. A planner that stops at the day
+    // before quietly says those are not part of the plan.
+    const offsets = dayOptions(PARTY).map((d) => d.dayOffset);
+    expect(Math.min(...offsets)).toBe(-14);
+    expect(Math.max(...offsets)).toBe(0);
+  });
+
+  it('names the day, because that is what people plan against', () => {
+    const [friday] = dayOptions(PARTY).filter((d) => d.dayOffset === -1);
+    expect(friday.label).toContain('Fri');
+    expect(friday.label).toContain('the day before');
+
+    // The party day itself needs no date — you are standing in it.
+    expect(dayOptions(PARTY).find((d) => d.dayOffset === 0)?.label).toBe('Party day');
+
+    const earlier = dayOptions(PARTY).find((d) => d.dayOffset === -3);
+    // "the Wednesday" means more than "minus three".
+    expect(earlier?.label).toContain('Wed');
+    expect(earlier?.label).toContain('3 days before');
+  });
+
+  it('keeps a day already in use even from outside the window', () => {
+    const offsets = dayOptions(PARTY, [-30]).map((d) => d.dayOffset);
+    // The data has the final say on how early someone started.
+    expect(offsets).toContain(-30);
+    expect(offsets[0]).toBe(-30);
+  });
+
+  it('runs in order with the party day last', () => {
+    const offsets = dayOptions(PARTY).map((d) => d.dayOffset);
+    expect(offsets).toEqual([...offsets].sort((a, b) => a - b));
+    expect(offsets[offsets.length - 1]).toBe(0);
+  });
+
+  it('counts back across a month boundary', () => {
+    const d = shiftDate('2026-11-02', -5);
+    expect(d?.getMonth()).toBe(9); // October
+    expect(d?.getDate()).toBe(28);
+  });
+
+  it('survives a date it cannot read', () => {
+    expect(shiftDate('nonsense', -1)).toBeNull();
+    // The list still has to come back, or the day picker is empty.
+    expect(dayOptions('nonsense').length).toBeGreaterThan(0);
   });
 });

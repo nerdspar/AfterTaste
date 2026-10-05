@@ -20,6 +20,7 @@ const item = (
   edited: false,
   done: false,
   position: 0,
+  taskId: null,
   ...over,
 });
 
