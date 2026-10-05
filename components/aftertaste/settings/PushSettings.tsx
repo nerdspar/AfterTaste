@@ -9,7 +9,13 @@
 // where there is one, a way out.
 
 import { useEffect, useState } from 'react';
-import { BellRingIcon, SmartphoneIcon, CheckIcon, LoaderIcon } from 'lucide-react';
+import {
+  BellRingIcon,
+  SmartphoneIcon,
+  CheckIcon,
+  LoaderIcon,
+  PartyPopperIcon,
+} from 'lucide-react';
 import {
   getPushConfig,
   savePushSubscription,
@@ -230,7 +236,45 @@ export function PushSettings() {
             />
           }
         />
+        <SettingRow
+          icon={PartyPopperIcon}
+          title="Party steps as they come due"
+          subtitle="Each timed step in a party's run of show, on the day"
+          action={
+            <Toggle
+              checked={prefs.pushPartySteps}
+              onChange={(v) => set({ pushPartySteps: v })}
+              label="Alert party steps"
+            />
+          }
+        />
       </div>
+
+      {prefs.pushPartySteps && (
+        <div className="mt-3 rounded-lg bg-gray-50 px-3 py-3 dark:bg-gray-800/40">
+          <p className="flex flex-wrap items-center gap-x-1.5 gap-y-2 text-sm text-gray-700 dark:text-gray-300">
+            <span>Tell me</span>
+            <select
+              aria-label="Warning before a party step is due"
+              className={selectCls}
+              value={prefs.partyAlertLeadMin}
+              onChange={(e) => set({ partyAlertLeadMin: Number(e.target.value) })}
+            >
+              {[0, 5, 10, 15, 20, 30, 45, 60].map((m) => (
+                <option key={m} value={m}>
+                  {m === 0 ? 'right when' : `${m} min before`}
+                </option>
+              ))}
+            </select>
+            <span>{prefs.partyAlertLeadMin === 0 ? 'a step is due.' : 'each step is due.'}</span>
+          </p>
+          <p className="mt-2 text-xs text-gray-400">
+            These ignore quiet hours. A 6am start is one you set yourself, and
+            silencing the alarm you asked for is worse than a buzz at a quiet
+            time.
+          </p>
+        </div>
+      )}
 
       {prefs.pushCookNudge && (
         <div className="mt-3 rounded-lg bg-gray-50 px-3 py-3 dark:bg-gray-800/40">

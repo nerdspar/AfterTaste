@@ -93,6 +93,12 @@ export interface StoredTimer {
   label: string;
   recipeId: string;
   recipeTitle: string;
+  /**
+   * Where tapping the finished notification should land. Defaults to the
+   * recipe; a party's run of show sets its own, since its timers belong to a
+   * day rather than to a page of instructions.
+   */
+  href?: string;
   /** Epoch ms. */
   endsAt: number;
   totalSeconds: number;

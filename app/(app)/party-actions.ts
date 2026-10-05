@@ -17,6 +17,7 @@ import {
 } from '@/lib/party-clone';
 import { guessGroceryCategory } from '@/lib/grocery-category';
 import { seedTasksFromSteps } from '@/lib/party-seed-tasks';
+import { shouldRearm } from '@/lib/party-alerts';
 import type {
   PartyView,
   PartySummary,
@@ -294,7 +295,13 @@ export async function updateTask(
 ): Promise<void> {
   await ownParty(partyId);
   await prisma.$transaction([
-    prisma.partyTask.updateMany({ where: { id: taskId, partyId }, data: patch }),
+    prisma.partyTask.updateMany({
+      where: { id: taskId, partyId },
+      // Moving a step re-arms its alert. Without this, a step nudged an hour
+      // later is silently spent — it already alerted, at a time that is no
+      // longer when it happens.
+      data: shouldRearm(patch) ? { ...patch, alertedAt: null } : patch,
+    }),
     // The other half of the same job, when there is one.
     ...(patch.done === undefined
       ? []

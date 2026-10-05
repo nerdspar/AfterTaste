@@ -74,6 +74,8 @@ export function UserPrefsProvider({
       pushCookNudge: patch.pushCookNudge,
       cookNudgeAfterMin: patch.cookNudgeAfterMin,
       cookNudgeDelayHr: patch.cookNudgeDelayHr,
+      pushPartySteps: patch.pushPartySteps,
+      partyAlertLeadMin: patch.partyAlertLeadMin,
       quietFromHour: patch.quietFromHour,
       quietToHour: patch.quietToHour,
     }).catch((err) => console.error('[prefs] save failed', err));

@@ -51,6 +51,11 @@ model User {
   /// How long after that to actually ask, in hours. An hour tends to land
   /// mid-meal; three gets them after they've eaten.
   cookNudgeDelayHr  Int     @default(3)
+  /// Alerts for the run of show on the day of a party.
+  pushPartySteps    Boolean @default(true)
+  /// How many minutes of warning before a step is due. Zero means "when it is
+  /// due"; the default gives you time to get to the kitchen.
+  partyAlertLeadMin Int     @default(10)
   /// Quiet hours, local to the user. A nudge falling inside them waits for
   /// the morning rather than buzzing at midnight.
   quietFromHour     Int     @default(21)
@@ -495,6 +500,10 @@ model PartyTask {
 
   done     Boolean @default(false)
   position Int     @default(0)
+
+  /// When an alert for this step went out. Cleared whenever its time moves, so
+  /// a step that gets rescheduled is armed again rather than silently spent.
+  alertedAt DateTime?
 
   /// The list line this step came from, if it came from one.
   listItem PartyListItem?

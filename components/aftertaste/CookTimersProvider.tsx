@@ -36,6 +36,7 @@ interface Ctx {
     seconds: number;
     recipeId: string;
     recipeTitle: string;
+    href?: string;
   }) => void;
   dismiss: (id: string) => void;
   /** Seconds left, floored at zero. */
@@ -88,7 +89,7 @@ async function notifyDone(t: KitchenTimer): Promise<void> {
         body,
         icon: '/app-icon/192',
         tag: `timer-${t.id}`,
-        data: { url: `/recipes/${t.recipeId}` },
+        data: { url: t.href ?? `/recipes/${t.recipeId}` },
       });
     } else {
       new Notification('Timer finished', { body });

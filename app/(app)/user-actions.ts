@@ -31,6 +31,8 @@ export interface UserPrefsInput {
   pushCookNudge?: boolean;
   cookNudgeAfterMin?: number;
   cookNudgeDelayHr?: number;
+  pushPartySteps?: boolean;
+  partyAlertLeadMin?: number;
   quietFromHour?: number;
   quietToHour?: number;
 }
@@ -76,6 +78,11 @@ export async function updateUserPrefs(input: UserPrefsInput): Promise<void> {
     data.cookNudgeAfterMin = Math.min(60, Math.max(1, input.cookNudgeAfterMin));
   if (input.cookNudgeDelayHr !== undefined)
     data.cookNudgeDelayHr = Math.min(24, Math.max(1, input.cookNudgeDelayHr));
+  if (input.pushPartySteps !== undefined) data.pushPartySteps = input.pushPartySteps;
+  // An hour of warning is the most that is still a warning; past that it is a
+  // reminder about a different part of the day.
+  if (input.partyAlertLeadMin !== undefined)
+    data.partyAlertLeadMin = Math.min(60, Math.max(0, input.partyAlertLeadMin));
   if (input.quietFromHour !== undefined)
     data.quietFromHour = Math.min(23, Math.max(0, input.quietFromHour));
   if (input.quietToHour !== undefined)

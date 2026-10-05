@@ -15,6 +15,7 @@
 import { prisma } from '@/lib/db';
 import { sendToUser } from '@/lib/push-server';
 import { nextSendableTime } from '@/lib/quiet-hours';
+import { dueAlerts, alertText, type AlertableTask } from '@/lib/party-alerts';
 
 /** How often to look for due notifications. */
 const TICK_MS = 60_000;
@@ -122,6 +123,80 @@ export async function runDueNotifications(now = new Date()): Promise<number> {
   return sent;
 }
 
+/**
+ * Alerts for the run of show, on the day of a party.
+ *
+ * Unlike the cook nudge these are not queued — see lib/party-alerts.ts. They
+ * are also deliberately NOT held back by quiet hours: a cook who put "turkey
+ * in" at 6am meant 6am, and silencing the one alarm they set on purpose is
+ * worse than a buzz at a quiet time. Quiet hours exist to stop the app
+ * interrupting unasked; this was asked for.
+ */
+export async function runDuePartyAlerts(now = new Date()): Promise<number> {
+  // Local calendar date, the same way the party stores it.
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(
+    now.getDate(),
+  ).padStart(2, '0')}`;
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+
+  const parties = await prisma.party.findMany({
+    where: { date: today },
+    include: {
+      tasks: { include: { dish: { select: { name: true } } } },
+    },
+  });
+  if (parties.length === 0) return 0;
+
+  let sent = 0;
+  for (const party of parties) {
+    // Everyone in the household who wants them; the day belongs to whoever is
+    // in the kitchen, not to whoever typed the schedule.
+    const users = await prisma.user.findMany({
+      where: { householdId: party.householdId, pushPartySteps: true },
+      select: { id: true, partyAlertLeadMin: true },
+    });
+    if (users.length === 0) continue;
+
+    const alertable: AlertableTask[] = party.tasks.map((t) => ({
+      id: t.id,
+      label: t.label,
+      startMin: t.at ? Number(t.at.slice(0, 2)) * 60 + Number(t.at.slice(3, 5)) : null,
+      dayOffset: t.dayOffset,
+      done: t.done,
+      passive: t.passive,
+      alerted: t.alertedAt !== null,
+      dishName: t.dish?.name ?? null,
+    }));
+
+    // Each person gets their own warning time, so the due set differs per user.
+    const alerted = new Set<string>();
+    for (const user of users) {
+      for (const task of dueAlerts(alertable, nowMin, user.partyAlertLeadMin)) {
+        const { title, body } = alertText(task, nowMin, party.title);
+        const count = await sendToUser(user.id, {
+          title,
+          body,
+          url: `/parties/${party.id}`,
+          tag: `party-step-${task.id}`,
+        });
+        if (count > 0) {
+          alerted.add(task.id);
+          sent += 1;
+        }
+      }
+    }
+
+    // Marked once, after everyone who wanted it has had it.
+    if (alerted.size > 0) {
+      await prisma.partyTask.updateMany({
+        where: { id: { in: [...alerted] } },
+        data: { alertedAt: now },
+      });
+    }
+  }
+  return sent;
+}
+
 // Module scope is per-process, but Next's dev server re-evaluates modules on
 // change — the global guard stops a second interval starting on every reload.
 const FLAG = Symbol.for('aftertaste.notification-scheduler');
@@ -135,6 +210,9 @@ export function startNotificationScheduler(): void {
   const tick = () => {
     runDueNotifications().catch((err) =>
       console.error('[scheduler] tick failed', err),
+    );
+    runDuePartyAlerts().catch((err) =>
+      console.error('[scheduler] party alerts failed', err),
     );
   };
   const timer = setInterval(tick, TICK_MS);

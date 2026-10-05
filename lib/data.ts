@@ -305,6 +305,10 @@ export interface UserPrefs {
   pushNewRecipes: boolean;
   /** Ask, hours later, whether a recipe that was open for a while got made. */
   pushCookNudge: boolean;
+  /** Alert each run-of-show step on the day of a party. */
+  pushPartySteps: boolean;
+  /** Minutes of warning before a step is due. */
+  partyAlertLeadMin: number;
   /** Minutes a recipe must stay open before that counts as cooking it. */
   cookNudgeAfterMin: number;
   /** Hours to wait before asking. */
@@ -341,6 +345,8 @@ export async function loadUserProfile(): Promise<UserProfile> {
       cookButton: true,
       pushNewRecipes: true,
       pushCookNudge: true,
+      pushPartySteps: true,
+      partyAlertLeadMin: true,
       cookNudgeAfterMin: true,
       cookNudgeDelayHr: true,
       quietFromHour: true,
@@ -378,6 +384,8 @@ export async function loadUserProfile(): Promise<UserProfile> {
       cookButton: u.cookButton || 'fab',
       pushNewRecipes: u.pushNewRecipes,
       pushCookNudge: u.pushCookNudge,
+      pushPartySteps: u.pushPartySteps,
+      partyAlertLeadMin: u.partyAlertLeadMin,
       cookNudgeAfterMin: u.cookNudgeAfterMin,
       cookNudgeDelayHr: u.cookNudgeDelayHr,
       quietFromHour: u.quietFromHour,

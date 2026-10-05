@@ -26,6 +26,8 @@ export interface ScheduledTask {
   resource: string;
   ovenTempF?: number | null;
   dishName?: string;
+  /** Ticked off. Only the live view cares; the clash maths does not. */
+  done?: boolean;
 }
 
 export interface Clash {
@@ -343,4 +345,61 @@ export function dayOptions(partyDate: string, used: number[] = [], back = 14): D
         short: stamp ?? when,
       };
     });
+}
+
+export interface RunStatus {
+  /** The clock has passed its finish and nobody has ticked it. */
+  overdue: ScheduledTask[];
+  /** Started, not finished, not ticked — what is happening right now. */
+  running: ScheduledTask[];
+  /** The next thing that has not started yet. */
+  next: ScheduledTask | null;
+  /** Minutes until `next` starts; negative never happens. */
+  untilNextMin: number | null;
+}
+
+/**
+ * Where the day has got to.
+ *
+ * Only party-day work with a time on it — a job sitting on the Thursday page,
+ * or one nobody has scheduled, is not something the clock can have an opinion
+ * about. Ticked work drops out entirely: the question this answers is "what
+ * needs me", and an answer that keeps listing what you already did is one you
+ * stop reading.
+ */
+export function runStatus(tasks: ScheduledTask[], nowMin: number): RunStatus {
+  const live = tasks.filter(
+    (t) => t.dayOffset === 0 && t.startMin !== null && !t.done,
+  );
+
+  const overdue: ScheduledTask[] = [];
+  const running: ScheduledTask[] = [];
+  const upcoming: ScheduledTask[] = [];
+
+  for (const task of live) {
+    const start = task.startMin as number;
+    const end = start + task.durationMin;
+    if (start > nowMin) upcoming.push(task);
+    // A zero-length reminder is overdue the moment its time passes; there is
+    // no window during which it is "running".
+    else if (nowMin >= end) overdue.push(task);
+    else running.push(task);
+  }
+
+  const byStart = (a: ScheduledTask, b: ScheduledTask) =>
+    (a.startMin as number) - (b.startMin as number);
+  upcoming.sort(byStart);
+  const next = upcoming[0] ?? null;
+
+  return {
+    overdue: overdue.sort(byStart),
+    running: running.sort(byStart),
+    next,
+    untilNextMin: next ? (next.startMin as number) - nowMin : null,
+  };
+}
+
+/** Minutes since midnight for a Date, for feeding `runStatus` the clock. */
+export function minutesOfDay(now: Date): number {
+  return now.getHours() * 60 + now.getMinutes();
 }
