@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   parseClock,
   formatClock,
+  formatClock12,
   layBackFrom,
   findClashes,
   ovenLanes,
@@ -332,5 +333,34 @@ describe('how far back a plan can reach', () => {
     expect(shiftDate('nonsense', -1)).toBeNull();
     // The list still has to come back, or the day picker is empty.
     expect(dayOptions('nonsense').length).toBeGreaterThan(0);
+  });
+});
+
+describe('the clock people read', () => {
+  it('reads as a twelve-hour time', () => {
+    expect(formatClock12(17 * 60 + 30)).toBe('5:30 PM');
+    expect(formatClock12(9 * 60 + 5)).toBe('9:05 AM');
+  });
+
+  it('calls midnight and noon twelve, not zero', () => {
+    expect(formatClock12(0)).toBe('12:00 AM');
+    expect(formatClock12(12 * 60)).toBe('12:00 PM');
+    expect(formatClock12(12 * 60 + 1)).toBe('12:01 PM');
+  });
+
+  it('drops the minutes on the axis, where they are always zero', () => {
+    // "1 PM" to "6 PM" reads as a span; "01:00 PM" reads as a timestamp.
+    expect(formatClock12(13 * 60, true)).toBe('1 PM');
+    expect(formatClock12(18 * 60, true)).toBe('6 PM');
+  });
+
+  it('keeps the minutes when compact but not on the hour', () => {
+    expect(formatClock12(13 * 60 + 45, true)).toBe('1:45 PM');
+  });
+
+  it('leaves the stored format alone', () => {
+    // `at` and <input type="time"> both want 24-hour, whatever is on screen.
+    expect(formatClock(17 * 60 + 30)).toBe('17:30');
+    expect(formatClock(0)).toBe('00:00');
   });
 });

@@ -26,6 +26,7 @@ import {
 import {
   parseClock,
   formatClock,
+  formatClock12,
   findClashes,
   ovenLanes,
   groupByDay,
@@ -146,7 +147,7 @@ export function PartySchedule({
                 {c.reason === 'temperature'
                   ? `want the oven at ${c.a.ovenTempF ?? '?'}° and ${c.b.ovenTempF ?? '?'}°`
                   : `both want the ${c.resource}`}{' '}
-                at {formatClock(c.atMin)}.
+                at {formatClock12(c.atMin)}.
                 {c.suggestMin != null && (
                   <>
                     {' '}
@@ -160,7 +161,7 @@ export function PartySchedule({
                       }}
                       className="font-semibold underline decoration-dotted underline-offset-2"
                     >
-                      Move the later one to {formatClock(c.suggestMin)}
+                      Move the later one to {formatClock12(c.suggestMin)}
                     </button>
                   </>
                 )}
@@ -178,11 +179,11 @@ export function PartySchedule({
           </h3>
           <div className="rounded-xl border border-gray-200 p-3 dark:border-gray-700/40">
             <div className="mb-1.5 flex justify-between text-[10px] tabular-nums text-gray-400">
-              <span>{formatClock(window.startMin)}</span>
+              <span>{formatClock12(window.startMin, true)}</span>
               <span className="font-medium text-gray-500 dark:text-gray-400">
-                serving {formatClock(serveMin)}
+                serving {formatClock12(serveMin)}
               </span>
-              <span>{formatClock(window.endMin)}</span>
+              <span>{formatClock12(window.endMin, true)}</span>
             </div>
             <div className="space-y-1.5">
               {lanes.map((lane) =>
@@ -211,7 +212,7 @@ export function PartySchedule({
                             onClick={() => setFocusedBar(t.id)}
                             onMouseEnter={() => setFocusedBar(t.id)}
                             onFocus={() => setFocusedBar(t.id)}
-                            aria-label={`${t.label}, ${formatClock(t.startMin as number)}${
+                            aria-label={`${t.label}, ${formatClock12(t.startMin as number)}${
                               t.ovenTempF != null ? `, ${t.ovenTempF} degrees` : ''
                             }`}
                             style={{ left: `${geo.leftPct}%`, width: `${geo.widthPct}%` }}
@@ -251,8 +252,8 @@ export function PartySchedule({
                     <span className="text-gray-400">{focused.dishName}</span>
                   )}
                   <span className="tabular-nums text-gray-500 dark:text-gray-400">
-                    {formatClock(focused.startMin as number)}–
-                    {formatClock((focused.startMin as number) + focused.durationMin)}
+                    {formatClock12(focused.startMin as number)}–
+                    {formatClock12((focused.startMin as number) + focused.durationMin)}
                   </span>
                   {focused.ovenTempF != null && (
                     <span className="text-primary-600 dark:text-primary-400">

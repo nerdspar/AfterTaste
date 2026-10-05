@@ -53,10 +53,34 @@ export function parseClock(value: string | null | undefined): number | null {
   return h * 60 + min;
 }
 
-/** 1050 → "17:30". Wraps within the day. */
+/**
+ * 1050 → "17:30". Wraps within the day.
+ *
+ * This is the storage format — what `at` holds and what an `<input type=time>`
+ * takes — so it stays 24-hour whatever the clock on screen says. Use
+ * `formatClock12` for anything a person reads.
+ */
 export function formatClock(total: number): string {
   const t = ((Math.round(total) % 1440) + 1440) % 1440;
   return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`;
+}
+
+/**
+ * 1050 → "5:30 PM", or "5 PM" when compact.
+ *
+ * Compact is for the timeline axis, where the minutes are always :00 and the
+ * labels sit inches apart — "1 PM" at one end and "6 PM" at the other reads as
+ * a span, where "01:00 PM" reads as a timestamp.
+ */
+export function formatClock12(total: number, compact = false): string {
+  const t = ((Math.round(total) % 1440) + 1440) % 1440;
+  const h24 = Math.floor(t / 60);
+  const min = t % 60;
+  const suffix = h24 < 12 ? 'AM' : 'PM';
+  // Midnight and noon are 12, not 0.
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  if (compact && min === 0) return `${h12} ${suffix}`;
+  return `${h12}:${String(min).padStart(2, '0')} ${suffix}`;
 }
 
 const endOf = (t: ScheduledTask) => (t.startMin ?? 0) + t.durationMin;
