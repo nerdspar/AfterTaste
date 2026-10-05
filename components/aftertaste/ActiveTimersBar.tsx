@@ -36,9 +36,15 @@ export function ActiveTimersBar() {
             )}
           >
             <Link
-              href={`/recipes/${t.recipeId}?cook=1`}
+              // A timer started from a party belongs to its run of show, not
+              // to a recipe page that does not exist for it.
+              href={t.href ?? `/recipes/${t.recipeId}?cook=1`}
               className="flex min-w-0 items-center gap-2"
-              title={`${t.recipeTitle} · ${t.name} · ${t.label} — back to cooking`}
+              title={
+                t.href
+                  ? `${t.recipeTitle} · ${t.name} · ${t.label} — back to the run of show`
+                  : `${t.recipeTitle} · ${t.name} · ${t.label} — back to cooking`
+              }
             >
               {t.done ? (
                 <BellRingIcon className="h-4 w-4 flex-shrink-0" />

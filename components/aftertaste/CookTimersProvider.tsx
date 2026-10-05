@@ -37,6 +37,7 @@ interface Ctx {
     recipeId: string;
     recipeTitle: string;
     href?: string;
+    sourceId?: string;
   }) => void;
   dismiss: (id: string) => void;
   /** Seconds left, floored at zero. */
@@ -155,7 +156,7 @@ export function CookTimersProvider({
   }, [running]);
 
   const start = useCallback<Ctx['start']>(
-    ({ name, label, seconds, recipeId, recipeTitle }) => {
+    ({ name, label, seconds, recipeId, recipeTitle, href, sourceId }) => {
       const id = `${recipeId}-${name}-${label}-${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 7)}`;
@@ -167,6 +168,8 @@ export function CookTimersProvider({
           label,
           recipeId,
           recipeTitle,
+          href,
+          sourceId,
           endsAt: Date.now() + seconds * 1000,
           totalSeconds: seconds,
           done: false,

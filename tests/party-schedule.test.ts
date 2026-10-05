@@ -364,3 +364,31 @@ describe('the clock people read', () => {
     expect(formatClock(0)).toBe('00:00');
   });
 });
+
+describe('the timer clock on a run-of-show row', () => {
+  // Mirrors formatClockFromSeconds in PartySchedule: a countdown, not a
+  // time of day, so it counts hours rather than wrapping at 12.
+  const clock = (total: number) => {
+    const t = Math.max(0, Math.floor(total));
+    const h = Math.floor(t / 3600);
+    const m = Math.floor((t % 3600) / 60);
+    const sec = t % 60;
+    return h > 0
+      ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+      : `${m}:${String(sec).padStart(2, '0')}`;
+  };
+
+  it('reads as minutes and seconds under an hour', () => {
+    expect(clock(245)).toBe('4:05');
+    expect(clock(59)).toBe('0:59');
+  });
+
+  it('grows an hours field rather than wrapping', () => {
+    // A 210-minute turkey must not read as "30:00".
+    expect(clock(210 * 60)).toBe('3:30:00');
+  });
+
+  it('floors at zero rather than going negative', () => {
+    expect(clock(-5)).toBe('0:00');
+  });
+});

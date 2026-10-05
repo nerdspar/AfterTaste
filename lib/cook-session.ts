@@ -99,6 +99,12 @@ export interface StoredTimer {
    * day rather than to a page of instructions.
    */
   href?: string;
+  /**
+   * What the timer was started from — a party step's id, say. Lets that row
+   * ask "is my timer running?", which is the question you have standing in the
+   * kitchen with your hands full.
+   */
+  sourceId?: string;
   /** Epoch ms. */
   endsAt: number;
   totalSeconds: number;

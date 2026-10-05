@@ -24,6 +24,7 @@ import {
   LinkIcon,
   ListPlusIcon,
   LoaderIcon,
+  TimerIcon,
 } from 'lucide-react';
 import {
   parseClock,
@@ -40,6 +41,11 @@ import {
   type ScheduledTask,
 } from '@/lib/party-schedule';
 import type { PartyTaskView, PartyDishView, PartyGuestView } from '@/lib/party-types';
+import {
+  useCookTimers,
+  type KitchenTimer,
+} from '@/components/aftertaste/CookTimersProvider';
+import { formatDurationLabel } from '@/lib/step-timers';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -48,6 +54,8 @@ interface Props {
   guests: PartyGuestView[];
   serveTime: string;
   partyDate: string;
+  partyId: string;
+  partyTitle: string;
   onAdd: (input: { label: string; dayOffset: number; at: string | null; dishId: string | null }) => void;
   onUpdate: (taskId: string, patch: Partial<PartyTaskView>) => void;
   onDelete: (taskId: string) => void;
@@ -61,6 +69,17 @@ const RESOURCES = [
   { value: 'burner', label: 'Burner' },
   { value: 'mixer', label: 'Mixer' },
 ];
+
+/** Seconds left as a clock: "4:05", or "1:02:30" once there is an hour on it. */
+function formatClockFromSeconds(total: number): string {
+  const t = Math.max(0, Math.floor(total));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = t % 60;
+  return h > 0
+    ? `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    : `${m}:${String(sec).padStart(2, '0')}`;
+}
 
 /** The view rows as the scheduling maths needs to see them. */
 function toScheduled(tasks: PartyTaskView[], dishes: PartyDishView[]): ScheduledTask[] {
@@ -80,8 +99,10 @@ function toScheduled(tasks: PartyTaskView[], dishes: PartyDishView[]): Scheduled
 }
 
 export function PartySchedule({
-  tasks, dishes, guests, serveTime, partyDate, onAdd, onUpdate, onDelete, onSeed,
+  tasks, dishes, guests, serveTime, partyDate, partyId, partyTitle,
+  onAdd, onUpdate, onDelete, onSeed,
 }: Props) {
+  const { timers, start, remaining } = useCookTimers();
   const [draft, setDraft] = useState('');
   const [draftDay, setDraftDay] = useState(0);
   const [draftAt, setDraftAt] = useState('');
@@ -363,6 +384,20 @@ export function PartySchedule({
                     dishName={s.dishName}
                     guests={guests}
                     days={days}
+                    timer={timers.find((t) => t.sourceId === task.id && !t.done) ?? null}
+                    secondsLeft={(t) => remaining(t)}
+                    onStartTimer={() =>
+                      start({
+                        name: task.label,
+                        label: formatDurationLabel(task.durationMin * 60),
+                        seconds: task.durationMin * 60,
+                        recipeId: partyId,
+                        recipeTitle: partyTitle,
+                        // Back to the run of show, not to a recipe page.
+                        href: `/parties/${partyId}`,
+                        sourceId: task.id,
+                      })
+                    }
                     expanded={open === task.id}
                     onExpand={() => setOpen(open === task.id ? null : task.id)}
                     onUpdate={(patch) => onUpdate(task.id, patch)}
@@ -414,12 +449,16 @@ export function PartySchedule({
 }
 
 function TaskRow({
-  task, dishName, guests, days, expanded, onExpand, onUpdate, onDelete,
+  task, dishName, guests, days, timer, secondsLeft, onStartTimer,
+  expanded, onExpand, onUpdate, onDelete,
 }: {
   task: PartyTaskView;
   dishName?: string;
   guests: PartyGuestView[];
   days: { dayOffset: number; label: string }[];
+  timer: KitchenTimer | null;
+  secondsLeft: (t: KitchenTimer) => number;
+  onStartTimer: () => void;
   expanded: boolean;
   onExpand: () => void;
   onUpdate: (patch: Partial<PartyTaskView>) => void;
@@ -494,6 +533,26 @@ function TaskRow({
           </span>
         </button>
 
+        {task.durationMin > 0 && !task.done && (
+          timer ? (
+            <span
+              className="flex-none rounded-md bg-primary-500/10 px-1.5 py-0.5 text-[11px] font-medium tabular-nums text-primary-700 dark:text-primary-300"
+              title={`${task.label} — running`}
+            >
+              {formatClockFromSeconds(secondsLeft(timer))}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={onStartTimer}
+              aria-label={`Start a ${task.durationMin} minute timer for ${task.label}`}
+              title={`Start a ${task.durationMin} min timer`}
+              className="flex-none rounded p-1 text-gray-300 hover:text-primary-600 dark:text-gray-600 dark:hover:text-primary-400"
+            >
+              <TimerIcon className="h-3.5 w-3.5" />
+            </button>
+          )
+        )}
         <button
           type="button"
           onClick={onDelete}

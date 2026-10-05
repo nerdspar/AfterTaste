@@ -399,6 +399,8 @@ export function PartyClient({ initial }: { initial: PartyView }) {
           guests={party.guests}
           serveTime={party.serveTime}
           partyDate={party.date}
+          partyId={party.id}
+          partyTitle={party.title}
           onAdd={onAddTask}
           onUpdate={onUpdateTask}
           onDelete={onDeleteTask}
