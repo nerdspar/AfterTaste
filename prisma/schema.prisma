@@ -76,6 +76,7 @@ model User {
   foodLog         FoodLogEntry[]
   pushSubs        PushSubscription[]
   scheduledNotes  ScheduledNotification[]
+  partyTasks      PartyTask[]             @relation("PartyTaskAssignee")
 
   createdAt DateTime @default(now())
 }
@@ -138,6 +139,7 @@ model Household {
   mealPlan     MealPlan[]
   invites      HouseholdInvite[]
   foodMatches  IngredientMatch[]
+  parties      Party[]
 
   createdAt DateTime @default(now())
 }
@@ -208,8 +210,9 @@ model Recipe {
   recentlyViewed RecentlyViewed[]
   foodLogEntries FoodLogEntry[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  partyDishes PartyDish[]
 
   @@index([householdId])
 }
@@ -351,4 +354,203 @@ model ScheduledNotification {
   /// is already queued should push the time back, not stack up a second buzz.
   @@unique([userId, kind, recipeId])
   @@index([dueAt, sentAt])
+}
+
+// ---------------------------------------------------------------------------
+// Party Mode
+// ---------------------------------------------------------------------------
+//
+// A party is the granular layer inside a meal-plan day: it keys off the same
+// local YYYY-MM-DD string, so the planner can find one for a date without the
+// two models being coupled.
+//
+// Shaped from a real Friendsgiving note, which is why some of this looks less
+// tidy than a model drawn from first principles:
+//   - Half the schedule belongs to no dish at all (set up sternos, make
+//     coffee), so PartyTask stands alone and only optionally names a dish.
+//   - A dish can be an idea with no recipe, a maybe, or assigned to someone
+//     who has not confirmed — "Veggie 1", "?Roasted Squash", "Mike/Megan?".
+//   - "Turkey (2x)" is two birds through one oven four hours apart, not double
+//     quantity, so instances are separate from the recipe multiplier.
+model Party {
+  id          String    @id @default(cuid())
+  household   Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  householdId String
+
+  title     String
+  /// "The year we…" — the line the note always has under the title.
+  subtitle  String?
+  /// Local YYYY-MM-DD, matching MealPlan.date and the app's slot keys.
+  date      String
+  /// "17:30". Everything in the run of show is laid back from here.
+  serveTime String  @default("18:00")
+  notes     String  @default("")
+
+  /// Set when this party was cloned from another, so next year can look back.
+  clonedFrom   Party?  @relation("PartyLineage", fields: [clonedFromId], references: [id], onDelete: SetNull)
+  clonedFromId String?
+  clones       Party[] @relation("PartyLineage")
+
+  guests     Party_Guest[]
+  dishes     PartyDish[]
+  tasks      PartyTask[]
+  items      PartyListItem[]
+  partyNotes PartyNote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([householdId])
+  @@index([householdId, date])
+}
+
+/// Someone at the party. Named rather than counted, because most guests bring
+/// a dish and that has to show up on the oven timeline.
+model Party_Guest {
+  id      String @id @default(cuid())
+  party   Party  @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId String
+
+  name      String
+  /// Free text: "no nuts", "veggie".
+  dietary   String?
+  confirmed Boolean @default(false)
+
+  dishes PartyDish[]
+
+  @@index([partyId])
+}
+
+model PartyDish {
+  id      String @id @default(cuid())
+  party   Party  @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId String
+
+  /// Apps | Mains | Dessert | Drinks | Sides — free text so a party can invent one.
+  course   String @default("Mains")
+  /// Position within the course.
+  position Int    @default(0)
+
+  recipe   Recipe? @relation(fields: [recipeId], references: [id], onDelete: SetNull)
+  recipeId String?
+  /// Used when there is no recipe: "Charcuterie", "Veggie 1".
+  name     String
+
+  /// "1.5x recipe" — multiples, not servings. This is how the note thinks and
+  /// what carries forward year to year.
+  multiplier Float   @default(1)
+  /// Two turkeys are two runs through the oven, each with its own tasks.
+  instances  Int     @default(1)
+  /// "both pans", "needs the big roasting tin".
+  equipment  String?
+
+  /// idea | maybe | confirmed. "Veggie 1" is an idea; "?Roasted Squash" a maybe.
+  status String @default("confirmed")
+
+  /// Null when we are making it. Set when a guest brings it — then it costs
+  /// nothing on the shopping list but still takes oven time on arrival.
+  broughtBy   Party_Guest? @relation(fields: [broughtById], references: [id], onDelete: SetNull)
+  broughtById String?
+
+  tasks PartyTask[]
+  items PartyListItem[]
+
+  @@index([partyId])
+}
+
+/// One line of the run of show. Free-standing: "set up sternos" and "make
+/// coffee" belong to no dish, and they are half the day.
+model PartyTask {
+  id      String @id @default(cuid())
+  party   Party  @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId String
+
+  label       String
+  /// 0 = the day of, -1 = the day before. The note's Friday page.
+  dayOffset   Int     @default(0)
+  /// "16:30" local. Null means unscheduled — sitting in the list with no time yet.
+  at          String?
+  durationMin Int     @default(0)
+
+  /// Resting, proving, thawing. Occupies the clock but no oven and no hands,
+  /// so it never counts as a clash or as somebody's work.
+  passive Boolean @default(false)
+
+  /// oven | burner | mixer | none. What a clash is computed against.
+  resource  String @default("none")
+  /// Only meaningful for the oven, and the reason two dishes can conflict
+  /// while both "fit".
+  ovenTempF Int?
+
+  dish     PartyDish? @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  dishId   String?
+  /// Which of the two turkeys this is.
+  instance Int        @default(1)
+
+  assignee   User?   @relation("PartyTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  assigneeId String?
+
+  done     Boolean @default(false)
+  position Int     @default(0)
+
+  @@index([partyId])
+  @@index([partyId, dayOffset])
+}
+
+/// Shopping, the house to-do, and party prep are the same shape — a nested
+/// list of things to tick — so they share a table rather than building nesting
+/// three times.
+model PartyListItem {
+  id      String @id @default(cuid())
+  party   Party  @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId String
+
+  /// shopping | todo | prep
+  list     String
+  label    String
+  /// Nesting: "Clean house" › "Kitchen" › "Cabinets".
+  parent   PartyListItem?  @relation("ListNesting", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId String?
+  children PartyListItem[] @relation("ListNesting")
+
+  /// Free text, because the note writes "x2" and "1 stick is plenty".
+  quantity String?
+  /// Fruits & Vegetables … plus Supplies, which the food categories lack.
+  category String?
+  /// "Trader Joe's".
+  store    String?
+
+  /// Set when the line came from a dish's ingredients. Kept so an aggregated
+  /// line can show which dishes fed it — the quantity will sometimes be wrong
+  /// and the breakdown is how you tell.
+  dish   PartyDish? @relation(fields: [dishId], references: [id], onDelete: SetNull)
+  dishId String?
+  /// True once a person has touched it, so a re-derive leaves it alone.
+  edited Boolean    @default(false)
+
+  done     Boolean @default(false)
+  position Int     @default(0)
+
+  @@index([partyId, list])
+}
+
+/// What you learned last year. The top block of the note, and the thing that
+/// makes cloning worth more than copying.
+model PartyNote {
+  id      String @id @default(cuid())
+  party   Party  @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  partyId String
+
+  text   String
+  /// party | dish | ingredient
+  scope  String  @default("party")
+  /// A dish id, or an ingredient name — loose on purpose, since next year's
+  /// dish is a different row.
+  target String?
+
+  /// Ticked off once this year's plan reflects it.
+  applied  Boolean @default(false)
+  position Int     @default(0)
+
+  @@index([partyId])
 }
