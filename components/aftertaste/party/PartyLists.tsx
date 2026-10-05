@@ -274,48 +274,56 @@ function ShoppingRow({
 
   return (
     <li className="px-3 py-2">
-      <div className="flex items-center gap-2.5">
+      {/* The name gets its own line and the amount sits under it. A phone row
+          could not hold both, and "4½ stalks" was being cut to "4½ stalk" —
+          a quantity you cannot read is worse than no quantity. */}
+      <div className="flex items-start gap-2.5">
         <Tick done={item.done} onToggle={onToggle} label={item.label} />
-        <span
-          className={cn(
-            'min-w-0 flex-1 truncate text-sm',
-            item.done
-              ? 'text-gray-400 line-through dark:text-gray-600'
-              : 'text-gray-900 dark:text-gray-100',
-          )}
-        >
-          {item.label}
-        </span>
-
-        <input
-          value={quantity}
-          onChange={(e) => setQuantity(e.target.value)}
-          onBlur={() => {
-            if (quantity !== (item.quantity ?? '')) onUpdate({ quantity, edited: true });
-          }}
-          placeholder="—"
-          aria-label={`Amount of ${item.label}`}
-          className="h-7 w-20 flex-none rounded-md border border-gray-200 bg-transparent px-1.5 text-right text-xs tabular-nums text-gray-600 dark:border-gray-700 dark:text-gray-300"
-        />
-
-        {from && from.length > 1 && (
-          <button
-            type="button"
-            onClick={onOpen}
-            className="flex-none rounded px-1 text-[11px] text-primary-700 underline decoration-dotted underline-offset-2 dark:text-primary-300"
-            aria-expanded={open}
-          >
-            {from.length} dishes
-          </button>
-        )}
-        {item.edited && (
+        <div className="min-w-0 flex-1">
           <span
-            className="flex-none text-[10px] uppercase tracking-wide text-gray-300 dark:text-gray-600"
-            title="You set this, so pulling from the menu leaves it alone"
+            className={cn(
+              'block truncate text-sm',
+              item.done
+                ? 'text-gray-400 line-through dark:text-gray-600'
+                : 'text-gray-900 dark:text-gray-100',
+            )}
           >
-            yours
+            {item.label}
           </span>
-        )}
+
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <input
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              onBlur={() => {
+                if (quantity !== (item.quantity ?? '')) onUpdate({ quantity, edited: true });
+              }}
+              placeholder="—"
+              aria-label={`Amount of ${item.label}`}
+              className="h-7 w-28 flex-none rounded-md border border-gray-200 bg-transparent px-1.5 text-xs tabular-nums text-gray-600 dark:border-gray-700 dark:text-gray-300"
+            />
+
+            {from && from.length > 1 && (
+              <button
+                type="button"
+                onClick={onOpen}
+                className="flex-none rounded px-1 text-[11px] text-primary-700 underline decoration-dotted underline-offset-2 dark:text-primary-300"
+                aria-expanded={open}
+              >
+                {from.length} dishes
+              </button>
+            )}
+            {item.edited && (
+              <span
+                className="flex-none text-[10px] uppercase tracking-wide text-gray-300 dark:text-gray-600"
+                title="You set this, so pulling from the menu leaves it alone"
+              >
+                yours
+              </span>
+            )}
+          </div>
+        </div>
+
         <button
           type="button"
           onClick={onDelete}

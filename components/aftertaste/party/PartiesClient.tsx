@@ -6,11 +6,18 @@
 // year is the normal case: the Apple note this replaces was duplicated and
 // re-dated every November.
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { PartyPopperIcon, PlusIcon, CopyIcon, LoaderIcon } from 'lucide-react';
-import { createParty, cloneParty } from '@/app/(app)/party-actions';
+import {
+  PartyPopperIcon,
+  PlusIcon,
+  CopyIcon,
+  LoaderIcon,
+  Trash2Icon,
+} from 'lucide-react';
+import { createParty, cloneParty, deleteParty } from '@/app/(app)/party-actions';
+import { parseClock, formatClock12 } from '@/lib/party-schedule';
 import type { PartySummary } from '@/lib/party-types';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +35,12 @@ function prettyDate(iso: string): string {
   });
 }
 
+/** The serve time as people say it; the column stores 24-hour. */
+function serveLabel(serveTime: string): string {
+  const min = parseClock(serveTime);
+  return min === null ? serveTime : formatClock12(min);
+}
+
 /** Same day and month, next year — the usual intent when repeating a party. */
 function nextYear(iso: string): string {
   const [y, m, d] = iso.split('-').map(Number);
@@ -42,12 +55,26 @@ export function PartiesClient({ parties }: { parties: PartySummary[] }) {
   const [title, setTitle] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [cloneOf, setCloneOf] = useState<PartySummary | null>(null);
+  // Deleting takes the menu, the lists and the whole run of show with it, so
+  // it asks first — and asks in the row, naming what goes.
+  const [confirming, setConfirming] = useState<string | null>(null);
 
   const create = async () => {
     setBusy(true);
     try {
       const id = await createParty({ title, date });
       router.push(`/parties/${id}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (party: PartySummary) => {
+    setBusy(true);
+    try {
+      await deleteParty(party.id);
+      setConfirming(null);
+      router.refresh();
     } finally {
       setBusy(false);
     }
@@ -142,7 +169,8 @@ export function PartiesClient({ parties }: { parties: PartySummary[] }) {
       ) : (
         <ul className="space-y-2">
           {parties.map((p) => (
-            <li key={p.id} className="flex items-center gap-2">
+            <Fragment key={p.id}>
+              <li className="flex items-center gap-2">
               <Link
                 href={`/parties/${p.id}`}
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3.5 transition-colors hover:border-primary-300 dark:border-gray-700/40 dark:bg-slate-900 dark:hover:border-primary-500/40"
@@ -152,9 +180,10 @@ export function PartiesClient({ parties }: { parties: PartySummary[] }) {
                     {p.title}
                   </span>
                   <span className="block truncate text-xs text-gray-500 dark:text-gray-400">
-                    {prettyDate(p.date)} · {p.serveTime} · {p.dishCount} dish
-                    {p.dishCount === 1 ? '' : 'es'}
-                    {p.guestCount > 0 && ` · ${p.guestCount} guests`}
+                    {prettyDate(p.date)} · {serveLabel(p.serveTime)} ·{' '}
+                    {p.dishCount} dish{p.dishCount === 1 ? '' : 'es'}
+                    {p.guestCount > 0 &&
+                      ` · ${p.guestCount} guest${p.guestCount === 1 ? '' : 's'}`}
                   </span>
                 </span>
               </Link>
@@ -172,7 +201,43 @@ export function PartiesClient({ parties }: { parties: PartySummary[] }) {
               >
                 <CopyIcon className="h-4 w-4" />
               </button>
-            </li>
+              <button
+                type="button"
+                aria-label={`Delete ${p.title}`}
+                title="Delete this party"
+                onClick={() => setConfirming(confirming === p.id ? null : p.id)}
+                className="flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-gray-200 text-gray-400 hover:bg-red-50 hover:text-red-500 dark:border-gray-700 dark:hover:bg-red-500/10"
+              >
+                <Trash2Icon className="h-4 w-4" />
+              </button>
+              </li>
+              {confirming === p.id && (
+                <li className="rounded-xl border border-red-300 bg-red-50 px-3.5 py-2.5 text-xs dark:border-red-500/40 dark:bg-red-500/10">
+                  <p className="text-red-900 dark:text-red-200">
+                    Delete <span className="font-semibold">{p.title}</span>? Its menu,
+                    lists, notes and run of show go with it. This cannot be undone.
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => remove(p)}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-red-600 px-2.5 font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                    >
+                      {busy && <LoaderIcon className="h-3 w-3 animate-spin" />}
+                      Delete it
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirming(null)}
+                      className="h-8 rounded-lg px-2.5 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                    >
+                      Keep it
+                    </button>
+                  </div>
+                </li>
+              )}
+            </Fragment>
           ))}
         </ul>
       )}

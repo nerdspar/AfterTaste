@@ -466,7 +466,10 @@ function TaskRow({
 }) {
   return (
     <li className="border-b border-gray-100 last:border-0 dark:border-gray-800">
-      <div className="flex items-center gap-2.5 px-3 py-2">
+      {/* The label gets its own line and the time sits under it. On a phone a
+          single row left "Brine the tur…" next to a time field taking a third
+          of the width, and the label is the part you are reading. */}
+      <div className="flex items-start gap-2.5 px-3 py-2">
         <button
           type="button"
           onClick={() => onUpdate({ done: !task.done })}
@@ -482,34 +485,40 @@ function TaskRow({
           {task.done && <CheckIcon className="h-3.5 w-3.5" strokeWidth={3} />}
         </button>
 
-        <input
-          type="time"
-          value={task.at ?? ''}
-          onChange={(e) => onUpdate({ at: e.target.value || null })}
-          aria-label={`Time for ${task.label}`}
-          className={cn(
-            'h-7 w-[104px] flex-none rounded-md border bg-transparent px-1.5 text-xs tabular-nums',
-            task.at
-              ? 'border-gray-200 text-gray-700 dark:border-gray-700 dark:text-gray-300'
-              : 'border-dashed border-gray-300 text-gray-400 dark:border-gray-600',
-          )}
-        />
-
-        <button
-          type="button"
-          onClick={onExpand}
-          className="min-w-0 flex-1 text-left"
-          aria-expanded={expanded}
-        >
-          <span
-            className={cn(
-              'block truncate text-sm',
-              task.done ? 'text-gray-400 line-through dark:text-gray-600' : 'text-gray-900 dark:text-gray-100',
-            )}
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={onExpand}
+            className="block w-full text-left"
+            aria-expanded={expanded}
           >
-            {task.label}
-          </span>
-          <span className="flex items-center gap-1.5 text-[11px] text-gray-400">
+            <span
+              className={cn(
+                'block truncate text-sm',
+                task.done ? 'text-gray-400 line-through dark:text-gray-600' : 'text-gray-900 dark:text-gray-100',
+              )}
+            >
+              {task.label}
+            </span>
+          </button>
+
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <input
+              type="time"
+              value={task.at ?? ''}
+              onChange={(e) => onUpdate({ at: e.target.value || null })}
+              aria-label={`Time for ${task.label}`}
+              className={cn(
+                // Mobile browsers force 16px on a time input whatever the class
+                // says, and "06:00 PM" at 16px needs 72px of text plus padding.
+                // Measured, not guessed — this has been clipped twice.
+                'h-7 w-[124px] flex-none rounded-md border bg-transparent px-1.5 text-xs tabular-nums',
+                task.at
+                  ? 'border-gray-200 text-gray-700 dark:border-gray-700 dark:text-gray-300'
+                  : 'border-dashed border-gray-300 text-gray-400 dark:border-gray-600',
+              )}
+            />
+            <span className="flex flex-wrap items-center gap-x-1.5 text-[11px] text-gray-400">
             {dishName && <span className="truncate">{dishName}</span>}
             {task.durationMin > 0 && <span>{task.durationMin}m</span>}
             {task.resource === 'oven' && task.ovenTempF != null && (
@@ -530,8 +539,9 @@ function TaskRow({
                 {task.fromList === 'prep' ? 'prep' : 'to-do'}
               </span>
             )}
-          </span>
-        </button>
+            </span>
+          </div>
+        </div>
 
         {task.durationMin > 0 && !task.done && (
           timer ? (
