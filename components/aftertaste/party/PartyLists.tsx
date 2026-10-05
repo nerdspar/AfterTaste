@@ -22,9 +22,13 @@ import {
   CheckIcon,
   CalendarPlusIcon,
   LinkIcon,
+  LightbulbIcon,
 } from 'lucide-react';
 import { buildListTree, groupShopping, listProgress, descendantIds, type ListNode } from '@/lib/party-lists';
-import type { PartyListItemView, PartyListName, PartyDishView } from '@/lib/party-types';
+import { notesForIngredient } from '@/lib/party-notes';
+import type {
+  PartyListItemView, PartyListName, PartyDishView, PartyNoteView,
+} from '@/lib/party-types';
 import { shoppingSources } from '@/app/(app)/party-actions';
 import { cn } from '@/lib/utils';
 
@@ -32,6 +36,7 @@ interface Props {
   partyId: string;
   items: PartyListItemView[];
   dishes: PartyDishView[];
+  notes: PartyNoteView[];
   onAdd: (list: PartyListName, label: string, parentId: string | null) => void;
   onUpdate: (itemId: string, patch: Partial<PartyListItemView>) => void;
   onToggle: (itemIds: string[], done: boolean) => void;
@@ -49,8 +54,8 @@ const TABS: { key: PartyListName; label: string }[] = [
 ];
 
 export function PartyLists({
-  partyId, items, dishes, onAdd, onUpdate, onToggle, onDelete, onDerive, onClearDone,
-  onSchedule,
+  partyId, items, dishes, notes, onAdd, onUpdate, onToggle, onDelete, onDerive,
+  onClearDone, onSchedule,
 }: Props) {
   const [list, setList] = useState<PartyListName>('shopping');
   const [draft, setDraft] = useState('');
@@ -187,6 +192,7 @@ export function PartyLists({
                     key={item.id}
                     item={item}
                     from={sources[item.label.toLowerCase().trim()]}
+                    notes={notesForIngredient(notes, item.label)}
                     open={openLine === item.id}
                     onOpen={() => setOpenLine(openLine === item.id ? null : item.id)}
                     onToggle={() => toggle(item)}
@@ -253,10 +259,11 @@ export function PartyLists({
 
 /** One shopping line, with the working-out behind its quantity on demand. */
 function ShoppingRow({
-  item, from, open, onOpen, onToggle, onUpdate, onDelete,
+  item, from, notes, open, onOpen, onToggle, onUpdate, onDelete,
 }: {
   item: PartyListItemView;
   from?: { dishName: string; quantity: string }[];
+  notes: PartyNoteView[];
   open: boolean;
   onOpen: () => void;
   onToggle: () => void;
@@ -318,6 +325,25 @@ function ShoppingRow({
           <Trash2Icon className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {notes.length > 0 && (
+        <ul className="mt-1 space-y-0.5">
+          {notes.map((n) => (
+            <li
+              key={n.id}
+              className={cn(
+                'flex items-start gap-1 text-[11px]',
+                n.applied ? 'text-gray-400 dark:text-gray-600' : 'text-amber-700 dark:text-amber-400',
+              )}
+            >
+              <LightbulbIcon className="mt-px h-2.5 w-2.5 flex-none" />
+              {/* The reminder turns up where the decision gets made, which is
+                  standing in the aisle looking at this line. */}
+              <span>{n.text}</span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {open && from && (
         <ul className="mt-1.5 space-y-0.5 border-l-2 border-gray-100 pl-3 dark:border-gray-800">

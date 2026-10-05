@@ -11,15 +11,19 @@
 // menu that insists on certainty just gets abandoned for a notes app.
 
 import { useState } from 'react';
-import { PlusIcon, Trash2Icon, UtensilsCrossedIcon } from 'lucide-react';
+import { PlusIcon, Trash2Icon, UtensilsCrossedIcon, LightbulbIcon } from 'lucide-react';
 import { COURSES, orderedCourses, multiplierLabel } from '@/lib/party-types';
-import type { PartyDishView, PartyGuestView, DishStatus } from '@/lib/party-types';
+import { notesForDish } from '@/lib/party-notes';
+import type {
+  PartyDishView, PartyGuestView, PartyNoteView, DishStatus,
+} from '@/lib/party-types';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
 import { cn } from '@/lib/utils';
 
 interface Props {
   dishes: PartyDishView[];
   guests: PartyGuestView[];
+  notes: PartyNoteView[];
   onAdd: (course: string, name: string, recipeId: string | null, status: DishStatus) => void;
   onUpdate: (dishId: string, patch: Partial<PartyDishView>) => void;
   onDelete: (dishId: string) => void;
@@ -31,7 +35,7 @@ const STATUS_LABEL: Record<DishStatus, string> = {
   idea: 'placeholder',
 };
 
-export function PartyMenu({ dishes, guests, onAdd, onUpdate, onDelete }: Props) {
+export function PartyMenu({ dishes, guests, notes, onAdd, onUpdate, onDelete }: Props) {
   const { recipes } = useRecipeStore();
   const [adding, setAdding] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -87,6 +91,9 @@ export function PartyMenu({ dishes, guests, onAdd, onUpdate, onDelete }: Props) 
               {inCourse.map((dish) => {
                 const broughtBy = guestName(dish.broughtById);
                 const isEditing = editing === dish.id;
+                // What last year said about this exact dish, where the dish
+                // is being decided rather than on a notes page.
+                const lessons = notesForDish(notes, dish.id);
                 return (
                   <li
                     key={dish.id}
@@ -139,6 +146,25 @@ export function PartyMenu({ dishes, guests, onAdd, onUpdate, onDelete }: Props) 
                         <Trash2Icon className="h-3.5 w-3.5" />
                       </button>
                     </div>
+
+                    {lessons.length > 0 && (
+                      <ul className="mt-1.5 space-y-0.5">
+                        {lessons.map((n) => (
+                          <li
+                            key={n.id}
+                            className={cn(
+                              'flex items-start gap-1 text-[11px]',
+                              n.applied
+                                ? 'text-gray-400 dark:text-gray-600'
+                                : 'text-amber-700 dark:text-amber-400',
+                            )}
+                          >
+                            <LightbulbIcon className="mt-px h-2.5 w-2.5 flex-none" />
+                            <span>{n.text}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
 
                     {isEditing && (
                       <div className="mt-3 grid gap-2 border-t border-gray-100 pt-3 sm:grid-cols-2 dark:border-gray-800">

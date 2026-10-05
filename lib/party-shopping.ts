@@ -43,8 +43,15 @@ export interface DerivedLine {
   summed: boolean;
 }
 
-/** Ingredient names are messy; merge on something stable but recognisable. */
-function mergeKey(name: string): string {
+/**
+ * Ingredient names are messy; merge on something stable but recognisable.
+ *
+ * Exported because a note about an ingredient has to find its line again next
+ * year, and it has to agree with how lines were merged in the first place —
+ * two different normalisations would mean "too much butter" quietly failing to
+ * attach to the butter.
+ */
+export function ingredientKey(name: string): string {
   return name
     .toLowerCase()
     .replace(/\([^)]*\)/g, ' ')
@@ -101,7 +108,7 @@ export function deriveShoppingLines(dishes: ShoppingDish[]): DerivedLine[] {
       if (ing.section !== undefined) continue; // a header, not an ingredient
       const name = ing.name?.trim();
       if (!name) continue;
-      const key = mergeKey(name);
+      const key = ingredientKey(name);
       if (!key) continue;
 
       const scaled = scaleQuantity(ing.quantity ?? '', factor);

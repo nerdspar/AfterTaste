@@ -25,6 +25,8 @@ import type {
   PartyGuestView,
   PartyListItemView,
   PartyTaskView,
+  PartyNoteView,
+  NoteScope,
 } from '@/lib/party-types';
 import type { Ingredient } from '@/data/sample/recipes';
 
@@ -359,16 +361,20 @@ export async function deleteListItem(partyId: string, itemId: string): Promise<v
 
 export async function addNote(
   partyId: string,
-  input: { text: string; scope?: 'party' | 'dish' | 'ingredient'; target?: string | null },
-): Promise<void> {
+  input: { text: string; scope?: NoteScope; target?: string | null },
+): Promise<PartyNoteView> {
   await ownParty(partyId);
   const count = await prisma.partyNote.count({ where: { partyId } });
-  await prisma.partyNote.create({
+  const n = await prisma.partyNote.create({
     data: {
       partyId, text: input.text.trim(), scope: input.scope ?? 'party',
       target: input.target ?? null, position: count,
     },
   });
+  return {
+    id: n.id, text: n.text, scope: asNoteScope(n.scope), target: n.target,
+    applied: n.applied, position: n.position,
+  };
 }
 
 export async function setNoteApplied(

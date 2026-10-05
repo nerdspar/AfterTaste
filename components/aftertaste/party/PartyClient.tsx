@@ -11,13 +11,16 @@ import {
   updateParty, addDish, updateDish, deleteDish, addGuest, deleteGuest,
   addListItem, updateListItem, deleteListItem, setListItemsDone, clearListDone,
   deriveShopping, addTask, updateTask, deleteTask, scheduleListItem,
+  addNote, setNoteApplied, deleteNote,
 } from '@/app/(app)/party-actions';
 import type {
-  PartyView, PartyDishView, PartyListItemView, PartyTaskView, PartyListName, DishStatus,
+  PartyView, PartyDishView, PartyListItemView, PartyTaskView, PartyListName,
+  DishStatus, NoteScope,
 } from '@/lib/party-types';
 import { PartyMenu } from './PartyMenu';
 import { PartyLists } from './PartyLists';
 import { PartySchedule } from './PartySchedule';
+import { PartyNotes } from './PartyNotes';
 import { descendantIds } from '@/lib/party-lists';
 import { cn } from '@/lib/utils';
 
@@ -196,6 +199,28 @@ export function PartyClient({ initial }: { initial: PartyView }) {
     run(() => deleteTask(party.id, taskId));
   };
 
+  // --- notes ---------------------------------------------------------------
+
+  const onAddNote = (text: string, scope: NoteScope, target: string | null) => {
+    run(async () => {
+      const made = await addNote(party.id, { text, scope, target });
+      setParty((p) => ({ ...p, partyNotes: [...p.partyNotes, made] }));
+    });
+  };
+
+  const onApplyNote = (noteId: string, applied: boolean) => {
+    setParty((p) => ({
+      ...p,
+      partyNotes: p.partyNotes.map((n) => (n.id === noteId ? { ...n, applied } : n)),
+    }));
+    run(() => setNoteApplied(party.id, noteId, applied));
+  };
+
+  const onDeleteNote = (noteId: string) => {
+    setParty((p) => ({ ...p, partyNotes: p.partyNotes.filter((n) => n.id !== noteId) }));
+    run(() => deleteNote(party.id, noteId));
+  };
+
   const bringing = (guestId: string) =>
     party.dishes.filter((d) => d.broughtById === guestId).length;
 
@@ -308,6 +333,14 @@ export function PartyClient({ initial }: { initial: PartyView }) {
         </div>
       )}
 
+      <PartyNotes
+        notes={party.partyNotes}
+        dishes={party.dishes}
+        onAdd={onAddNote}
+        onApply={onApplyNote}
+        onDelete={onDeleteNote}
+      />
+
       <div className="mb-5 flex gap-1 rounded-xl bg-gray-100 p-1 dark:bg-gray-800">
         {(['menu', 'lists', 'schedule'] as Tab[]).map((t) => (
           <button
@@ -330,6 +363,7 @@ export function PartyClient({ initial }: { initial: PartyView }) {
         <PartyMenu
           dishes={party.dishes}
           guests={party.guests}
+          notes={party.partyNotes}
           onAdd={onAddDish}
           onUpdate={onUpdateDish}
           onDelete={onDeleteDish}
@@ -345,6 +379,7 @@ export function PartyClient({ initial }: { initial: PartyView }) {
           onUpdate={onUpdateItem}
           onToggle={onToggleItems}
           onDelete={onDeleteItem}
+          notes={party.partyNotes}
           onDerive={onDerive}
           onClearDone={onClearDone}
           onSchedule={onScheduleItem}
