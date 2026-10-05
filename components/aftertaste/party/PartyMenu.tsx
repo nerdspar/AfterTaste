@@ -11,9 +11,41 @@
 // menu that insists on certainty just gets abandoned for a notes app.
 
 import { useState } from 'react';
-import { PlusIcon, Trash2Icon, UtensilsCrossedIcon, LightbulbIcon } from 'lucide-react';
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  closestCenter,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
+  PlusIcon,
+  Trash2Icon,
+  UtensilsCrossedIcon,
+  LightbulbIcon,
+  GripVerticalIcon,
+} from 'lucide-react';
 import { COURSES, orderedCourses, multiplierLabel } from '@/lib/party-types';
 import { notesForDish } from '@/lib/party-notes';
+import {
+  applyDishDrag,
+  courseDropId,
+  withPlacements,
+  type DishPlacement,
+} from '@/lib/party-menu-order';
 import type {
   PartyDishView, PartyGuestView, PartyNoteView, DishStatus,
 } from '@/lib/party-types';
@@ -27,6 +59,8 @@ interface Props {
   onAdd: (course: string, name: string, recipeId: string | null, status: DishStatus) => void;
   onUpdate: (dishId: string, patch: Partial<PartyDishView>) => void;
   onDelete: (dishId: string) => void;
+  /** A whole new ordering, after a drag or a course change. */
+  onReorder: (placements: DishPlacement[]) => void;
 }
 
 const STATUS_LABEL: Record<DishStatus, string> = {
@@ -35,12 +69,34 @@ const STATUS_LABEL: Record<DishStatus, string> = {
   idea: 'placeholder',
 };
 
-export function PartyMenu({ dishes, guests, notes, onAdd, onUpdate, onDelete }: Props) {
+export function PartyMenu({
+  dishes, guests, notes, onAdd, onUpdate, onDelete, onReorder,
+}: Props) {
   const { recipes } = useRecipeStore();
   const [adding, setAdding] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [draftRecipe, setDraftRecipe] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+
+  // Same feel as the grocery list: a small nudge starts a mouse drag, a short
+  // press starts a touch one, so scrolling the menu on a phone never picks a
+  // dish up by accident.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const onDragEnd = (event: DragEndEvent) => {
+    setDragging(null);
+    const { active, over } = event;
+    if (!over) return;
+    const placements = applyDishDrag(dishes, String(active.id), String(over.id));
+    if (placements) onReorder(placements);
+  };
+
+  const draggedDish = dragging ? dishes.find((d) => d.id === dragging) : null;
 
   // Always show the standard courses, even when empty — a gap in the menu is
   // something you want to see from across the room.
@@ -59,6 +115,13 @@ export function PartyMenu({ dishes, guests, notes, onAdd, onUpdate, onDelete }: 
   };
 
   return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={(e: DragStartEvent) => setDragging(String(e.active.id))}
+      onDragCancel={() => setDragging(null)}
+      onDragEnd={onDragEnd}
+    >
     <div className="space-y-6">
       {courses.map((course) => {
         const inCourse = dishes
@@ -87,6 +150,11 @@ export function PartyMenu({ dishes, guests, notes, onAdd, onUpdate, onDelete }: 
               </p>
             )}
 
+            <CourseDropZone course={course} isEmpty={inCourse.length === 0}>
+            <SortableContext
+              items={inCourse.map((d) => d.id)}
+              strategy={verticalListSortingStrategy}
+            >
             <ul className="space-y-1.5">
               {inCourse.map((dish) => {
                 const broughtBy = guestName(dish.broughtById);
@@ -95,15 +163,7 @@ export function PartyMenu({ dishes, guests, notes, onAdd, onUpdate, onDelete }: 
                 // is being decided rather than on a notes page.
                 const lessons = notesForDish(notes, dish.id);
                 return (
-                  <li
-                    key={dish.id}
-                    className={cn(
-                      'rounded-xl border bg-white px-3 py-2.5 dark:bg-slate-900',
-                      dish.status === 'confirmed'
-                        ? 'border-gray-200 dark:border-gray-700/40'
-                        : 'border-dashed border-gray-300 dark:border-gray-700',
-                    )}
-                  >
+                  <SortableDish key={dish.id} dish={dish}>
                     <div className="flex items-center gap-2">
                       {multiplierLabel(dish.multiplier) && (
                         <span className="flex-none rounded-full border border-primary-200 px-1.5 py-0.5 font-mono text-[10px] text-primary-600 dark:border-primary-500/40 dark:text-primary-300">
@@ -199,6 +259,28 @@ export function PartyMenu({ dishes, guests, notes, onAdd, onUpdate, onDelete }: 
                           </select>
                         </label>
                         <label className="block">
+                          <span className="mb-1 block text-[11px] text-gray-500 dark:text-gray-400">
+                            Course
+                          </span>
+                          <select
+                            className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                            value={dish.course}
+                            onChange={(e) => {
+                              // Same operation as dragging it there, so the
+                              // dish lands at the end of its new course and
+                              // the old one closes its gap.
+                              const placements = applyDishDrag(
+                                dishes, dish.id, courseDropId(e.target.value),
+                              );
+                              if (placements) onReorder(placements);
+                            }}
+                          >
+                            {courses.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block">
                           <span className="mb-1 block text-[11px] text-gray-500 dark:text-gray-400">Status</span>
                           <select
                             className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
@@ -232,10 +314,12 @@ export function PartyMenu({ dishes, guests, notes, onAdd, onUpdate, onDelete }: 
                         )}
                       </div>
                     )}
-                  </li>
+                  </SortableDish>
                 );
               })}
             </ul>
+            </SortableContext>
+            </CourseDropZone>
 
             {adding === course && (
               <div className="mt-2 rounded-xl border border-primary-300 bg-white p-3 dark:border-primary-500/40 dark:bg-slate-900">
@@ -288,6 +372,91 @@ export function PartyMenu({ dishes, guests, notes, onAdd, onUpdate, onDelete }: 
           Attach recipes, or just type a name — a dish doesn&apos;t need to be decided yet.
         </p>
       )}
+      </div>
+
+      <DragOverlay>
+        {draggedDish ? (
+          <div className="rounded-xl border border-primary-400 bg-white px-3 py-2.5 text-sm font-medium text-gray-900 shadow-lg dark:bg-slate-900 dark:text-gray-100">
+            {draggedDish.name}
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
+  );
+}
+
+/** One dish row, draggable by its handle only. */
+function SortableDish({
+  dish, children,
+}: {
+  dish: PartyDishView;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: dish.id });
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        zIndex: isDragging ? 20 : undefined,
+      }}
+      className={cn(
+        'rounded-xl border bg-white px-3 py-2.5 dark:bg-slate-900',
+        dish.status === 'confirmed'
+          ? 'border-gray-200 dark:border-gray-700/40'
+          : 'border-dashed border-gray-300 dark:border-gray-700',
+        // The original stays in place as a gap while the overlay follows the
+        // finger, so the menu does not jump around under the drag.
+        isDragging && 'opacity-40',
+      )}
+    >
+      <div className="flex items-start gap-1.5">
+        <span
+          // Only the handle starts a drag, so tapping a dish still opens it
+          // and the page still scrolls under a finger.
+          {...attributes}
+          {...listeners}
+          role="button"
+          tabIndex={0}
+          aria-label={`Reorder ${dish.name}`}
+          className="-ml-1 mt-0.5 flex-none cursor-grab touch-none p-1 text-gray-300 hover:text-gray-500 active:cursor-grabbing dark:text-gray-600 dark:hover:text-gray-400"
+        >
+          <GripVerticalIcon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
+    </li>
+  );
+}
+
+/**
+ * A course's dishes, droppable even when there are none.
+ *
+ * The empty case is the point: a menu that is still all Mains is exactly when
+ * you need to drop something into Sides, and an empty section you cannot drop
+ * into would be useless at the moment it matters.
+ */
+function CourseDropZone({
+  course, isEmpty, children,
+}: {
+  course: string;
+  isEmpty: boolean;
+  children: React.ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: courseDropId(course) });
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'rounded-xl transition-colors',
+        isOver && 'bg-primary-500/5 outline outline-2 outline-dashed outline-primary-400/50',
+        isEmpty && 'min-h-[3rem]',
+      )}
+    >
+      {children}
     </div>
   );
 }

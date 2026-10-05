@@ -11,6 +11,7 @@ import {
   updateParty, addDish, updateDish, deleteDish, addGuest, deleteGuest,
   addListItem, updateListItem, deleteListItem, setListItemsDone, clearListDone,
   deriveShopping, addTask, updateTask, deleteTask, scheduleListItem, seedTasksForDish,
+  reorderDishes,
   addNote, setNoteApplied, deleteNote,
 } from '@/app/(app)/party-actions';
 import type {
@@ -22,6 +23,7 @@ import { PartyLists } from './PartyLists';
 import { PartySchedule } from './PartySchedule';
 import { PartyNotes } from './PartyNotes';
 import { descendantIds } from '@/lib/party-lists';
+import { withPlacements, type DishPlacement } from '@/lib/party-menu-order';
 import { cn } from '@/lib/utils';
 
 type Tab = 'menu' | 'lists' | 'schedule';
@@ -70,6 +72,11 @@ export function PartyClient({ initial }: { initial: PartyView }) {
       dishes: p.dishes.map((d) => (d.id === dishId ? { ...d, ...patch } : d)),
     }));
     run(() => updateDish(party.id, dishId, patch));
+  };
+
+  const onReorderDishes = (placements: DishPlacement[]) => {
+    setParty((p) => ({ ...p, dishes: withPlacements(p.dishes, placements) }));
+    run(() => reorderDishes(party.id, placements));
   };
 
   const onDeleteDish = (dishId: string) => {
@@ -371,6 +378,7 @@ export function PartyClient({ initial }: { initial: PartyView }) {
           guests={party.guests}
           notes={party.partyNotes}
           onAdd={onAddDish}
+          onReorder={onReorderDishes}
           onUpdate={onUpdateDish}
           onDelete={onDeleteDish}
         />

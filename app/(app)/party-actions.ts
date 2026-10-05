@@ -234,6 +234,29 @@ export async function updateDish(
   await prisma.partyDish.updateMany({ where: { id: dishId, partyId }, data: patch });
 }
 
+/**
+ * Write a whole new ordering for the menu.
+ *
+ * Takes every dish whose place changed rather than just the one that moved,
+ * because a position only means something next to its neighbours — writing one
+ * row leaves the others describing an order that is no longer true.
+ */
+export async function reorderDishes(
+  partyId: string,
+  placements: { id: string; course: string; position: number }[],
+): Promise<void> {
+  await ownParty(partyId);
+  if (placements.length === 0) return;
+  await prisma.$transaction(
+    placements.map((p) =>
+      prisma.partyDish.updateMany({
+        where: { id: p.id, partyId },
+        data: { course: p.course, position: p.position },
+      }),
+    ),
+  );
+}
+
 export async function deleteDish(partyId: string, dishId: string): Promise<void> {
   await ownParty(partyId);
   await prisma.partyDish.deleteMany({ where: { id: dishId, partyId } });
