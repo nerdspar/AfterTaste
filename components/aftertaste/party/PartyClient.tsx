@@ -10,25 +10,19 @@ import { ChevronLeftIcon, UsersIcon, PlusIcon, XIcon } from 'lucide-react';
 import {
   updateParty, addDish, updateDish, deleteDish, addGuest, deleteGuest,
   addListItem, updateListItem, deleteListItem, setListItemsDone, clearListDone,
-  deriveShopping,
+  deriveShopping, addTask, updateTask, deleteTask,
 } from '@/app/(app)/party-actions';
 import type {
-  PartyView, PartyDishView, PartyListItemView, PartyListName, DishStatus,
+  PartyView, PartyDishView, PartyListItemView, PartyTaskView, PartyListName, DishStatus,
 } from '@/lib/party-types';
 import { PartyMenu } from './PartyMenu';
 import { PartyLists } from './PartyLists';
+import { PartySchedule } from './PartySchedule';
 import { descendantIds } from '@/lib/party-lists';
 import { cn } from '@/lib/utils';
 
 type Tab = 'menu' | 'lists' | 'schedule';
 
-function prettyDate(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  if (!y || !m || !d) return iso;
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    weekday: 'short', day: 'numeric', month: 'short',
-  });
-}
 
 export function PartyClient({ initial }: { initial: PartyView }) {
   const [party, setParty] = useState(initial);
@@ -148,6 +142,30 @@ export function PartyClient({ initial }: { initial: PartyView }) {
     // you back to the menu and gave no sign the list had grown.
     if (added.length > 0) setParty((p) => ({ ...p, items: [...p.items, ...added] }));
     return added.length;
+  };
+
+  // --- run of show ---------------------------------------------------------
+
+  const onAddTask = (input: {
+    label: string; dayOffset: number; at: string | null; dishId: string | null;
+  }) => {
+    run(async () => {
+      const made = await addTask(party.id, input);
+      setParty((p) => ({ ...p, tasks: [...p.tasks, made] }));
+    });
+  };
+
+  const onUpdateTask = (taskId: string, patch: Partial<PartyTaskView>) => {
+    setParty((p) => ({
+      ...p,
+      tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, ...patch } : t)),
+    }));
+    run(() => updateTask(party.id, taskId, patch));
+  };
+
+  const onDeleteTask = (taskId: string) => {
+    setParty((p) => ({ ...p, tasks: p.tasks.filter((t) => t.id !== taskId) }));
+    run(() => deleteTask(party.id, taskId));
   };
 
   const bringing = (guestId: string) =>
@@ -305,9 +323,15 @@ export function PartyClient({ initial }: { initial: PartyView }) {
       )}
 
       {tab === 'schedule' && (
-        <p className="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-400 dark:border-gray-700 dark:text-gray-500">
-          {prettyDate(party.date)} — the run of show is next.
-        </p>
+        <PartySchedule
+          tasks={party.tasks}
+          dishes={party.dishes}
+          guests={party.guests}
+          serveTime={party.serveTime}
+          onAdd={onAddTask}
+          onUpdate={onUpdateTask}
+          onDelete={onDeleteTask}
+        />
       )}
     </div>
   );

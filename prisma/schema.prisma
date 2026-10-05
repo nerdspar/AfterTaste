@@ -76,7 +76,6 @@ model User {
   foodLog         FoodLogEntry[]
   pushSubs        PushSubscription[]
   scheduledNotes  ScheduledNotification[]
-  partyTasks      PartyTask[]             @relation("PartyTaskAssignee")
 
   createdAt DateTime @default(now())
 }
@@ -417,6 +416,7 @@ model Party_Guest {
   confirmed Boolean @default(false)
 
   dishes PartyDish[]
+  tasks  PartyTask[]
 
   @@index([partyId])
 }
@@ -487,7 +487,10 @@ model PartyTask {
   /// Which of the two turkeys this is.
   instance Int        @default(1)
 
-  assignee   User?   @relation("PartyTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  /// Who is doing it. The party's own name list, not a household account:
+  /// half the jobs on the day belong to whoever is standing there, and the
+  /// note writes "Pat — gravy" without anybody having an account.
+  assignee   Party_Guest? @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
   assigneeId String?
 
   done     Boolean @default(false)

@@ -170,3 +170,101 @@ export function ovenLanes(
     }))
     .sort((a, b) => (a.tempF ?? 0) - (b.tempF ?? 0));
 }
+
+/**
+ * The run of show, split into the days it actually spans.
+ *
+ * The note has a Friday page and a Saturday page, and that is the right shape:
+ * cooking ahead is a different mode from the day itself. Tasks with no time
+ * yet are kept apart rather than sorted to midnight, because "sometime
+ * Thursday" is a real state a plan sits in for weeks.
+ */
+export function groupByDay(
+  tasks: ScheduledTask[],
+): { dayOffset: number; timed: ScheduledTask[]; untimed: ScheduledTask[] }[] {
+  const days = new Map<number, ScheduledTask[]>();
+  for (const t of tasks) {
+    const list = days.get(t.dayOffset);
+    if (list) list.push(t);
+    else days.set(t.dayOffset, [t]);
+  }
+
+  return [...days.entries()]
+    .map(([dayOffset, list]) => ({
+      dayOffset,
+      timed: list
+        .filter((t) => t.startMin !== null)
+        .sort((a, b) => (a.startMin ?? 0) - (b.startMin ?? 0) || a.label.localeCompare(b.label)),
+      untimed: list.filter((t) => t.startMin === null),
+    }))
+    .sort((a, b) => a.dayOffset - b.dayOffset);
+}
+
+/**
+ * The span a timeline should draw, rounded out to whole hours.
+ *
+ * Always runs to the serve time: the point of the picture is how the work
+ * converges on dinner, and a chart that stops before it is the wrong chart.
+ */
+export function timelineWindow(
+  tasks: ScheduledTask[],
+  serveMin: number,
+): { startMin: number; endMin: number } {
+  const starts = tasks
+    .filter((t) => t.startMin !== null)
+    .map((t) => t.startMin as number);
+  const ends = tasks.filter((t) => t.startMin !== null).map(endOf);
+
+  const earliest = starts.length > 0 ? Math.min(...starts) : serveMin - 120;
+  const latest = Math.max(serveMin, ...(ends.length > 0 ? ends : [serveMin]));
+
+  const floorHour = Math.floor(earliest / 60) * 60;
+  const ceilHour = Math.ceil(latest / 60) * 60;
+  return {
+    startMin: Math.max(0, floorHour),
+    // Always at least two hours wide, or the bars have nothing to sit in.
+    endMin: Math.min(24 * 60, Math.max(ceilHour, floorHour + 120)),
+  };
+}
+
+/** Where a task sits in a window, as percentages, for drawing one bar. */
+export function barGeometry(
+  task: ScheduledTask,
+  window: { startMin: number; endMin: number },
+): { leftPct: number; widthPct: number } | null {
+  if (task.startMin === null) return null;
+  const span = window.endMin - window.startMin;
+  if (span <= 0) return null;
+  const left = ((task.startMin - window.startMin) / span) * 100;
+  // A zero-length task still has to be visible, or a reminder vanishes.
+  const width = Math.max((task.durationMin / span) * 100, 1.5);
+  return {
+    leftPct: Math.max(0, Math.min(100, left)),
+    widthPct: Math.max(0, Math.min(100 - Math.max(0, left), width)),
+  };
+}
+
+/**
+ * Pack tasks into rows so that no row has two at once.
+ *
+ * Within one oven temperature, concurrency is normal — three trays at 375° is
+ * a working Saturday, not a clash. But drawn on one line they land on top of
+ * each other and the picture becomes mush, which defeats the point of having
+ * a picture. So overlapping bars get their own row.
+ */
+export function packRows(tasks: ScheduledTask[]): ScheduledTask[][] {
+  const sorted = [...tasks]
+    .filter((t) => t.startMin !== null)
+    .sort((a, b) => (a.startMin as number) - (b.startMin as number));
+
+  const rows: ScheduledTask[][] = [];
+  for (const task of sorted) {
+    const row = rows.find((r) => {
+      const last = r[r.length - 1];
+      return (last.startMin as number) + last.durationMin <= (task.startMin as number);
+    });
+    if (row) row.push(task);
+    else rows.push([task]);
+  }
+  return rows;
+}

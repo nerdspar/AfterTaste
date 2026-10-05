@@ -5,6 +5,10 @@ import {
   layBackFrom,
   findClashes,
   ovenLanes,
+  groupByDay,
+  timelineWindow,
+  barGeometry,
+  packRows,
   type ScheduledTask,
 } from '@/lib/party-schedule';
 
@@ -137,5 +141,142 @@ describe('oven lanes', () => {
     ]);
     expect(lanes.map((l) => l.tempF)).toEqual([325, 400]);
     expect(lanes[0].tasks.map((t) => t.label)).toEqual(['Turkey 1', 'Turkey 2']);
+  });
+});
+
+describe('splitting the run of show into days', () => {
+  it('puts the day before ahead of the day itself', () => {
+    const days = groupByDay([
+      task({ id: 'a', label: 'Turkey in', dayOffset: 0, startMin: 13 * 60 }),
+      task({ id: 'b', label: 'Brine the turkey', dayOffset: -1, startMin: 18 * 60 }),
+    ]);
+
+    expect(days.map((d) => d.dayOffset)).toEqual([-1, 0]);
+    expect(days[0].timed.map((t) => t.label)).toEqual(['Brine the turkey']);
+  });
+
+  it('keeps a task with no time yet out of the timed order', () => {
+    // "Sometime Thursday" is a real state a plan sits in for weeks; sorting it
+    // to midnight would put it at the top of the day, above the 6am start.
+    const [day] = groupByDay([
+      task({ id: 'a', label: 'Order the turkey', dayOffset: -1 }),
+      task({ id: 'b', label: 'Collect the turkey', dayOffset: -1, startMin: 10 * 60 }),
+    ]);
+
+    expect(day.timed.map((t) => t.label)).toEqual(['Collect the turkey']);
+    expect(day.untimed.map((t) => t.label)).toEqual(['Order the turkey']);
+  });
+
+  it('orders a day by the clock', () => {
+    const [day] = groupByDay([
+      task({ id: 'c', label: 'Sides in', startMin: 16 * 60 }),
+      task({ id: 'a', label: 'Turkey in', startMin: 13 * 60 }),
+      task({ id: 'b', label: 'Stuffing in', startMin: 15 * 60 }),
+    ]);
+
+    expect(day.timed.map((t) => t.label)).toEqual(['Turkey in', 'Stuffing in', 'Sides in']);
+  });
+});
+
+describe('the oven timeline window', () => {
+  it('rounds out to whole hours around the work', () => {
+    const w = timelineWindow(
+      [task({ id: 'a', label: 'Turkey', startMin: 13 * 60 + 20, durationMin: 200 })],
+      17 * 60 + 30,
+    );
+
+    expect(w.startMin).toBe(13 * 60);
+    expect(w.endMin).toBe(17 * 60 + 60); // past the 16:40 finish, out to serving
+  });
+
+  it('always reaches the serve time', () => {
+    // The picture is about work converging on dinner; stopping before it is
+    // the wrong picture.
+    const w = timelineWindow(
+      [task({ id: 'a', label: 'Reheat', startMin: 12 * 60, durationMin: 20 })],
+      18 * 60,
+    );
+
+    expect(w.endMin).toBeGreaterThanOrEqual(18 * 60);
+  });
+
+  it('gives an empty oven a sensible window rather than a zero-width one', () => {
+    const w = timelineWindow([], 18 * 60);
+    expect(w.endMin - w.startMin).toBeGreaterThanOrEqual(120);
+  });
+});
+
+describe('drawing one bar', () => {
+  const w = { startMin: 12 * 60, endMin: 18 * 60 }; // six hours
+
+  it('places a task proportionally', () => {
+    const geo = barGeometry(
+      task({ id: 'a', label: 'Turkey', startMin: 15 * 60, durationMin: 90 }),
+      w,
+    );
+
+    expect(geo?.leftPct).toBeCloseTo(50);
+    expect(geo?.widthPct).toBeCloseTo(25);
+  });
+
+  it('keeps a zero-length reminder visible', () => {
+    const geo = barGeometry(
+      task({ id: 'a', label: 'Take the dough out', startMin: 15 * 60, durationMin: 0 }),
+      w,
+    );
+
+    expect(geo?.widthPct).toBeGreaterThan(0);
+  });
+
+  it('never runs a bar off the end of the chart', () => {
+    const geo = barGeometry(
+      task({ id: 'a', label: 'Overrun', startMin: 17 * 60, durationMin: 600 }),
+      w,
+    );
+
+    expect((geo?.leftPct ?? 0) + (geo?.widthPct ?? 0)).toBeLessThanOrEqual(100);
+  });
+
+  it('draws nothing for a task with no time', () => {
+    expect(barGeometry(task({ id: 'a', label: 'Someday' }), w)).toBeNull();
+  });
+});
+
+describe('packing the oven lanes', () => {
+  it('keeps tasks that never overlap on one row', () => {
+    const rows = packRows([
+      task({ id: 'a', label: 'Turkey', startMin: 13 * 60, durationMin: 60 }),
+      task({ id: 'b', label: 'Stuffing', startMin: 14 * 60, durationMin: 30 }),
+    ]);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].map((t) => t.label)).toEqual(['Turkey', 'Stuffing']);
+  });
+
+  it('gives concurrent trays their own row', () => {
+    // Three things at 375° at once is a working Saturday, not a clash — but
+    // drawn on one line they become mush.
+    const rows = packRows([
+      task({ id: 'a', label: 'Stuffing', startMin: 16 * 60 + 30, durationMin: 45 }),
+      task({ id: 'b', label: 'Squash', startMin: 16 * 60 + 40, durationMin: 35 }),
+      task({ id: 'c', label: 'Dates', startMin: 16 * 60 + 45, durationMin: 15 }),
+    ]);
+
+    expect(rows).toHaveLength(3);
+  });
+
+  it('reuses a row once its last task has finished', () => {
+    const rows = packRows([
+      task({ id: 'a', label: 'First', startMin: 13 * 60, durationMin: 60 }),
+      task({ id: 'b', label: 'Overlaps first', startMin: 13 * 60 + 30, durationMin: 30 }),
+      task({ id: 'c', label: 'After both', startMin: 14 * 60, durationMin: 30 }),
+    ]);
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0].map((t) => t.label)).toEqual(['First', 'After both']);
+  });
+
+  it('leaves out anything with no time', () => {
+    expect(packRows([task({ id: 'a', label: 'Someday' })])).toEqual([]);
   });
 });

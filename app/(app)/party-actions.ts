@@ -24,6 +24,7 @@ import type {
   PartyDishView,
   PartyGuestView,
   PartyListItemView,
+  PartyTaskView,
 } from '@/lib/party-types';
 import type { Ingredient } from '@/data/sample/recipes';
 
@@ -263,10 +264,10 @@ export async function addTask(
     passive?: boolean; resource?: string; ovenTempF?: number | null;
     dishId?: string | null; instance?: number;
   },
-): Promise<void> {
+): Promise<PartyTaskView> {
   await ownParty(partyId);
   const count = await prisma.partyTask.count({ where: { partyId } });
-  await prisma.partyTask.create({
+  const t = await prisma.partyTask.create({
     data: {
       partyId, label: input.label.trim() || 'Task',
       dayOffset: input.dayOffset ?? 0, at: input.at ?? null,
@@ -276,6 +277,12 @@ export async function addTask(
       position: count,
     },
   });
+  return {
+    id: t.id, label: t.label, dayOffset: t.dayOffset, at: t.at,
+    durationMin: t.durationMin, passive: t.passive, resource: t.resource,
+    ovenTempF: t.ovenTempF, dishId: t.dishId, instance: t.instance,
+    assigneeId: t.assigneeId, done: t.done, position: t.position,
+  };
 }
 
 export async function updateTask(
