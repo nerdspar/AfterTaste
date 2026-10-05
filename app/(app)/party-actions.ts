@@ -15,11 +15,15 @@ import {
   asListName,
   asNoteScope,
 } from '@/lib/party-clone';
+import { guessGroceryCategory } from '@/lib/grocery-category';
 import type {
   PartyView,
   PartySummary,
   DishStatus,
   PartyListName,
+  PartyDishView,
+  PartyGuestView,
+  PartyListItemView,
 } from '@/lib/party-types';
 import type { Ingredient } from '@/data/sample/recipes';
 
@@ -79,12 +83,7 @@ export async function loadParty(partyId: string): Promise<PartyView | null> {
       ovenTempF: t.ovenTempF, dishId: t.dishId, instance: t.instance,
       assigneeId: t.assigneeId, done: t.done, position: t.position,
     })),
-    items: p.items.map((i) => ({
-      id: i.id, list: asListName(i.list), label: i.label,
-      parentId: i.parentId, quantity: i.quantity, category: i.category,
-      store: i.store, dishId: i.dishId, edited: i.edited, done: i.done,
-      position: i.position,
-    })),
+    items: p.items.map(asItemView),
     partyNotes: p.partyNotes.map((n) => ({
       id: n.id, text: n.text, scope: asNoteScope(n.scope),
       target: n.target, applied: n.applied, position: n.position,
@@ -200,16 +199,21 @@ export async function cloneParty(input: {
 export async function addDish(
   partyId: string,
   input: { course: string; name: string; recipeId?: string | null; status?: DishStatus },
-): Promise<void> {
+): Promise<PartyDishView> {
   await ownParty(partyId);
   const count = await prisma.partyDish.count({ where: { partyId, course: input.course } });
-  await prisma.partyDish.create({
+  const d = await prisma.partyDish.create({
     data: {
       partyId, course: input.course, name: input.name.trim() || 'Dish',
       recipeId: input.recipeId ?? null, status: input.status ?? 'confirmed',
       position: count,
     },
   });
+  return {
+    id: d.id, course: d.course, position: d.position, recipeId: d.recipeId,
+    name: d.name, multiplier: d.multiplier, instances: d.instances,
+    equipment: d.equipment, status: asDishStatus(d.status), broughtById: d.broughtById,
+  };
 }
 
 export async function updateDish(
@@ -230,9 +234,12 @@ export async function deleteDish(partyId: string, dishId: string): Promise<void>
   await prisma.partyDish.deleteMany({ where: { id: dishId, partyId } });
 }
 
-export async function addGuest(partyId: string, name: string): Promise<void> {
+export async function addGuest(partyId: string, name: string): Promise<PartyGuestView> {
   await ownParty(partyId);
-  await prisma.party_Guest.create({ data: { partyId, name: name.trim() || 'Guest' } });
+  const g = await prisma.party_Guest.create({
+    data: { partyId, name: name.trim() || 'Guest' },
+  });
+  return { id: g.id, name: g.name, dietary: g.dietary, confirmed: g.confirmed };
 }
 
 export async function updateGuest(
@@ -295,17 +302,22 @@ export async function addListItem(
     list: PartyListName; label: string; parentId?: string | null;
     quantity?: string | null; category?: string | null; store?: string | null;
   },
-): Promise<void> {
+): Promise<PartyListItemView> {
   await ownParty(partyId);
   const count = await prisma.partyListItem.count({ where: { partyId, list: input.list } });
-  await prisma.partyListItem.create({
+  const label = input.label.trim() || 'Item';
+  const i = await prisma.partyListItem.create({
     data: {
-      partyId, list: input.list, label: input.label.trim() || 'Item',
+      partyId, list: input.list, label,
       parentId: input.parentId ?? null, quantity: input.quantity ?? null,
-      category: input.category ?? null, store: input.store ?? null,
+      // A line typed by hand belongs to whoever typed it, so a later pull from
+      // the menu leaves it alone.
+      category: input.category ?? guessGroceryCategory(label),
+      store: input.store ?? null,
       edited: true, position: count,
     },
   });
+  return asItemView(i);
 }
 
 export async function updateListItem(
@@ -313,7 +325,7 @@ export async function updateListItem(
   itemId: string,
   patch: {
     label?: string; quantity?: string | null; category?: string | null;
-    store?: string | null; done?: boolean;
+    store?: string | null; done?: boolean; parentId?: string | null;
   },
 ): Promise<void> {
   await ownParty(partyId);
@@ -360,6 +372,87 @@ export async function deleteNote(partyId: string, noteId: string): Promise<void>
   await prisma.partyNote.deleteMany({ where: { id: noteId, partyId } });
 }
 
+/** One list row as the screens read it. */
+function asItemView(i: {
+  id: string; list: string; label: string; parentId: string | null;
+  quantity: string | null; category: string | null; store: string | null;
+  dishId: string | null; edited: boolean; done: boolean; position: number;
+}): PartyListItemView {
+  return {
+    id: i.id, list: asListName(i.list), label: i.label, parentId: i.parentId,
+    quantity: i.quantity, category: i.category, store: i.store,
+    dishId: i.dishId, edited: i.edited, done: i.done, position: i.position,
+  };
+}
+
+/** The menu as the shopping derivation needs to see it. */
+async function dishesForDerivation(partyId: string): Promise<ShoppingDish[]> {
+  const dishes = await prisma.partyDish.findMany({
+    where: { partyId },
+    include: { recipe: { select: { ingredients: true } } },
+  });
+  return dishes.map((d) => ({
+    id: d.id,
+    name: d.name,
+    multiplier: d.multiplier,
+    instances: d.instances,
+    // A guest-brought dish costs oven time, not money.
+    broughtByGuest: d.broughtById !== null,
+    ingredients: (d.recipe?.ingredients as Ingredient[] | undefined) ?? [],
+  }));
+}
+
+/**
+ * Tick (or untick) a row and everything nested under it in one write.
+ *
+ * "Clean house" being done means the kitchen is done, and a sub-list that
+ * disagrees with its heading is the kind of thing that makes a list untrusted.
+ */
+export async function setListItemsDone(
+  partyId: string,
+  itemIds: string[],
+  done: boolean,
+): Promise<void> {
+  await ownParty(partyId);
+  if (itemIds.length === 0) return;
+  await prisma.partyListItem.updateMany({
+    where: { partyId, id: { in: itemIds } },
+    data: { done },
+  });
+}
+
+/** Clear the ticks on one list, for the next shop or the next party. */
+export async function clearListDone(partyId: string, list: PartyListName): Promise<void> {
+  await ownParty(partyId);
+  await prisma.partyListItem.updateMany({
+    where: { partyId, list, done: true },
+    data: { done: false },
+  });
+}
+
+/**
+ * Where each derived shopping line came from, keyed by label.
+ *
+ * Recomputed rather than stored: the breakdown is only meaningful against the
+ * current menu, and a stored one would quietly describe a dish that has since
+ * been scaled or dropped. An aggregate that reads wrong in a supermarket aisle
+ * is only debuggable if it can show its working-out.
+ */
+export async function shoppingSources(
+  partyId: string,
+): Promise<Record<string, { dishName: string; quantity: string }[]>> {
+  await ownParty(partyId);
+  const lines = deriveShoppingLines(await dishesForDerivation(partyId));
+  return Object.fromEntries(
+    lines
+      .filter((l) => l.from.length > 1 || !l.summed)
+      .map((l) => [
+        l.label.toLowerCase().trim(),
+        l.from.map((f) => ({ dishName: f.dishName, quantity: f.quantity })),
+      ]),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Deriving the shopping list
 // ---------------------------------------------------------------------------
@@ -372,25 +465,13 @@ export async function deleteNote(partyId: string, noteId: string): Promise<void>
  * than overwritten. Running it twice does nothing the second time, which is
  * what makes it safe to offer as a button.
  */
-export async function deriveShopping(partyId: string): Promise<{ added: number }> {
+export async function deriveShopping(
+  partyId: string,
+): Promise<{ added: PartyListItemView[] }> {
   await ownParty(partyId);
 
-  const dishes = await prisma.partyDish.findMany({
-    where: { partyId },
-    include: { recipe: { select: { ingredients: true } } },
-  });
-
-  const forDerivation: ShoppingDish[] = dishes.map((d) => ({
-    id: d.id,
-    name: d.name,
-    multiplier: d.multiplier,
-    instances: d.instances,
-    broughtByGuest: d.broughtById !== null,
-    ingredients: (d.recipe?.ingredients as Ingredient[] | undefined) ?? [],
-  }));
-
-  const lines = deriveShoppingLines(forDerivation);
-  if (lines.length === 0) return { added: 0 };
+  const lines = deriveShoppingLines(await dishesForDerivation(partyId));
+  if (lines.length === 0) return { added: [] };
 
   const existing = await prisma.partyListItem.findMany({
     where: { partyId, list: 'shopping' },
@@ -398,10 +479,12 @@ export async function deriveShopping(partyId: string): Promise<{ added: number }
   });
 
   const fresh = freshShoppingLines(lines, existing.map((e) => e.label));
-  if (fresh.length === 0) return { added: 0 };
+  if (fresh.length === 0) return { added: [] };
 
   const base = await prisma.partyListItem.count({ where: { partyId, list: 'shopping' } });
-  await prisma.partyListItem.createMany({
+  // Returned rather than counted, so the screen can show the new lines without
+  // a reload throwing the cook back to the top of the party.
+  const made = await prisma.partyListItem.createManyAndReturn({
     data: fresh.map((l, i) => ({
       partyId,
       list: 'shopping',
@@ -415,5 +498,5 @@ export async function deriveShopping(partyId: string): Promise<{ added: number }
       position: base + i,
     })),
   });
-  return { added: fresh.length };
+  return { added: made.map(asItemView) };
 }

@@ -9,9 +9,15 @@ import Link from 'next/link';
 import { ChevronLeftIcon, UsersIcon, PlusIcon, XIcon } from 'lucide-react';
 import {
   updateParty, addDish, updateDish, deleteDish, addGuest, deleteGuest,
+  addListItem, updateListItem, deleteListItem, setListItemsDone, clearListDone,
+  deriveShopping,
 } from '@/app/(app)/party-actions';
-import type { PartyView, PartyDishView, DishStatus } from '@/lib/party-types';
+import type {
+  PartyView, PartyDishView, PartyListItemView, PartyListName, DishStatus,
+} from '@/lib/party-types';
 import { PartyMenu } from './PartyMenu';
+import { PartyLists } from './PartyLists';
+import { descendantIds } from '@/lib/party-lists';
 import { cn } from '@/lib/utils';
 
 type Tab = 'menu' | 'lists' | 'schedule';
@@ -43,16 +49,21 @@ export function PartyClient({ initial }: { initial: PartyView }) {
   const onAddDish = (
     course: string, name: string, recipeId: string | null, status: DishStatus,
   ) => {
+    const tempId = `tmp-${Date.now()}`;
     const temp: PartyDishView = {
-      id: `tmp-${Date.now()}`, course, position: party.dishes.length,
+      id: tempId, course, position: party.dishes.length,
       recipeId, name, multiplier: 1, instances: 1, equipment: null,
       status, broughtById: null,
     };
     setParty((p) => ({ ...p, dishes: [...p.dishes, temp] }));
     run(async () => {
-      await addDish(party.id, { course, name, recipeId, status });
-      // Reload so the real id replaces the temporary one.
-      window.location.reload();
+      const made = await addDish(party.id, { course, name, recipeId, status });
+      // Swap the placeholder for the real row, so the next edit to it has a
+      // real id to write against — a reload here would lose the open tab.
+      setParty((p) => ({
+        ...p,
+        dishes: p.dishes.map((d) => (d.id === tempId ? made : d)),
+      }));
     });
   };
 
@@ -74,8 +85,8 @@ export function PartyClient({ initial }: { initial: PartyView }) {
     if (!name) return;
     setGuestDraft('');
     run(async () => {
-      await addGuest(party.id, name);
-      window.location.reload();
+      const made = await addGuest(party.id, name);
+      setParty((p) => ({ ...p, guests: [...p.guests, made] }));
     });
   };
 
@@ -87,6 +98,56 @@ export function PartyClient({ initial }: { initial: PartyView }) {
       dishes: p.dishes.map((d) => (d.broughtById === guestId ? { ...d, broughtById: null } : d)),
     }));
     run(() => deleteGuest(party.id, guestId));
+  };
+
+
+  // --- lists ---------------------------------------------------------------
+
+  const onAddItem = (list: PartyListName, label: string, parentId: string | null) => {
+    run(async () => {
+      const made = await addListItem(party.id, { list, label, parentId });
+      setParty((p) => ({ ...p, items: [...p.items, made] }));
+    });
+  };
+
+  const onUpdateItem = (itemId: string, patch: Partial<PartyListItemView>) => {
+    setParty((p) => ({
+      ...p,
+      items: p.items.map((i) => (i.id === itemId ? { ...i, ...patch } : i)),
+    }));
+    run(() => updateListItem(party.id, itemId, patch));
+  };
+
+  const onToggleItems = (itemIds: string[], done: boolean) => {
+    const ids = new Set(itemIds);
+    setParty((p) => ({
+      ...p,
+      items: p.items.map((i) => (ids.has(i.id) ? { ...i, done } : i)),
+    }));
+    run(() => setListItemsDone(party.id, itemIds, done));
+  };
+
+  const onDeleteItem = (itemId: string) => {
+    // Deleting a heading takes its contents with it, as the database does.
+    const doomed = new Set([itemId, ...descendantIds(party.items, itemId)]);
+    setParty((p) => ({ ...p, items: p.items.filter((i) => !doomed.has(i.id)) }));
+    run(() => deleteListItem(party.id, itemId));
+  };
+
+  const onClearDone = (list: PartyListName) => {
+    setParty((p) => ({
+      ...p,
+      items: p.items.map((i) => (i.list === list ? { ...i, done: false } : i)),
+    }));
+    run(() => clearListDone(party.id, list));
+  };
+
+  const onDerive = async () => {
+    const { added } = await deriveShopping(party.id);
+    // The new lines arrive in place. Pressing Pull used to reload, which threw
+    // you back to the menu and gave no sign the list had grown.
+    if (added.length > 0) setParty((p) => ({ ...p, items: [...p.items, ...added] }));
+    return added.length;
   };
 
   const bringing = (guestId: string) =>
@@ -229,9 +290,23 @@ export function PartyClient({ initial }: { initial: PartyView }) {
         />
       )}
 
-      {tab !== 'menu' && (
+      {tab === 'lists' && (
+        <PartyLists
+          partyId={party.id}
+          items={party.items}
+          dishes={party.dishes}
+          onAdd={onAddItem}
+          onUpdate={onUpdateItem}
+          onToggle={onToggleItems}
+          onDelete={onDeleteItem}
+          onDerive={onDerive}
+          onClearDone={onClearDone}
+        />
+      )}
+
+      {tab === 'schedule' && (
         <p className="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-400 dark:border-gray-700 dark:text-gray-500">
-          {prettyDate(party.date)} — coming next.
+          {prettyDate(party.date)} — the run of show is next.
         </p>
       )}
     </div>
