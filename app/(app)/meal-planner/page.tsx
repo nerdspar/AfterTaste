@@ -19,16 +19,26 @@ import {
   XIcon,
   LayersIcon,
   CheckIcon,
+  PartyPopperIcon,
 } from 'lucide-react';
 import Image from 'next/image';
 import { RecipePlaceholder } from '@/components/aftertaste/RecipePlaceholder';
 import { hasRecipePhoto } from '@/lib/recipe-image';
 import Link from 'next/link';
+import { partiesForDates } from '@/app/(app)/party-actions';
+import type { PartySummary } from '@/lib/party-types';
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'] as const;
 
 // Rolling 7-day week: today is always the first column. `offset` pages a full
 // week forward/back.
+/** Local calendar date as YYYY-MM-DD — never toISOString, which is UTC. */
+function isoDate(d: Date): string {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
 function getWeekDates(offset: number) {
   const start = new Date();
   start.setHours(0, 0, 0, 0);
@@ -71,6 +81,18 @@ function MealPlannerContent() {
 
   const weekDates = useMemo(() => getWeekDates(weekOffset), [weekOffset]);
 
+  // A party is a day's worth of plan in its own right, so the week has to say
+  // one is there — otherwise you plan Saturday dinner twice, once in each
+  // place, and find out on the Saturday.
+  const [parties, setParties] = useState<Record<string, PartySummary>>({});
+  useEffect(() => {
+    let cancelled = false;
+    partiesForDates(weekDates.map(isoDate))
+      .then((found) => { if (!cancelled) setParties(found); })
+      .catch((err) => console.error('[planner] parties failed', err));
+    return () => { cancelled = true; };
+  }, [weekDates]);
+
   // Use the same shared search as the global header typeahead so the picker
   // matches on everything (title, ingredients, steps, notes, cuisine, …) and
   // ranks results identically — searching "eggplant" here now finds recipes
@@ -97,11 +119,7 @@ function MealPlannerContent() {
     // Use the local calendar date (not toISOString, which is UTC and would
     // shift the key across the day boundary depending on time zone / time of
     // day, so the same slot could get different keys).
-    const d = weekDates[dayIdx];
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}_${meal}`;
+    return `${isoDate(weekDates[dayIdx])}_${meal}`;
   };
 
   // Values in a slot, ordered, each tagged with its array index for removal.
@@ -237,6 +255,7 @@ function MealPlannerContent() {
               {weekDates.map((date, i) => {
                 const isToday =
                   date.toDateString() === new Date().toDateString();
+                const party = parties[isoDate(date)];
                 return (
                   <div key={i} className="text-center py-1">
                     <p
@@ -259,6 +278,16 @@ function MealPlannerContent() {
                     >
                       {date.getDate()}
                     </p>
+                    {party && (
+                      <Link
+                        href={`/parties/${party.id}`}
+                        title={`${party.title} — ${party.dishCount} ${party.dishCount === 1 ? 'dish' : 'dishes'}`}
+                        className="mt-0.5 inline-flex max-w-full items-center gap-0.5 rounded-full bg-primary-500/10 px-1.5 py-0.5 text-[10px] font-medium text-primary-700 hover:bg-primary-500/20 dark:text-primary-300"
+                      >
+                        <PartyPopperIcon className="h-2.5 w-2.5 flex-none" />
+                        <span className="truncate">{party.title}</span>
+                      </Link>
+                    )}
                   </div>
                 );
               })}

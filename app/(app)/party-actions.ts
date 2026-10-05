@@ -16,6 +16,7 @@ import {
   asNoteScope,
 } from '@/lib/party-clone';
 import { guessGroceryCategory } from '@/lib/grocery-category';
+import { seedTasksFromSteps } from '@/lib/party-seed-tasks';
 import type {
   PartyView,
   PartySummary,
@@ -28,7 +29,7 @@ import type {
   PartyNoteView,
   NoteScope,
 } from '@/lib/party-types';
-import type { Ingredient } from '@/data/sample/recipes';
+import type { Ingredient, Instruction } from '@/data/sample/recipes';
 
 // Every read and write is scoped to the session's household, the same way
 // data-actions.ts does it: a write against an existing row uses
@@ -561,6 +562,63 @@ export async function shoppingSources(
 // ---------------------------------------------------------------------------
 // Deriving the shopping list
 // ---------------------------------------------------------------------------
+
+/**
+ * Put a dish's cookable steps into the run of show.
+ *
+ * Only the steps a timeline can reason about — anything with a duration, a
+ * piece of equipment, or a wait. They arrive with no times: the recipe knows
+ * how long the turkey takes, it does not know when you want to eat. Working
+ * back from the serve time is a separate, deliberate press.
+ */
+export async function seedTasksForDish(
+  partyId: string,
+  dishId: string,
+): Promise<{ added: PartyTaskView[]; alreadyThere: number }> {
+  await ownParty(partyId);
+  const dish = await prisma.partyDish.findFirst({
+    where: { id: dishId, partyId },
+    include: { recipe: { select: { instructions: true } } },
+  });
+  if (!dish?.recipe) return { added: [], alreadyThere: 0 };
+
+  const seeds = seedTasksFromSteps(
+    (dish.recipe.instructions as unknown as Instruction[] | undefined) ?? [],
+    { instances: dish.instances },
+  );
+  if (seeds.length === 0) return { added: [], alreadyThere: 0 };
+
+  // Steps already here are not added twice; this is a button, and a button
+  // gets pressed again.
+  const existing = await prisma.partyTask.findMany({
+    where: { partyId, dishId },
+    select: { label: true, instance: true },
+  });
+  const have = new Set(existing.map((e) => `${e.instance}|${e.label.toLowerCase().trim()}`));
+  const fresh = seeds.filter((s) => !have.has(`${s.instance}|${s.label.toLowerCase().trim()}`));
+  // Nothing added can mean two different things, and the screen has to be able
+  // to tell them apart: a recipe with nothing worth scheduling, or one whose
+  // steps are already sitting in the run of show.
+  if (fresh.length === 0) return { added: [], alreadyThere: seeds.length };
+
+  const base = await prisma.partyTask.count({ where: { partyId } });
+  const made = await prisma.partyTask.createManyAndReturn({
+    data: fresh.map((s, i) => ({
+      partyId,
+      dishId,
+      label: s.label,
+      dayOffset: 0,
+      at: null,
+      durationMin: s.durationMin,
+      passive: s.passive,
+      resource: s.resource,
+      ovenTempF: s.ovenTempF,
+      instance: s.instance,
+      position: base + i,
+    })),
+  });
+  return { added: made.map((t) => asTaskView(t)), alreadyThere: seeds.length - fresh.length };
+}
 
 /**
  * Add shopping lines for everything the menu needs.

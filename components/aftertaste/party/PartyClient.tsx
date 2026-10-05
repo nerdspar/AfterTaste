@@ -10,7 +10,7 @@ import { ChevronLeftIcon, UsersIcon, PlusIcon, XIcon } from 'lucide-react';
 import {
   updateParty, addDish, updateDish, deleteDish, addGuest, deleteGuest,
   addListItem, updateListItem, deleteListItem, setListItemsDone, clearListDone,
-  deriveShopping, addTask, updateTask, deleteTask, scheduleListItem,
+  deriveShopping, addTask, updateTask, deleteTask, scheduleListItem, seedTasksForDish,
   addNote, setNoteApplied, deleteNote,
 } from '@/app/(app)/party-actions';
 import type {
@@ -192,6 +192,12 @@ export function PartyClient({ initial }: { initial: PartyView }) {
           : p.items.map((i) => (i.taskId === taskId ? { ...i, done: patch.done as boolean } : i)),
     }));
     run(() => updateTask(party.id, taskId, patch));
+  };
+
+  const onSeedDish = async (dishId: string) => {
+    const { added, alreadyThere } = await seedTasksForDish(party.id, dishId);
+    if (added.length > 0) setParty((p) => ({ ...p, tasks: [...p.tasks, ...added] }));
+    return { added: added.length, alreadyThere };
   };
 
   const onDeleteTask = (taskId: string) => {
@@ -396,6 +402,7 @@ export function PartyClient({ initial }: { initial: PartyView }) {
           onAdd={onAddTask}
           onUpdate={onUpdateTask}
           onDelete={onDeleteTask}
+          onSeed={onSeedDish}
         />
       )}
     </div>

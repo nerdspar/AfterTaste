@@ -22,6 +22,8 @@ import {
   HourglassIcon,
   WandSparklesIcon,
   LinkIcon,
+  ListPlusIcon,
+  LoaderIcon,
 } from 'lucide-react';
 import {
   parseClock,
@@ -49,6 +51,8 @@ interface Props {
   onAdd: (input: { label: string; dayOffset: number; at: string | null; dishId: string | null }) => void;
   onUpdate: (taskId: string, patch: Partial<PartyTaskView>) => void;
   onDelete: (taskId: string) => void;
+  /** Pull a dish's cookable steps in from its recipe. */
+  onSeed: (dishId: string) => Promise<{ added: number; alreadyThere: number }>;
 }
 
 const RESOURCES = [
@@ -76,7 +80,7 @@ function toScheduled(tasks: PartyTaskView[], dishes: PartyDishView[]): Scheduled
 }
 
 export function PartySchedule({
-  tasks, dishes, guests, serveTime, partyDate, onAdd, onUpdate, onDelete,
+  tasks, dishes, guests, serveTime, partyDate, onAdd, onUpdate, onDelete, onSeed,
 }: Props) {
   const [draft, setDraft] = useState('');
   const [draftDay, setDraftDay] = useState(0);
@@ -85,6 +89,8 @@ export function PartySchedule({
   // Which oven block the cook is reading. A short bar cannot hold its own
   // label, so the detail goes under the chart where there is room for it.
   const [focusedBar, setFocusedBar] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState<string | null>(null);
+  const [seeded, setSeeded] = useState<string | null>(null);
 
   const scheduled = toScheduled(tasks, dishes);
   const clashes = findClashes(scheduled);
@@ -127,6 +133,9 @@ export function PartySchedule({
 
   // Only offered where there is a chain to lay back. A dish with one task has
   // nothing to work back from — that is just setting a time.
+  // Only a dish with a recipe has steps to take, and only one we are cooking.
+  const seedable = dishes.filter((d) => d.recipeId && !d.broughtById);
+
   const chainedDishes = dishes.filter(
     (d) => tasks.filter((t) => t.dishId === d.id && t.dayOffset === 0).length > 1,
   );
@@ -270,6 +279,50 @@ export function PartySchedule({
             </div>
           </div>
         </section>
+      )}
+
+      {seedable.length > 0 && (
+        <div>
+          <div className="flex flex-wrap gap-1.5">
+            {seedable.map((d) => (
+              <button
+                key={d.id}
+                type="button"
+                disabled={seeding === d.id}
+                onClick={async () => {
+                  setSeeding(d.id);
+                  setSeeded(null);
+                  try {
+                    const { added, alreadyThere } = await onSeed(d.id);
+                    setSeeded(
+                      added > 0
+                        ? `Added ${added} ${added === 1 ? 'step' : 'steps'} from ${d.name}`
+                        : alreadyThere > 0
+                          ? `${d.name}'s steps are already in the run of show`
+                          : `${d.name} has no steps that need a slot`,
+                    );
+                  } catch {
+                    setSeeded('Could not read that recipe');
+                  } finally {
+                    setSeeding(null);
+                  }
+                }}
+                className="inline-flex items-center gap-1 rounded-full border border-primary-200 px-2.5 py-1 text-[11px] text-primary-700 hover:bg-primary-50 disabled:opacity-40 dark:border-primary-500/40 dark:text-primary-300 dark:hover:bg-primary-500/10"
+                title={`Take the timed and oven steps from ${d.name}'s recipe`}
+              >
+                {seeding === d.id ? (
+                  <LoaderIcon className="h-3 w-3 animate-spin" />
+                ) : (
+                  <ListPlusIcon className="h-3 w-3" />
+                )}
+                Steps from {d.name}
+              </button>
+            ))}
+          </div>
+          {seeded && (
+            <p className="mt-1.5 text-[11px] text-gray-500 dark:text-gray-400">{seeded}</p>
+          )}
+        </div>
       )}
 
       {chainedDishes.length > 0 && (
