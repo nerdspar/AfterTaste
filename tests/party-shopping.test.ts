@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { deriveShoppingLines, type ShoppingDish } from '@/lib/party-shopping';
+import {
+  deriveShoppingLines,
+  freshShoppingLines,
+  type ShoppingDish,
+} from '@/lib/party-shopping';
 import type { Ingredient } from '@/data/sample/recipes';
 
 /** Recipe ingredients carry an image; irrelevant here, required by the type. */
@@ -114,5 +118,34 @@ describe('deriving a party shopping list', () => {
       }),
     ]);
     expect(lines.map((l) => l.category)).toEqual(['Dairy & Eggs', 'Fruits & Vegetables']);
+  });
+});
+
+describe('re-deriving onto a list someone has already edited', () => {
+  const lines = (...labels: string[]) =>
+    deriveShoppingLines(
+      labels.map((l, i) => dish({ id: `d${i}`, name: 'Dish', ingredients: [ing('1 cup', l)] })),
+    );
+
+  it('adds nothing the second time', () => {
+    const derived = lines('butter', 'chicken broth');
+    const once = freshShoppingLines(derived, []);
+    expect(once.map((l) => l.label).sort()).toEqual(['butter', 'chicken broth']);
+
+    // The button gets pressed again; the list already has these.
+    const twice = freshShoppingLines(derived, once.map((l) => l.label));
+    expect(twice).toEqual([]);
+  });
+
+  it('leaves an edited line alone instead of recomputing it', () => {
+    const derived = lines('butter');
+    // The cook wrote "1 stick is probably plenty" against this line last year.
+    expect(freshShoppingLines(derived, ['Butter '])).toEqual([]);
+  });
+
+  it('still adds an ingredient a newly added dish brought in', () => {
+    const derived = lines('butter', 'sage');
+    const fresh = freshShoppingLines(derived, ['butter']);
+    expect(fresh.map((l) => l.label)).toEqual(['sage']);
   });
 });

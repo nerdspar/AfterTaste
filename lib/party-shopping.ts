@@ -131,3 +131,27 @@ export function deriveShoppingLines(dishes: ShoppingDish[]): DerivedLine[] {
     (a, b) => a.category.localeCompare(b.category) || a.label.localeCompare(b.label),
   );
 }
+
+/** Lines are matched to what is already on the list by name, loosely. */
+function listKey(label: string): string {
+  return label.toLowerCase().trim();
+}
+
+/**
+ * The lines a re-derive should actually add.
+ *
+ * Deriving is a button, which means it gets pressed again after a dish is added
+ * — and the list it is adding to has been edited by then. So an ingredient that
+ * is already on the list is skipped rather than merged or overwritten: the line
+ * sitting there may say "1 stick is probably plenty", and recomputing it would
+ * throw away the only part of the list that was actually decided by a person.
+ *
+ * Running this twice in a row therefore adds nothing the second time.
+ */
+export function freshShoppingLines(
+  lines: DerivedLine[],
+  existingLabels: string[],
+): DerivedLine[] {
+  const have = new Set(existingLabels.map(listKey));
+  return lines.filter((l) => !have.has(listKey(l.label)));
+}
