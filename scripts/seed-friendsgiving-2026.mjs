@@ -152,7 +152,12 @@ const TODO = [
   ] },
 ];
 
-const PREP = [
+// The note's "Prep" section is party setup — bar, tables, decorations, games.
+// That is the same kind of work as the To-do list, so it goes there. The app's
+// "Prep ahead" means cooking ahead, and this note's make-ahead cooking is
+// already Friday's run of show: waffles, stuffing, sourdough, herb butter,
+// focaccia dough, gravy.
+const SETUP = [
   { label: 'Set up bar' },
   { label: 'Mini fridge beers' },
   { label: 'Set tables' },
@@ -350,8 +355,8 @@ async function main() {
     });
   }
 
-  await writeList(party.id, 'todo', TODO);
-  await writeList(party.id, 'prep', PREP);
+  const afterTodo = await writeList(party.id, 'todo', TODO);
+  await writeList(party.id, 'todo', SETUP, afterTodo);
   await writeList(party.id, 'shopping', SHOPPING);
 
   let notePos = 0;
