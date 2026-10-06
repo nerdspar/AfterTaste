@@ -118,6 +118,9 @@ export function PartySchedule({
   const serveMin = parseClock(serveTime) ?? 18 * 60;
   const dayOf = scheduled.filter((t) => t.dayOffset === 0);
   const lanes = ovenLanes(dayOf);
+  // A note that never writes a temperature should not pay 44px a row for an
+  // empty label — the chart just starts indented for no reason.
+  const anyOvenTemp = lanes.some((l) => l.tempF != null);
   const window = timelineWindow(dayOf.filter((t) => t.resource === 'oven'), serveMin);
   const byId = new Map(tasks.map((t) => [t.id, t]));
   // A fortnight of lead time, plus any day already in use — the data has the
@@ -221,9 +224,11 @@ export function PartySchedule({
                 // they draw on top of each other and say nothing.
                 packRows(lane.tasks).map((row, rowIndex) => (
                   <div key={`${lane.tempF}-${rowIndex}`} className="flex items-center gap-2">
-                    <span className="w-11 flex-none text-right text-[11px] tabular-nums text-gray-500 dark:text-gray-400">
-                      {rowIndex === 0 ? (lane.tempF != null ? `${lane.tempF}°` : '—') : ''}
-                    </span>
+                    {anyOvenTemp && (
+                      <span className="w-11 flex-none text-right text-[11px] tabular-nums text-gray-500 dark:text-gray-400">
+                        {rowIndex === 0 && lane.tempF != null ? `${lane.tempF}°` : ''}
+                      </span>
+                    )}
                     <div className="relative h-6 flex-1 overflow-hidden rounded-md bg-gray-100 dark:bg-gray-800">
                       {row.map((t) => {
                         const geo = barGeometry(t, window);
@@ -363,40 +368,44 @@ export function PartySchedule({
         </div>
       )}
 
-      {/* Adding sits above the day, not under twenty-five steps of it. */}
-      <div className="mb-1 flex flex-wrap gap-2">
+      {/* Adding sits above the day, not under twenty-five steps of it. The
+          label takes its own line: "Sat, Nov 7 — 14 days before" is a wide
+          option, and on one row it crushed the field you type into. */}
+      <div className="mb-1 space-y-2">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
           placeholder="Add to the run of show…"
-          className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          className="min-h-[2.5rem] w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         />
-        <input
-          type="time"
-          value={draftAt}
-          onChange={(e) => setDraftAt(e.target.value)}
-          aria-label="Time"
-          className="h-10 flex-none rounded-lg border border-gray-200 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        />
-        <select
-          value={draftDay}
-          onChange={(e) => setDraftDay(Number(e.target.value))}
-          aria-label="Day"
-          className="h-10 flex-none rounded-lg border border-gray-200 bg-white px-2 pr-7 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        >
-          {days.map((d) => (
-            <option key={d.dayOffset} value={d.dayOffset}>{d.label}</option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={submit}
-          className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-primary-500 text-white hover:bg-primary-700"
-          aria-label="Add task"
-        >
-          <PlusIcon className="h-4 w-4" />
-        </button>
+        <div className="flex gap-2">
+          <input
+            type="time"
+            value={draftAt}
+            onChange={(e) => setDraftAt(e.target.value)}
+            aria-label="Time"
+            className="min-h-[2.5rem] w-[124px] flex-none rounded-lg border border-gray-200 bg-white px-2 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          />
+          <select
+            value={draftDay}
+            onChange={(e) => setDraftDay(Number(e.target.value))}
+            aria-label="Day"
+            className="min-h-[2.5rem] min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-2 py-2 pr-7 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          >
+            {days.map((d) => (
+              <option key={d.dayOffset} value={d.dayOffset}>{d.label}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={submit}
+            className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-primary-500 text-white hover:bg-primary-700"
+            aria-label="Add task"
+          >
+            <PlusIcon className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {tasks.length === 0 ? (
