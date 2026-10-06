@@ -10,7 +10,7 @@
 // guest who hasn't confirmed. All three exist in a real plan weeks out, and a
 // menu that insists on certainty just gets abandoned for a notes app.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -37,6 +37,8 @@ import {
   UtensilsCrossedIcon,
   LightbulbIcon,
   GripVerticalIcon,
+  SearchIcon,
+  BookOpenIcon,
 } from 'lucide-react';
 import { COURSES, orderedCourses, multiplierLabel } from '@/lib/party-types';
 import { notesForDish } from '@/lib/party-notes';
@@ -50,6 +52,7 @@ import type {
   PartyDishView, PartyGuestView, PartyNoteView, DishStatus,
 } from '@/lib/party-types';
 import { useRecipeStore } from '@/components/aftertaste/RecipeStoreProvider';
+import { searchRecipes } from '@/lib/recipe-search';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -72,10 +75,7 @@ const STATUS_LABEL: Record<DishStatus, string> = {
 export function PartyMenu({
   dishes, guests, notes, onAdd, onUpdate, onDelete, onReorder,
 }: Props) {
-  const { recipes } = useRecipeStore();
   const [adding, setAdding] = useState<string | null>(null);
-  const [draft, setDraft] = useState('');
-  const [draftRecipe, setDraftRecipe] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
 
@@ -104,16 +104,6 @@ export function PartyMenu({
   const guestName = (id: string | null) =>
     id ? (guests.find((g) => g.id === id)?.name ?? null) : null;
 
-  const submit = (course: string) => {
-    const recipe = recipes.find((r) => r.id === draftRecipe);
-    const name = recipe ? recipe.title : draft.trim();
-    if (!name) return;
-    onAdd(course, name, recipe?.id ?? null, draft.trim() && !recipe ? 'confirmed' : 'confirmed');
-    setDraft('');
-    setDraftRecipe('');
-    setAdding(null);
-  };
-
   return (
     <DndContext
       sensors={sensors}
@@ -136,7 +126,7 @@ export function PartyMenu({
               </h2>
               <button
                 type="button"
-                onClick={() => { setAdding(course); setDraft(''); setDraftRecipe(''); }}
+                onClick={() => setAdding(adding === course ? null : course)}
                 className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-800"
                 aria-label={`Add a dish to ${course}`}
               >
@@ -322,45 +312,14 @@ export function PartyMenu({
             </CourseDropZone>
 
             {adding === course && (
-              <div className="mt-2 rounded-xl border border-primary-300 bg-white p-3 dark:border-primary-500/40 dark:bg-slate-900">
-                <input
-                  autoFocus
-                  value={draft}
-                  onChange={(e) => { setDraft(e.target.value); setDraftRecipe(''); }}
-                  onKeyDown={(e) => { if (e.key === 'Enter') submit(course); }}
-                  placeholder="Charcuterie, Veggie 1, …"
-                  className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2.5 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                />
-                <p className="mt-2 mb-1 text-[11px] text-gray-500 dark:text-gray-400">
-                  …or attach one of your recipes
-                </p>
-                <select
-                  className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-                  value={draftRecipe}
-                  onChange={(e) => { setDraftRecipe(e.target.value); setDraft(''); }}
-                >
-                  <option value="">No recipe — just a name</option>
-                  {recipes.map((r) => (
-                    <option key={r.id} value={r.id}>{r.title}</option>
-                  ))}
-                </select>
-                <div className="mt-3 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => submit(course)}
-                    className="h-8 rounded-lg bg-primary-500 px-3 text-xs font-semibold text-white hover:bg-primary-700"
-                  >
-                    Add
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAdding(null)}
-                    className="h-8 rounded-lg px-3 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
+              <AddDish
+                course={course}
+                onAdd={(name, recipeId) => {
+                  onAdd(course, name, recipeId, 'confirmed');
+                  setAdding(null);
+                }}
+                onCancel={() => setAdding(null)}
+              />
             )}
           </section>
         );
@@ -382,6 +341,109 @@ export function PartyMenu({
         ) : null}
       </DragOverlay>
     </DndContext>
+  );
+}
+
+/**
+ * Adding a dish: one box that searches your recipes as you type.
+ *
+ * It was a text field and a dropdown of every recipe, which stops working the
+ * moment the box has more than a screenful — and it made attaching a recipe
+ * feel like a different act from naming a dish, when they are the same thing
+ * with more or less known about it. One field, the same search the rest of the
+ * app uses, and whatever you typed stands as a plain name if you ignore the
+ * matches.
+ */
+function AddDish({
+  course, onAdd, onCancel,
+}: {
+  course: string;
+  onAdd: (name: string, recipeId: string | null) => void;
+  onCancel: () => void;
+}) {
+  const { recipes } = useRecipeStore();
+  const [query, setQuery] = useState('');
+  const [picked, setPicked] = useState<{ id: string; title: string } | null>(null);
+
+  const matches = useMemo(
+    () => (query.trim().length < 2 ? [] : searchRecipes(recipes, query).slice(0, 6)),
+    [recipes, query],
+  );
+
+  const submit = () => {
+    if (picked) return onAdd(picked.title, picked.id);
+    const name = query.trim();
+    if (name) onAdd(name, null);
+  };
+
+  return (
+    <div className="mt-2 rounded-xl border border-primary-300 bg-white p-3 dark:border-primary-500/40 dark:bg-slate-900">
+      <div className="relative">
+        <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          autoFocus
+          value={picked ? picked.title : query}
+          onChange={(e) => { setQuery(e.target.value); setPicked(null); }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); submit(); }
+            if (e.key === 'Escape') onCancel();
+          }}
+          placeholder={`Search recipes, or name a dish for ${course}`}
+          aria-label={`Dish for ${course}`}
+          className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-2.5 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        />
+      </div>
+
+      {picked ? (
+        <p className="mt-2 flex items-center gap-1.5 text-[11px] text-primary-700 dark:text-primary-300">
+          <BookOpenIcon className="h-3 w-3 flex-none" />
+          Its ingredients can feed the shopping list.
+          <button
+            type="button"
+            onClick={() => { setPicked(null); setQuery(''); }}
+            className="underline decoration-dotted underline-offset-2"
+          >
+            Use a plain name instead
+          </button>
+        </p>
+      ) : matches.length > 0 ? (
+        <ul className="mt-2 max-h-48 overflow-y-auto">
+          {matches.map((r) => (
+            <li key={r.id}>
+              <button
+                type="button"
+                onClick={() => setPicked({ id: r.id, title: r.title })}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-gray-800 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                <BookOpenIcon className="h-3.5 w-3.5 flex-none text-gray-400" />
+                <span className="min-w-0 truncate">{r.title}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : query.trim().length >= 2 ? (
+        <p className="mt-2 text-[11px] text-gray-400">
+          No recipe matches — &ldquo;{query.trim()}&rdquo; will be added as a plain name.
+        </p>
+      ) : null}
+
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          onClick={submit}
+          className="inline-flex h-8 items-center rounded-lg bg-primary-500 px-3 text-xs font-semibold text-white hover:bg-primary-700"
+        >
+          Add
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="inline-flex h-8 items-center rounded-lg px-3 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 

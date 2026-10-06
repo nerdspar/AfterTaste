@@ -547,6 +547,29 @@ export async function scheduleListItem(
   return { task: asTaskView(task, asListName(item.list)), item: asItemView(linked) };
 }
 
+/**
+ * Take a line back off the run of show.
+ *
+ * The step goes, the line stays. Unlinking because the job does not need a
+ * time is the common case, and deleting the line along with it would punish
+ * a correction — you would lose the chore to undo scheduling it.
+ */
+export async function unscheduleListItem(
+  partyId: string,
+  itemId: string,
+): Promise<PartyListItemView> {
+  await ownParty(partyId);
+  const item = await prisma.partyListItem.findFirst({ where: { id: itemId, partyId } });
+  if (!item) throw new Error('Item not found');
+  if (!item.taskId) return asItemView(item);
+
+  const [, updated] = await prisma.$transaction([
+    prisma.partyTask.deleteMany({ where: { id: item.taskId, partyId } }),
+    prisma.partyListItem.update({ where: { id: item.id }, data: { taskId: null } }),
+  ]);
+  return asItemView(updated);
+}
+
 /** Clear the ticks on one list, for the next shop or the next party. */
 export async function clearListDone(partyId: string, list: PartyListName): Promise<void> {
   await ownParty(partyId);

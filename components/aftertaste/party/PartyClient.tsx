@@ -10,7 +10,7 @@ import { ChevronLeftIcon, UsersIcon, PlusIcon, XIcon } from 'lucide-react';
 import {
   updateParty, addDish, updateDish, deleteDish, addGuest, deleteGuest,
   addListItem, updateListItem, deleteListItem, setListItemsDone, clearListDone,
-  deriveShopping, addTask, updateTask, deleteTask, scheduleListItem, seedTasksForDish,
+  deriveShopping, addTask, updateTask, deleteTask, scheduleListItem, unscheduleListItem, seedTasksForDish,
   reorderDishes,
   addNote, setNoteApplied, deleteNote,
 } from '@/app/(app)/party-actions';
@@ -159,6 +159,16 @@ export function PartyClient({ initial }: { initial: PartyView }) {
         items: p.items.map((i) => (i.id === item.id ? item : i)),
       }));
     });
+  };
+
+  const onUnscheduleItem = (itemId: string) => {
+    const taskId = party.items.find((i) => i.id === itemId)?.taskId ?? null;
+    setParty((p) => ({
+      ...p,
+      items: p.items.map((i) => (i.id === itemId ? { ...i, taskId: null } : i)),
+      tasks: taskId ? p.tasks.filter((t) => t.id !== taskId) : p.tasks,
+    }));
+    run(() => unscheduleListItem(party.id, itemId));
   };
 
   const onClearDone = (list: PartyListName) => {
@@ -397,6 +407,7 @@ export function PartyClient({ initial }: { initial: PartyView }) {
           onDerive={onDerive}
           onClearDone={onClearDone}
           onSchedule={onScheduleItem}
+          onUnschedule={onUnscheduleItem}
         />
       )}
 

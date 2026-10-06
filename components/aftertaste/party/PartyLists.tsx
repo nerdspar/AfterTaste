@@ -45,6 +45,8 @@ interface Props {
   onClearDone: (list: PartyListName) => void;
   /** Give a line a place in the run of show, keeping the two the same job. */
   onSchedule: (itemId: string) => void;
+  /** Take it back off, keeping the line. */
+  onUnschedule: (itemId: string) => void;
 }
 
 const TABS: { key: PartyListName; label: string }[] = [
@@ -55,7 +57,7 @@ const TABS: { key: PartyListName; label: string }[] = [
 
 export function PartyLists({
   partyId, items, dishes, notes, onAdd, onUpdate, onToggle, onDelete, onDerive,
-  onClearDone, onSchedule,
+  onClearDone, onSchedule, onUnschedule,
 }: Props) {
   const [list, setList] = useState<PartyListName>('shopping');
   const [draft, setDraft] = useState('');
@@ -220,6 +222,7 @@ export function PartyLists({
               onUpdate={onUpdate}
               onDelete={onDelete}
               onSchedule={onSchedule}
+              onUnschedule={onUnschedule}
             />
           ))}
         </ul>
@@ -271,6 +274,7 @@ function ShoppingRow({
   onDelete: () => void;
 }) {
   const [quantity, setQuantity] = useState(item.quantity ?? '');
+  const [editingQty, setEditingQty] = useState(false);
 
   return (
     <li className="px-3 py-2">
@@ -292,16 +296,38 @@ function ShoppingRow({
           </span>
 
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <input
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              onBlur={() => {
-                if (quantity !== (item.quantity ?? '')) onUpdate({ quantity, edited: true });
-              }}
-              placeholder="—"
-              aria-label={`Amount of ${item.label}`}
-              className="h-7 w-28 flex-none rounded-md border border-gray-200 bg-transparent px-1.5 text-xs tabular-nums text-gray-600 dark:border-gray-700 dark:text-gray-300"
-            />
+            {/* A box on every row made the list look like a form. The amount
+                reads as text until you touch it, and a line with no amount
+                offers a quiet way to add one. */}
+            {editingQty ? (
+              <input
+                autoFocus
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                onBlur={() => {
+                  setEditingQty(false);
+                  if (quantity !== (item.quantity ?? '')) onUpdate({ quantity, edited: true });
+                }}
+                onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                placeholder="how much?"
+                aria-label={`Amount of ${item.label}`}
+                className="h-7 w-28 flex-none rounded-md border border-gray-200 bg-transparent px-1.5 text-xs tabular-nums text-gray-600 dark:border-gray-700 dark:text-gray-300"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditingQty(true)}
+                aria-label={`Set the amount of ${item.label}`}
+                className={cn(
+                  'flex-none rounded px-1 text-xs tabular-nums',
+                  item.quantity
+                    ? 'text-gray-600 dark:text-gray-300'
+                    : 'text-gray-300 dark:text-gray-600',
+                )}
+              >
+                {item.quantity || 'amount'}
+              </button>
+            )}
 
             {from && from.length > 1 && (
               <button
@@ -313,10 +339,12 @@ function ShoppingRow({
                 {from.length} dishes
               </button>
             )}
-            {item.edited && (
+            {/* "Yours" only means something against a line the app worked out.
+                On a line you typed it is just noise — of course it is yours. */}
+            {item.edited && item.dishId && (
               <span
                 className="flex-none text-[10px] uppercase tracking-wide text-gray-300 dark:text-gray-600"
-                title="You set this, so pulling from the menu leaves it alone"
+                title="You changed this, so pulling from the menu leaves it alone"
               >
                 yours
               </span>
@@ -370,7 +398,7 @@ function ShoppingRow({
 /** One job, and whatever it decomposes into. */
 function TaskRow({
   node, depth, addingUnder, childDraft, setChildDraft,
-  onAddUnder, onSubmitChild, onToggle, onUpdate, onDelete, onSchedule,
+  onAddUnder, onSubmitChild, onToggle, onUpdate, onDelete, onSchedule, onUnschedule,
 }: {
   node: ListNode;
   depth: number;
@@ -383,6 +411,7 @@ function TaskRow({
   onUpdate: (itemId: string, patch: Partial<PartyListItemView>) => void;
   onDelete: (itemId: string) => void;
   onSchedule: (itemId: string) => void;
+  onUnschedule: (itemId: string) => void;
 }) {
   const { item, children } = node;
 
@@ -409,12 +438,15 @@ function TaskRow({
         />
         {children.length === 0 && (
           item.taskId ? (
-            <span
-              className="flex-none rounded p-1 text-primary-600 dark:text-primary-400"
-              title="In the run of show — ticking either ticks both"
+            <button
+              type="button"
+              onClick={() => onUnschedule(item.id)}
+              aria-label={`Take ${item.label} off the run of show`}
+              title="In the run of show — tap to take it off, keeping the job here"
+              className="flex-none rounded p-1 text-primary-600 hover:text-red-500 dark:text-primary-400"
             >
               <LinkIcon className="h-3.5 w-3.5" />
-            </span>
+            </button>
           ) : (
             <button
               type="button"
@@ -480,6 +512,7 @@ function TaskRow({
           onUpdate={onUpdate}
           onDelete={onDelete}
           onSchedule={onSchedule}
+          onUnschedule={onUnschedule}
         />
       ))}
     </>
