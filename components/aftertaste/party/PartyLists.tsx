@@ -284,16 +284,19 @@ function ShoppingRow({
       <div className="flex items-start gap-2.5">
         <Tick done={item.done} onToggle={onToggle} label={item.label} />
         <div className="min-w-0 flex-1">
-          <span
+          <button
+            type="button"
+            onClick={() => setEditingQty(true)}
+            title="Set an amount"
             className={cn(
-              'block truncate text-sm',
+              'block w-full truncate text-left text-sm',
               item.done
                 ? 'text-gray-400 line-through dark:text-gray-600'
                 : 'text-gray-900 dark:text-gray-100',
             )}
           >
             {item.label}
-          </span>
+          </button>
 
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
             {/* A box on every row made the list look like a form. The amount
@@ -311,22 +314,22 @@ function ShoppingRow({
                 onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                 placeholder="how much?"
                 aria-label={`Amount of ${item.label}`}
-                className="h-7 w-28 flex-none rounded-md border border-gray-200 bg-transparent px-1.5 text-xs tabular-nums text-gray-600 dark:border-gray-700 dark:text-gray-300"
+                className="min-h-[1.75rem] w-28 flex-none py-1 rounded-md border border-gray-200 bg-transparent px-1.5 text-xs tabular-nums text-gray-600 dark:border-gray-700 dark:text-gray-300"
               />
             ) : (
-              <button
-                type="button"
-                onClick={() => setEditingQty(true)}
-                aria-label={`Set the amount of ${item.label}`}
-                className={cn(
-                  'flex-none rounded px-1 text-xs tabular-nums',
-                  item.quantity
-                    ? 'text-gray-600 dark:text-gray-300'
-                    : 'text-gray-300 dark:text-gray-600',
-                )}
-              >
-                {item.quantity || 'amount'}
-              </button>
+              // No amount means nothing is shown. A placeholder on every line
+              // is the same clutter the input boxes were — the name is what
+              // you read in an aisle. Tap the line to put a number on it.
+              item.quantity && (
+                <button
+                  type="button"
+                  onClick={() => setEditingQty(true)}
+                  aria-label={`Change the amount of ${item.label}`}
+                  className="flex-none rounded px-1 text-xs tabular-nums text-gray-600 dark:text-gray-300"
+                >
+                  {item.quantity}
+                </button>
+              )
             )}
 
             {from && from.length > 1 && (

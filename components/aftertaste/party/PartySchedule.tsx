@@ -512,7 +512,7 @@ function TaskRow({
                 // Mobile browsers force 16px on a time input whatever the class
                 // says, and "06:00 PM" at 16px needs 72px of text plus padding.
                 // Measured, not guessed — this has been clipped twice.
-                'h-7 w-[124px] flex-none rounded-md border bg-transparent px-1.5 text-xs tabular-nums',
+                'min-h-[1.75rem] w-[124px] flex-none py-1 rounded-md border bg-transparent px-1.5 text-xs tabular-nums',
                 task.at
                   ? 'border-gray-200 text-gray-700 dark:border-gray-700 dark:text-gray-300'
                   : 'border-dashed border-gray-300 text-gray-400 dark:border-gray-600',
@@ -582,7 +582,7 @@ function TaskRow({
               min={0}
               value={task.durationMin}
               onChange={(e) => onUpdate({ durationMin: Number(e.target.value) })}
-              className="h-7 w-14 rounded-md border border-gray-200 bg-white px-1.5 text-right text-xs tabular-nums dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="min-h-[1.75rem] w-14 py-1 rounded-md border border-gray-200 bg-white px-1.5 text-right text-xs tabular-nums dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
             />
             min
           </label>
@@ -591,7 +591,7 @@ function TaskRow({
             value={task.dayOffset}
             onChange={(e) => onUpdate({ dayOffset: Number(e.target.value) })}
             aria-label="Day"
-            className="h-7 rounded-md border border-gray-200 bg-white px-1.5 pr-6 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            className="min-h-[1.75rem] py-1 rounded-md border border-gray-200 bg-white px-1.5 pr-6 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
           >
             {days.map((d) => (
               <option key={d.dayOffset} value={d.dayOffset}>{d.label}</option>
@@ -602,7 +602,7 @@ function TaskRow({
             value={task.resource}
             onChange={(e) => onUpdate({ resource: e.target.value })}
             aria-label="Uses"
-            className="h-7 rounded-md border border-gray-200 bg-white px-1.5 pr-6 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+            className="min-h-[1.75rem] py-1 rounded-md border border-gray-200 bg-white px-1.5 pr-6 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
           >
             {RESOURCES.map((r) => (
               <option key={r.value} value={r.value}>{r.label}</option>
@@ -620,7 +620,7 @@ function TaskRow({
                 onChange={(e) =>
                   onUpdate({ ovenTempF: e.target.value === '' ? null : Number(e.target.value) })
                 }
-                className="h-7 w-16 rounded-md border border-gray-200 bg-white px-1.5 text-right text-xs tabular-nums dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+                className="min-h-[1.75rem] w-16 py-1 rounded-md border border-gray-200 bg-white px-1.5 text-right text-xs tabular-nums dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
               />
             </label>
           )}
@@ -643,7 +643,7 @@ function TaskRow({
               value={task.assigneeId ?? ''}
               onChange={(e) => onUpdate({ assigneeId: e.target.value || null })}
               aria-label="Who"
-              className="h-7 rounded-md border border-gray-200 bg-white px-1.5 pr-6 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              className="min-h-[1.75rem] py-1 rounded-md border border-gray-200 bg-white px-1.5 pr-6 text-xs dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
             >
               <option value="">anyone</option>
               {guests.map((g) => (

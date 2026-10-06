@@ -175,20 +175,24 @@ const PREP = [
 
 // Quantities the note did not give are left blank rather than guessed; "x2"
 // and "ssss" are kept as written, because that is how the list reads in a shop.
+// Aisles are written out rather than guessed. The automatic guesser files
+// chicken broth under Protein, which is the kind of small wrongness that makes
+// a list feel untrustworthy in a shop — and without any aisle at all the whole
+// list lands in "Other" and gets walked in the order the note was written.
 const SHOPPING = [
-  { label: 'Herbs' },
-  { label: 'Butter' },
-  { label: 'Turkey', quantity: 'x2' },
-  { label: 'Roasting pans' },
-  { label: 'Seltzer' },
-  { label: 'Garlic' },
-  { label: 'Shallots' },
-  { label: 'Onionssss' },
-  { label: 'Celery' },
-  { label: 'Chicken broth' },
-  { label: 'Oranges' },
-  { label: 'Dried cranberries' },
-  { label: 'Apple cider' },
+  { label: 'Herbs', category: 'Fruits & Vegetables' },
+  { label: 'Butter', category: 'Dairy & Eggs' },
+  { label: 'Turkey', quantity: 'x2', category: 'Protein' },
+  { label: 'Roasting pans', category: 'Supplies' },
+  { label: 'Seltzer', category: 'Pantry Essentials' },
+  { label: 'Garlic', category: 'Fruits & Vegetables' },
+  { label: 'Shallots', category: 'Fruits & Vegetables' },
+  { label: 'Onionssss', category: 'Fruits & Vegetables' },
+  { label: 'Celery', category: 'Fruits & Vegetables' },
+  { label: 'Chicken broth', category: 'Pantry Essentials' },
+  { label: 'Oranges', category: 'Fruits & Vegetables' },
+  { label: 'Dried cranberries', category: 'Pantry Essentials' },
+  { label: 'Apple cider', category: 'Pantry Essentials' },
   { label: 'Tablecloths', category: 'Supplies' },
   { label: 'Placemats', category: 'Supplies' },
   { label: 'Craft paper', category: 'Supplies' },
