@@ -363,6 +363,42 @@ export function PartySchedule({
         </div>
       )}
 
+      {/* Adding sits above the day, not under twenty-five steps of it. */}
+      <div className="mb-1 flex flex-wrap gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
+          placeholder="Add to the run of show…"
+          className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        />
+        <input
+          type="time"
+          value={draftAt}
+          onChange={(e) => setDraftAt(e.target.value)}
+          aria-label="Time"
+          className="h-10 flex-none rounded-lg border border-gray-200 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        />
+        <select
+          value={draftDay}
+          onChange={(e) => setDraftDay(Number(e.target.value))}
+          aria-label="Day"
+          className="h-10 flex-none rounded-lg border border-gray-200 bg-white px-2 pr-7 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        >
+          {days.map((d) => (
+            <option key={d.dayOffset} value={d.dayOffset}>{d.label}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={submit}
+          className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-primary-500 text-white hover:bg-primary-700"
+          aria-label="Add task"
+        >
+          <PlusIcon className="h-4 w-4" />
+        </button>
+      </div>
+
       {tasks.length === 0 ? (
         <p className="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-400 dark:border-gray-700 dark:text-gray-500">
           Nothing scheduled. &ldquo;Dough out of the fridge at 3&rdquo;, &ldquo;turkey in at 1&rdquo;.
@@ -410,40 +446,6 @@ export function PartySchedule({
         ))
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') submit(); }}
-          placeholder="Add to the run of show…"
-          className="h-10 min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        />
-        <input
-          type="time"
-          value={draftAt}
-          onChange={(e) => setDraftAt(e.target.value)}
-          aria-label="Time"
-          className="h-10 flex-none rounded-lg border border-gray-200 bg-white px-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        />
-        <select
-          value={draftDay}
-          onChange={(e) => setDraftDay(Number(e.target.value))}
-          aria-label="Day"
-          className="h-10 flex-none rounded-lg border border-gray-200 bg-white px-2 pr-7 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        >
-          {days.map((d) => (
-            <option key={d.dayOffset} value={d.dayOffset}>{d.label}</option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={submit}
-          className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-primary-500 text-white hover:bg-primary-700"
-          aria-label="Add task"
-        >
-          <PlusIcon className="h-4 w-4" />
-        </button>
-      </div>
     </div>
   );
 }

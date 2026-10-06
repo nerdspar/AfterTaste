@@ -173,6 +173,26 @@ export function PartyLists({
         </div>
       )}
 
+      {/* Adding sits above the list. Twenty-nine chores is a long way to
+          scroll to reach a text box, and the box is the thing you came for. */}
+      <div className="mb-3 flex gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') submit(null); }}
+          placeholder={list === 'shopping' ? 'Add to the list…' : 'Add a job…'}
+          className="min-h-[2.5rem] flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        />
+        <button
+          type="button"
+          onClick={() => submit(null)}
+          className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-primary-500 text-white hover:bg-primary-700"
+          aria-label="Add item"
+        >
+          <PlusIcon className="h-4 w-4" />
+        </button>
+      </div>
+
       {mine.length === 0 ? (
         <p className="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-400 dark:border-gray-700 dark:text-gray-500">
           {list === 'shopping'
@@ -228,23 +248,6 @@ export function PartyLists({
         </ul>
       )}
 
-      <div className="mt-3 flex gap-2">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') submit(null); }}
-          placeholder={list === 'shopping' ? 'Add to the list…' : 'Add a job…'}
-          className="h-10 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        />
-        <button
-          type="button"
-          onClick={() => submit(null)}
-          className="flex h-10 w-10 flex-none items-center justify-center rounded-lg bg-primary-500 text-white hover:bg-primary-700"
-          aria-label="Add item"
-        >
-          <PlusIcon className="h-4 w-4" />
-        </button>
-      </div>
 
       {ticked > 0 && (
         <button
