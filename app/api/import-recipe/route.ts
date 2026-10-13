@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchPublic, isPublicUrl } from '@/lib/public-url';
 import { parseRecipeFromHtml } from '@/lib/recipe-parser';
+import { requireApiSession } from '@/lib/session';
 
 const FETCH_HEADERS = {
   'User-Agent':
@@ -11,10 +13,10 @@ const FETCH_HEADERS = {
 
 async function fetchHtml(targetUrl: string): Promise<string | null> {
   try {
-    const res = await fetch(targetUrl, {
+    // Follows redirects itself, refusing any hop onto a private address.
+    const res = await fetchPublic(targetUrl, {
       headers: FETCH_HEADERS,
       signal: AbortSignal.timeout(15000),
-      redirect: 'follow',
     });
     if (res.ok) return res.text();
   } catch {}
@@ -82,6 +84,9 @@ async function fetchRecipeHtml(url: string): Promise<string | null> {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await requireApiSession();
+  if (session instanceof NextResponse) return session;
+
   try {
     const { url } = (await request.json()) as { url: string };
 
@@ -99,6 +104,14 @@ export async function POST(request: NextRequest) {
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
       return NextResponse.json(
         { error: 'Only HTTP/HTTPS URLs are supported' },
+        { status: 400 },
+      );
+    }
+
+    // The server fetches this, so it must not reach the LAN or the host itself.
+    if (!(await isPublicUrl(parsedUrl))) {
+      return NextResponse.json(
+        { error: 'That address is not a public website' },
         { status: 400 },
       );
     }

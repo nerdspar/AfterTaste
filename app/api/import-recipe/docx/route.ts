@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { parseRecipeFromText } from '@/lib/recipe-parser';
+import { requireApiSession } from '@/lib/session';
 
 // mammoth reads .docx (a zip of XML) and needs the Node runtime.
 export const runtime = 'nodejs';
@@ -7,6 +8,9 @@ export const runtime = 'nodejs';
 const MAX_BYTES = 15 * 1024 * 1024; // 15 MB
 
 export async function POST(request: Request) {
+  const session = await requireApiSession();
+  if (session instanceof NextResponse) return session;
+
   try {
     const form = await request.formData();
     const file = form.get('file');
