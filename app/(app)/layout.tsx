@@ -11,6 +11,7 @@ import { UserPrefsProvider } from '@/components/aftertaste/UserPrefsProvider';
 import { PrefsInitializer } from '@/components/aftertaste/PrefsInitializer';
 import { CookTimersProvider } from '@/components/aftertaste/CookTimersProvider';
 import { loadHouseholdState, loadUserProfile } from '@/lib/data';
+import { isReadOnly, READ_ONLY_MESSAGE } from '@/lib/read-only';
 
 export default async function AppLayout({
   children,
@@ -38,6 +39,11 @@ export default async function AppLayout({
                 {/* Above AppShell on purpose: timers have to outlive the page
                     you started them from. */}
                 <CookTimersProvider>
+                  {isReadOnly() && (
+                    <div role="status" className="bg-amber-100 px-4 py-2 text-center text-sm text-amber-900 dark:bg-amber-500/15 dark:text-amber-200">
+                      {READ_ONLY_MESSAGE}
+                    </div>
+                  )}
                   <AppShell>{children}</AppShell>
                 </CookTimersProvider>
               </RecipeActionsProvider>
