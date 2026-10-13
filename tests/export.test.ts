@@ -17,7 +17,8 @@ const db = {
 vi.mock('@/auth', () => ({ auth: () => authMock() }));
 vi.mock('@/lib/db', () => ({ prisma: db }));
 
-const { GET, uploadsReferenced } = await import('@/app/api/export/route');
+const { GET } = await import('@/app/api/export/route');
+const { uploadsReferenced } = await import('@/lib/uploads-referenced');
 
 const scott = {
   id: 'u1',
